@@ -138,6 +138,20 @@ function readStringArray(value: unknown): string[] {
   return asArray(value).filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
 }
 
+function slugifyPlanValue(value: string | null) {
+  if (!value) {
+    return null
+  }
+
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  return normalized.length > 0 ? normalized : null
+}
+
 function readNestedRecord(record: ApiRecord | null, keys: string[]) {
   if (!record) {
     return null
@@ -271,14 +285,17 @@ function normalizeCurrentSubscription(payload: SubscriptionResponse): CurrentSub
       : [...readNestedArray(dataRecord, ['recent_invoices', 'invoices']), ...readNestedArray(root, ['recent_invoices', 'invoices'])]
 
   const planId = readString(planRecord?.id) ?? readString(subscriptionRecord?.plan_id)
+  const rawPlanName =
+    readString(planRecord?.name) ??
+    readString(subscriptionRecord?.plan_name)
   const planCode =
-    readString(planRecord?.code) ??
-    readString(subscriptionRecord?.plan_code) ??
-    readString(subscriptionRecord?.plan) ??
+    slugifyPlanValue(readString(planRecord?.code)) ??
+    slugifyPlanValue(readString(subscriptionRecord?.plan_code)) ??
+    slugifyPlanValue(readString(subscriptionRecord?.plan)) ??
+    slugifyPlanValue(rawPlanName) ??
     FREE_SUBSCRIPTION.planCode
   const planName =
-    readString(planRecord?.name) ??
-    readString(subscriptionRecord?.plan_name) ??
+    rawPlanName ??
     (planCode === 'free' ? 'Free' : planCode.charAt(0).toUpperCase() + planCode.slice(1))
 
   const normalized: CurrentSubscription = {
@@ -308,11 +325,15 @@ function normalizeCurrentSubscription(payload: SubscriptionResponse): CurrentSub
       .filter((invoice): invoice is RecentInvoice => Boolean(invoice)),
   }
 
-  if (!normalized.planId && normalized.planCode === FREE_SUBSCRIPTION.planCode) {
+  if (
+    !normalized.planId &&
+    normalized.planCode === FREE_SUBSCRIPTION.planCode &&
+    normalized.planName === FREE_SUBSCRIPTION.planName
+  ) {
     return normalized
   }
 
-  if (!normalized.planId && !normalized.planCode) {
+  if (!normalized.planId && !rawPlanName && normalized.planCode === FREE_SUBSCRIPTION.planCode) {
     return FREE_SUBSCRIPTION
   }
 

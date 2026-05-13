@@ -204,7 +204,7 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi' }
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">Usage</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Your current credit balance from the backend.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Your current credit balance.</p>
                   </div>
 
                   <Button variant="outline" onClick={() => void loadCreditBalance()} disabled={isUsageLoading}>
