@@ -18,7 +18,7 @@ const adminNavItems: PortalNavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    label: 'Users',
+    label: 'Students',
     href: '/admin/users',
     icon: Users,
   },

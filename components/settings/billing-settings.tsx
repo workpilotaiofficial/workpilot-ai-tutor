@@ -9,10 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast'
 import {
   cancelCurrentSubscription,
+  createCreditPackCheckout,
   createSubscriptionCheckout,
+  fetchCreditPacks,
   fetchCurrentSubscription,
   fetchSubscriptionPlans,
   getApiClientErrorMessage,
+  type CreditPack,
   type CurrentSubscription,
   type RecentInvoice,
   type SubscriptionPlan,
@@ -113,10 +116,12 @@ export default function BillingSettings({ isActive }: BillingSettingsProps) {
   const { toast } = useToast()
   const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null)
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
+  const [creditPacks, setCreditPacks] = useState<CreditPack[]>([])
   const [hasLoaded, setHasLoaded] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null)
+  const [checkoutPackId, setCheckoutPackId] = useState<string | null>(null)
   const [isCanceling, setIsCanceling] = useState(false)
   const handledBillingStateRef = useRef<string | null>(null)
 
@@ -142,13 +147,15 @@ export default function BillingSettings({ isActive }: BillingSettingsProps) {
       }
 
       try {
-        const [subscription, availablePlans] = await Promise.all([
+        const [subscription, availablePlans, availableCreditPacks] = await Promise.all([
           fetchCurrentSubscription(),
           fetchSubscriptionPlans(),
+          fetchCreditPacks(),
         ])
 
         setCurrentSubscription(subscription)
         setPlans(availablePlans)
+        setCreditPacks(availableCreditPacks)
         setHasLoaded(true)
 
         return true
@@ -231,6 +238,29 @@ export default function BillingSettings({ isActive }: BillingSettingsProps) {
         variant: 'destructive',
       })
       setCheckoutPlanId(null)
+    }
+  }
+
+  const handleBuyPack = async (pack: CreditPack) => {
+    setCheckoutPackId(pack.id)
+
+    try {
+      const checkoutSession = await createCreditPackCheckout({
+        packId: pack.id,
+      })
+
+      if (!checkoutSession.checkoutUrl) {
+        throw new Error('Checkout URL was not returned for this credit pack.')
+      }
+
+      window.location.assign(checkoutSession.checkoutUrl)
+    } catch (error) {
+      toast({
+        title: 'Pack checkout failed',
+        description: getApiClientErrorMessage(error, 'Unable to start credit pack checkout.'),
+        variant: 'destructive',
+      })
+      setCheckoutPackId(null)
     }
   }
 
@@ -410,7 +440,13 @@ export default function BillingSettings({ isActive }: BillingSettingsProps) {
                     <div className="mt-5">
                       <Button
                         onClick={() => void handleUpgrade(plan)}
-                        disabled={isCurrentPlan || !supportsMonthly || isCheckingOut || Boolean(checkoutPlanId)}
+                        disabled={
+                          isCurrentPlan ||
+                          !supportsMonthly ||
+                          isCheckingOut ||
+                          Boolean(checkoutPlanId) ||
+                          Boolean(checkoutPackId)
+                        }
                         className=' btn-primary'
                       >
                         {isCheckingOut ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
@@ -424,6 +460,71 @@ export default function BillingSettings({ isActive }: BillingSettingsProps) {
           ) : (
             <div className="rounded-xl border border-dashed border-border bg-secondary/10 p-6 text-sm text-muted-foreground">
               No paid plans are available right now.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle>Credit Packs</CardTitle>
+          <CardDescription>Buy one-time credit packs through Stripe.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading && !hasLoaded ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="rounded-xl border border-border bg-secondary/20 p-5">
+                  <div className="h-5 w-24 animate-pulse rounded bg-secondary" />
+                  <div className="mt-3 h-8 w-32 animate-pulse rounded bg-secondary" />
+                  <div className="mt-4 h-9 w-full animate-pulse rounded bg-secondary" />
+                </div>
+              ))}
+            </div>
+          ) : creditPacks.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {creditPacks.map((pack) => {
+                const isCheckingOut = checkoutPackId === pack.id
+
+                return (
+                  <div key={pack.id} className="rounded-xl border border-border bg-secondary/10 p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-lg font-semibold text-foreground">{pack.name}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">Code: {pack.code}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      <p className="text-2xl font-semibold text-foreground">
+                        {pack.price.toLocaleString('en-US', {
+                          minimumFractionDigits: pack.price % 1 === 0 ? 0 : 2,
+                          maximumFractionDigits: 2,
+                        })}{' '}
+                        {pack.currency.toUpperCase()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Credits: {pack.credits.toLocaleString('en-US')}
+                      </p>
+                    </div>
+
+                    <div className="mt-5">
+                      <Button
+                        onClick={() => void handleBuyPack(pack)}
+                        disabled={isCheckingOut || Boolean(checkoutPlanId) || Boolean(checkoutPackId)}
+                        className="btn-primary"
+                      >
+                        {isCheckingOut ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                        Buy via Stripe
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border bg-secondary/10 p-6 text-sm text-muted-foreground">
+              No credit packs are available right now.
             </div>
           )}
         </CardContent>

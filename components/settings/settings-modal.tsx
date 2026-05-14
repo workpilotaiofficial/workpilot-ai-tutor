@@ -224,9 +224,7 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi' }
                       <p className="mt-2 text-3xl font-semibold text-foreground">
                         {isUsageLoading && !hasLoadedUsage ? 'Loading...' : (creditBalance ?? 0).toLocaleString('en-US')}
                       </p>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Available credits currently assigned to this account.
-                      </p>
+                     
                     </div>
                   </div>
                 </div>

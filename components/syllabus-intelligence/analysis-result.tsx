@@ -8,9 +8,9 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock3,
+  FileText,
   Flame,
   Layers3,
-  Sparkles,
   Target,
 } from 'lucide-react'
 import { formatUTCDate } from '@/lib/utils'
@@ -44,9 +44,18 @@ function priorityWeight(priority: PriorityLevel) {
   return 2
 }
 
+function EmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border/70 bg-secondary/15 p-6 text-center">
+      <p className="font-medium text-foreground">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+    </div>
+  )
+}
+
 export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnalysisResultProps) {
   const totalModuleWeeks = useMemo(
-    () => result.modules.reduce((total, module) => total + module.estimatedWeeks, 0),
+    () => result.modules.reduce((total, module) => total + (module.estimatedWeeks ?? 0), 0),
     [result.modules],
   )
 
@@ -58,12 +67,19 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
   const overviewStats = useMemo(
     () => [
       { label: 'Modules', value: result.modules.length, icon: Layers3 },
-      { label: 'Objectives', value: result.learningObjectives.length, icon: Target },
+      {
+        label: 'Objectives',
+        value: result.analysis?.overallLearningObjectives.length ?? 0,
+        icon: Target,
+      },
       { label: 'Study Weeks', value: totalModuleWeeks, icon: Clock3 },
-      { label: 'Timeline Blocks', value: result.semesterTimeline.length, icon: CalendarRange },
+      { label: 'Timeline Blocks', value: result.timeline.length, icon: CalendarRange },
     ],
-    [result.learningObjectives.length, result.modules.length, result.semesterTimeline.length, totalModuleWeeks],
+    [result.analysis?.overallLearningObjectives.length, result.modules.length, result.timeline.length, totalModuleWeeks],
   )
+
+  const summary = result.analysis?.courseSummary ?? 'No AI summary available yet.'
+  const sourceName = result.originalFilename ?? result.sourceType.toUpperCase()
 
   return (
     <div className="h-full w-full overflow-y-auto bg-background">
@@ -78,13 +94,12 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
             <div className="min-w-0 flex-1">
               <p className="truncate text-base font-semibold text-foreground md:text-lg">{result.title}</p>
               <p className="truncate text-xs text-muted-foreground md:text-sm">
-                Generated on {formatUTCDate(result.createdAt)} • {result.sourceLength.toLocaleString()} characters analyzed
+                Updated on {formatUTCDate(result.updatedAt)} • {result.sourceLength.toLocaleString()} characters analyzed
               </p>
             </div>
 
-            <Badge variant="secondary" className="hidden items-center gap-1.5 rounded-full px-3 py-1 sm:inline-flex">
-              <Sparkles className="h-3.5 w-3.5" />
-              AI Powered
+            <Badge variant="outline" className="hidden rounded-full md:inline-flex">
+              {result.processingStatus}
             </Badge>
           </div>
         </div>
@@ -121,7 +136,7 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
               value="planning"
               className="rounded-lg px-3 py-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
-              Planning
+              Coursework
             </TabsTrigger>
           </TabsList>
 
@@ -132,7 +147,7 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
                 <CardTitle className="text-xl">Course Summary</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-foreground/90 leading-relaxed">{result.summary}</p>
+                <p className="text-foreground/90 leading-relaxed">{summary}</p>
               </CardContent>
             </Card>
 
@@ -153,25 +168,67 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
               })}
             </div>
 
-            <Card className="border-border/80 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Target className="h-5 w-5 text-primary" />
-                  Key Learning Objectives
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-2 md:grid-cols-2">
-                {result.learningObjectives.map((objective, index) => (
-                  <div
-                    key={`${objective}-${index}`}
-                    className="rounded-lg border border-border/70 bg-secondary/25 px-3 py-2.5 text-sm"
-                  >
-                    <span className="mr-2 font-semibold text-primary">{index + 1}.</span>
-                    <span className="text-foreground/90">{objective}</span>
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <Card className="border-border/80 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Target className="h-5 w-5 text-primary" />
+                    Learning Objectives
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {result.analysis?.overallLearningObjectives.length ? (
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {result.analysis.overallLearningObjectives.map((objective, index) => (
+                        <div
+                          key={`${objective}-${index}`}
+                          className="rounded-lg border border-border/70 bg-secondary/25 px-3 py-2.5 text-sm"
+                        >
+                          <span className="mr-2 font-semibold text-primary">{index + 1}.</span>
+                          <span className="text-foreground/90">{objective}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title="No learning objectives available"
+                      description="The completed syllabus did not include overall learning objectives."
+                    />
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/80 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Source Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-foreground/90">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Source</span>
+                    <span className="truncate text-right">{sourceName}</span>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Type</span>
+                    <span>{result.sourceType}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Created</span>
+                    <span>{formatUTCDate(result.createdAt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Model</span>
+                    <span>{result.analysis?.modelName ?? 'Unknown'}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Provider</span>
+                    <span>{result.analysis?.provider ?? 'Unknown'}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <Card className="border-border/80 shadow-sm">
               <CardHeader className="pb-3">
@@ -181,17 +238,26 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {sortedPriorityTopics.slice(0, 3).map((item, index) => (
-                  <div key={`${item.topic}-${index}`} className="rounded-xl border border-border/70 bg-secondary/25 p-3.5">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="font-semibold text-foreground">{item.topic}</p>
-                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${priorityClass(item.priority)}`}>
-                        {item.priority}
-                      </span>
+                {sortedPriorityTopics.length ? (
+                  sortedPriorityTopics.slice(0, 3).map((item, index) => (
+                    <div key={`${item.topic}-${index}`} className="rounded-xl border border-border/70 bg-secondary/25 p-3.5">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="font-semibold text-foreground">{item.topic}</p>
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${priorityClass(item.priority)}`}>
+                          {item.priority}
+                        </span>
+                      </div>
+                      <p className="text-sm text-foreground/90">
+                        {item.reason || 'No recommendation details were provided.'}
+                      </p>
                     </div>
-                    <p className="text-sm text-foreground/90">{item.reason}</p>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <EmptyState
+                    title="No priority topics available"
+                    description="The completed syllabus did not include priority recommendations."
+                  />
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -205,31 +271,47 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Accordion type="multiple" className="w-full">
-                  {result.modules.map((module, index) => (
-                    <AccordionItem value={`module-${index}`} key={`${module.title}-${index}`}>
-                      <AccordionTrigger className="hover:no-underline">
-                        <div className="flex w-full items-center justify-between gap-3 pr-2">
-                          <span className="text-left font-semibold text-foreground">{module.title}</span>
-                          <Badge variant="outline" className="rounded-full gap-1.5">
-                            <Clock3 className="h-3.5 w-3.5" />
-                            {module.estimatedWeeks} week{module.estimatedWeeks === 1 ? '' : 's'}
-                          </Badge>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="grid gap-2 md:grid-cols-2">
-                          {module.topics.map((topic, topicIndex) => (
-                            <div key={`${topic}-${topicIndex}`} className="flex items-start gap-2 rounded-lg border border-border/70 bg-secondary/20 p-3">
-                              <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/85" />
-                              <span className="text-sm text-foreground/90">{topic}</span>
+                {result.modules.length ? (
+                  <Accordion type="multiple" className="w-full">
+                    {result.modules.map((module, index) => (
+                      <AccordionItem value={`module-${index}`} key={`${module.title}-${index}`}>
+                        <AccordionTrigger className="hover:no-underline">
+                          <div className="flex w-full items-center justify-between gap-3 pr-2">
+                            <span className="text-left font-semibold text-foreground">{module.title}</span>
+                            {module.estimatedWeeks ? (
+                              <Badge variant="outline" className="rounded-full gap-1.5">
+                                <Clock3 className="h-3.5 w-3.5" />
+                                {module.estimatedWeeks} week{module.estimatedWeeks === 1 ? '' : 's'}
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          {module.topics.length ? (
+                            <div className="grid gap-2 md:grid-cols-2">
+                              {module.topics.map((topic, topicIndex) => (
+                                <div key={`${topic}-${topicIndex}`} className="flex items-start gap-2 rounded-lg border border-border/70 bg-secondary/20 p-3">
+                                  <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/85" />
+                                  <span className="text-sm text-foreground/90">{topic}</span>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
+                          ) : (
+                            <EmptyState
+                              title="No module topics available"
+                              description="This module was returned without topic details."
+                            />
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <EmptyState
+                    title="No modules available"
+                    description="The completed syllabus did not include a module breakdown."
+                  />
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -243,24 +325,37 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="relative space-y-3 pl-6">
-                  <div className="absolute left-[10px] top-1 bottom-1 w-px bg-border" />
-                  {result.semesterTimeline.map((item, index) => (
-                    <div key={`${item.weekRange}-${index}`} className="relative rounded-xl border border-border/70 bg-secondary/20 p-4">
-                      <span className="absolute -left-[21px] top-6 h-3 w-3 rounded-full bg-primary ring-4 ring-background" />
-                      <Badge variant="secondary" className="rounded-full mb-2">{item.weekRange}</Badge>
-                      <p className="mb-2 font-semibold text-foreground">{item.focus}</p>
-                      <ul className="space-y-1.5">
-                        {item.outcomes.map((outcome, outcomeIndex) => (
-                          <li key={`${outcome}-${outcomeIndex}`} className="flex items-start gap-2 text-sm">
-                            <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/85" />
-                            <span className="text-foreground/90">{outcome}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
+                {result.timeline.length ? (
+                  <div className="relative space-y-3 pl-6">
+                    <div className="absolute left-[10px] top-1 bottom-1 w-px bg-border" />
+                    {result.timeline.map((item, index) => (
+                      <div key={`${item.weekRange}-${index}`} className="relative rounded-xl border border-border/70 bg-secondary/20 p-4">
+                        <span className="absolute -left-[21px] top-6 h-3 w-3 rounded-full bg-primary ring-4 ring-background" />
+                        <Badge variant="secondary" className="mb-2 rounded-full">
+                          {item.weekRange}
+                        </Badge>
+                        <p className="mb-2 font-semibold text-foreground">{item.focus}</p>
+                        {item.outcomes.length ? (
+                          <ul className="space-y-1.5">
+                            {item.outcomes.map((outcome, outcomeIndex) => (
+                              <li key={`${outcome}-${outcomeIndex}`} className="flex items-start gap-2 text-sm">
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/85" />
+                                <span className="text-foreground/90">{outcome}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No outcomes were provided for this timeline item.</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="No timeline available"
+                    description="The completed syllabus did not include a semester timeline."
+                  />
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -274,17 +369,28 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-2">
-                {sortedPriorityTopics.map((item, index) => (
-                  <div key={`${item.topic}-${index}`} className="rounded-xl border border-border/70 bg-secondary/25 p-4">
-                    <div className="mb-2 flex items-start justify-between gap-2">
-                      <p className="font-semibold text-foreground">{item.topic}</p>
-                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${priorityClass(item.priority)}`}>
-                        {item.priority}
-                      </span>
+                {sortedPriorityTopics.length ? (
+                  sortedPriorityTopics.map((item, index) => (
+                    <div key={`${item.topic}-${index}`} className="rounded-xl border border-border/70 bg-secondary/25 p-4">
+                      <div className="mb-2 flex items-start justify-between gap-2">
+                        <p className="font-semibold text-foreground">{item.topic}</p>
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${priorityClass(item.priority)}`}>
+                          {item.priority}
+                        </span>
+                      </div>
+                      <p className="text-sm text-foreground/90">
+                        {item.reason || 'No recommendation details were provided.'}
+                      </p>
                     </div>
-                    <p className="text-sm text-foreground/90">{item.reason}</p>
+                  ))
+                ) : (
+                  <div className="md:col-span-2">
+                    <EmptyState
+                      title="No priority topics available"
+                      description="The completed syllabus did not include priority recommendations."
+                    />
                   </div>
-                ))}
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -298,16 +404,23 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {result.courseworkPlan.map((item, index) => (
-                  <div key={`${item.task}-${index}`} className="rounded-xl border border-border/70 bg-secondary/25 p-4">
-                    <p className="font-semibold text-foreground">{item.task}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge variant="outline" className="rounded-full">{item.when}</Badge>
-                      <Badge variant="outline" className="rounded-full">{item.effort}</Badge>
+                {result.coursework.length ? (
+                  result.coursework.map((item, index) => (
+                    <div key={`${item.task}-${index}`} className="rounded-xl border border-border/70 bg-secondary/25 p-4">
+                      <p className="font-semibold text-foreground">{item.task}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {item.when ? <Badge variant="outline" className="rounded-full">{item.when}</Badge> : null}
+                        {item.effort ? <Badge variant="outline" className="rounded-full">{item.effort}</Badge> : null}
+                      </div>
+                      {item.tips ? <p className="mt-3 text-sm text-foreground/90">{item.tips}</p> : null}
                     </div>
-                    <p className="mt-3 text-sm text-foreground/90">{item.tips}</p>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <EmptyState
+                    title="No coursework guidance available"
+                    description="The completed syllabus did not include coursework planning details."
+                  />
+                )}
               </CardContent>
             </Card>
           </TabsContent>

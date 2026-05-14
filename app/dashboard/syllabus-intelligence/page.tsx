@@ -109,10 +109,12 @@ export default function SyllabusIntelligencePage() {
                             {result.modules.length} modules
                           </span>
                           <span className="rounded-full border border-border bg-secondary/50 px-2 py-1 text-muted-foreground">
-                            {result.learningObjectives.length} objectives
+                            {result.analysis?.overallLearningObjectives.length ?? 0} objectives
                           </span>
                         </div>
-                        <p className="text-sm text-foreground/80 mt-3 line-clamp-2">{result.summary}</p>
+                        <p className="mt-3 line-clamp-2 text-sm text-foreground/80">
+                          {result.analysis?.courseSummary ?? 'No AI summary available yet.'}
+                        </p>
                       </div>
                       <span className="text-xs text-muted-foreground flex-shrink-0">
                         {formatUTCDate(result.createdAt)}

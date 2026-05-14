@@ -19,8 +19,6 @@ type CreateCheckoutPayload = {
 }
 
 type CreateCreditPackCheckoutPayload = {
-  planId: string
-  billingInterval: 'monthly'
   packId: string
 }
 
@@ -99,6 +97,7 @@ const PAYMENTS_SUBSCRIPTION_ENDPOINT = '/api/v1/payments/subscription'
 const PAYMENTS_PLANS_ENDPOINT = '/api/v1/payments/plans'
 const PAYMENTS_PACKS_ENDPOINT = '/api/v1/payments/packs'
 const PAYMENTS_CHECKOUT_ENDPOINT = '/api/v1/payments/create-checkout'
+const PAYMENTS_TOPUP_ENDPOINT = '/api/v1/payments/topup'
 const PAYMENTS_CANCEL_SUBSCRIPTION_ENDPOINT = '/api/v1/payments/cancel-subscription'
 const CREDITS_BALANCE_ENDPOINT = '/api/v1/credits/balance'
 
@@ -385,12 +384,10 @@ export async function createSubscriptionCheckout(payload: CreateCheckoutPayload)
 }
 
 export async function createCreditPackCheckout(payload: CreateCreditPackCheckoutPayload) {
-  const response = await apiClient.request<CreateCheckoutResponse>(PAYMENTS_CHECKOUT_ENDPOINT, {
+  const response = await apiClient.request<CreateCheckoutResponse>(PAYMENTS_TOPUP_ENDPOINT, {
     method: 'POST',
     body: {
-      plan_id: payload.planId,
-      billing_interval: payload.billingInterval,
-      pack_id: payload.packId,
+      topup_pack_id: payload.packId,
     },
   })
 
@@ -399,12 +396,12 @@ export async function createCreditPackCheckout(payload: CreateCreditPackCheckout
   const checkoutUrl = readString(checkoutRecord?.checkout_url)
   const sessionId = readString(checkoutRecord?.session_id)
 
-  if (!checkoutUrl || !sessionId) {
+  if (!sessionId) {
     throw new Error('Checkout session response is incomplete.')
   }
 
   return {
-    checkoutUrl,
+    checkoutUrl: checkoutUrl ?? '',
     sessionId,
     expiresAt: readString(checkoutRecord?.expires_at),
   } satisfies SubscriptionCheckoutSession

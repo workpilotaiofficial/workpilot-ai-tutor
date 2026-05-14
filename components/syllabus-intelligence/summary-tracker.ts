@@ -1,17 +1,20 @@
 'use client'
 
 import { ApiClientError } from '@/lib/api/client'
-import type { SyllabusUploadWebsocket } from '@/lib/api/syllabus.service'
-import {
-  normalizeSyllabusBackendResultPayload,
-  type SyllabusIntelligenceResult,
-} from './utils'
+import { fetchSyllabusById, type SyllabusSocketSnapshotEvent, type SyllabusUploadWebsocket } from '@/lib/api'
+import { mapSyllabusDetailToResult, type SyllabusIntelligenceResult } from './utils'
 
 type WaitForSyllabusSummaryOptions = {
   syllabusId: string
   websocket: SyllabusUploadWebsocket
-  titleFallback?: string
+  onStageChange?: (stage: SyllabusTrackingStage) => void
 }
+
+export type SyllabusTrackingStage =
+  | 'connecting'
+  | 'processing'
+  | 'fetching'
+  | 'completed'
 
 const SYLLABUS_SOCKET_TIMEOUT_MS = 5 * 60_000
 
@@ -30,50 +33,41 @@ function appendTokenToWebSocketUrl(url: string, token: string) {
   }
 }
 
-function extractMessageData(message: unknown): unknown[] {
+function parseSnapshotEvent(message: unknown): SyllabusSocketSnapshotEvent | null {
   if (!message || typeof message !== 'object') {
-    return []
+    return null
   }
 
-  const source = message as Record<string, unknown>
+  const event = message as Partial<SyllabusSocketSnapshotEvent>
 
-  return [
-    source.result,
-    source.summary,
-    source.data,
-    source.payload,
-    source.final_result,
-    source.finalResult,
-    source.summary_result,
-    source.summaryResult,
-    source.syllabus,
-    source,
-  ]
-}
-
-function resolveResultFromSocketMessage(
-  message: unknown,
-  titleFallback: string,
-  syllabusId: string,
-): SyllabusIntelligenceResult | null {
-  for (const candidate of extractMessageData(message)) {
-    const normalized = normalizeSyllabusBackendResultPayload(candidate, {
-      titleFallback,
-      syllabusId,
-    })
-
-    if (normalized) {
-      return normalized
-    }
+  if (typeof event.type !== 'string' || typeof event.syllabus_id !== 'string') {
+    return null
   }
 
-  return null
+  if (!event.payload || typeof event.payload !== 'object') {
+    return null
+  }
+
+  const payload = event.payload as Partial<SyllabusSocketSnapshotEvent['payload']>
+
+  if (typeof payload.processingStatus !== 'string') {
+    return null
+  }
+
+  return {
+    type: event.type,
+    syllabus_id: event.syllabus_id,
+    payload: {
+      id: typeof payload.id === 'string' ? payload.id : event.syllabus_id,
+      processingStatus: payload.processingStatus,
+    },
+  }
 }
 
 export function waitForSyllabusSummary({
   syllabusId,
   websocket,
-  titleFallback = 'Untitled Syllabus',
+  onStageChange,
 }: WaitForSyllabusSummaryOptions) {
   return new Promise<SyllabusIntelligenceResult>((resolve, reject) => {
     if (typeof window === 'undefined') {
@@ -86,9 +80,12 @@ export function waitForSyllabusSummary({
       return
     }
 
+    onStageChange?.('connecting')
+
     const socketUrl = appendTokenToWebSocketUrl(websocket.url, websocket.token)
     let socket: WebSocket | null = null
     let settled = false
+    let finalFetchStarted = false
 
     const cleanup = () => {
       window.clearTimeout(timeoutId)
@@ -133,7 +130,15 @@ export function waitForSyllabusSummary({
       return
     }
 
-    socket.onmessage = (event) => {
+    socket.onopen = () => {
+      onStageChange?.('processing')
+    }
+
+    socket.onmessage = async (event) => {
+      if (settled || finalFetchStarted) {
+        return
+      }
+
       let parsedMessage: unknown = null
 
       try {
@@ -142,10 +147,37 @@ export function waitForSyllabusSummary({
         return
       }
 
-      const normalized = resolveResultFromSocketMessage(parsedMessage, titleFallback, syllabusId)
+      const snapshot = parseSnapshotEvent(parsedMessage)
 
-      if (normalized) {
+      if (!snapshot || snapshot.syllabus_id !== syllabusId) {
+        return
+      }
+
+      if (snapshot.payload.processingStatus !== 'completed') {
+        onStageChange?.('processing')
+        return
+      }
+
+      finalFetchStarted = true
+      onStageChange?.('fetching')
+
+      try {
+        const syllabus = await fetchSyllabusById(snapshot.syllabus_id)
+        const normalized = mapSyllabusDetailToResult(syllabus)
+
+        if (!normalized) {
+          settleError('Final syllabus content could not be parsed.')
+          return
+        }
+
+        onStageChange?.('completed')
         settleSuccess(normalized)
+      } catch (error) {
+        const message =
+          error instanceof ApiClientError
+            ? error.message
+            : 'Final syllabus content could not be fetched.'
+        settleError(message)
       }
     }
 
@@ -155,7 +187,7 @@ export function waitForSyllabusSummary({
 
     socket.onclose = () => {
       if (!settled) {
-        settleError('Syllabus analysis connection closed before a final result was received.')
+        settleError('Syllabus analysis connection closed before processing completed.')
       }
     }
   })
