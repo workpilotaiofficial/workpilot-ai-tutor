@@ -1,2 +1,2 @@
 
-# workpilot-ai-tutor
+# workpilot-ai-tutor application
