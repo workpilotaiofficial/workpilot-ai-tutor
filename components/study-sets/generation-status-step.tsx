@@ -1,7 +1,7 @@
 'use client'
 
 import type { StudySetUiSectionType } from './generation-mapping'
-import { AlertCircle, CheckCircle2, Clock3, LoaderCircle, Radio, WifiOff } from 'lucide-react'
+import { CheckCircle2, Clock3, LoaderCircle, Sparkles, TriangleAlert, WifiOff } from 'lucide-react'
 import type { StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
 import { getOpenUiSectionLabel, getTaskTypeLabel, toUiSectionType } from './generation-mapping'
 
@@ -12,7 +12,7 @@ function getConnectionLabel(status: StoredStudySetGenerationMeta['connectionStat
     case 'connected':
       return 'Live'
     case 'polling':
-      return 'Async Refresh'
+      return 'Syncing'
     case 'completed':
       return 'Completed'
     case 'error':
@@ -21,54 +21,6 @@ function getConnectionLabel(status: StoredStudySetGenerationMeta['connectionStat
       return 'Stopped'
     default:
       return 'Idle'
-  }
-}
-
-function getConnectionIcon(status: StoredStudySetGenerationMeta['connectionStatus']) {
-  switch (status) {
-    case 'connecting':
-      return LoaderCircle
-    case 'connected':
-      return Radio
-    case 'polling':
-      return Clock3
-    case 'completed':
-      return CheckCircle2
-    case 'error':
-    case 'closed':
-      return WifiOff
-    default:
-      return Clock3
-  }
-}
-
-function getJobStatusMeta(status: string) {
-  switch (status) {
-    case 'completed':
-      return {
-        label: 'Completed',
-        icon: CheckCircle2,
-        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-      }
-    case 'failed':
-      return {
-        label: 'Failed',
-        icon: AlertCircle,
-        className: 'border-red-200 bg-red-50 text-red-700',
-      }
-    case 'pending':
-    case 'started':
-      return {
-        label: 'Pending',
-        icon: LoaderCircle,
-        className: 'border-amber-200 bg-amber-50 text-amber-700',
-      }
-    default:
-      return {
-        label: 'Queued',
-        icon: Clock3,
-        className: 'border-slate-200 bg-slate-50 text-slate-700',
-      }
   }
 }
 
@@ -81,106 +33,128 @@ export function GenerationStatusStep({ meta, onOpenSection }: GenerationStatusSt
   if (!meta) {
     return (
       <div className="rounded-2xl border border-border bg-secondary/20 p-6 text-sm text-muted-foreground">
-        Preparing realtime generation tracking...
+        Preparing generation tracking...
       </div>
     )
   }
 
-  const ConnectionIcon = getConnectionIcon(meta.connectionStatus)
   const completedCount = meta.jobs.filter((job) => job.status === 'completed').length
   const failedCount = meta.jobs.filter((job) => job.status === 'failed').length
+  const totalCount = meta.jobs.length || meta.batch.totalJobs
+
+  const sectionCards = meta.jobs.map((job) => {
+    const fetchedOutput = meta.fetchedOutputs[job.jobId]
+    const sectionType = fetchedOutput?.sectionType ?? toUiSectionType(fetchedOutput?.taskType ?? job.type)
+    const isReady = Boolean(fetchedOutput?.fetched && sectionType)
+    const isFailed = job.status === 'failed'
+    const isGenerating = !isReady && !isFailed && (job.status === 'pending' || job.status === 'started' || job.status === 'queued')
+    const statusLabel = isReady ? 'Ready' : isFailed ? 'Failed' : isGenerating ? 'Generating' : 'Queued'
+    const taskLabel = getTaskTypeLabel(job.type)
+
+    return {
+      jobId: job.jobId,
+      taskLabel,
+      sectionType,
+      statusLabel,
+      isReady,
+      isFailed,
+      canOpenSection: Boolean(isReady && sectionType && onOpenSection),
+      error: job.error ?? fetchedOutput?.error ?? null,
+    }
+  })
+
+  const firstReadySection = sectionCards.find((card) => card.isReady && card.sectionType)?.sectionType ?? null
+  const notesSection = sectionCards.find((card) => card.isReady && card.sectionType === 'notes')?.sectionType ?? null
+  const startSection: StudySetUiSectionType | null =
+    (notesSection as StudySetUiSectionType | null) ?? (firstReadySection as StudySetUiSectionType | null)
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-border bg-background/70 p-5">
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-border bg-background/80 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-foreground">Generation in progress</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              We are tracking each selected job in real time. You can close this modal and come back later.
+            <p className="text-sm font-semibold text-foreground">Live build room</p>
+            <p className="text-xs text-muted-foreground">
+              Selected sections are being generated and saved automatically.
             </p>
           </div>
-
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-3 py-1.5 text-xs font-semibold text-foreground">
-            <ConnectionIcon className={`h-3.5 w-3.5 ${meta.connectionStatus === 'connecting' ? 'animate-spin' : ''}`} />
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-3 py-1.5 text-xs font-semibold text-foreground">
+            {meta.connectionStatus === 'error' || meta.connectionStatus === 'closed' ? (
+              <WifiOff className="h-3.5 w-3.5" />
+            ) : meta.connectionStatus === 'completed' ? (
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            ) : (
+              <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+            )}
             {getConnectionLabel(meta.connectionStatus)}
-          </div>
+          </span>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-border bg-card px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Batch</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">{meta.batch.status || 'processing'}</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Progress</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              {completedCount}/{totalCount}
+            </p>
           </div>
           <div className="rounded-xl border border-border bg-card px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Completed</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">
-              {completedCount}/{meta.jobs.length}
-            </p>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Batch</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">{meta.batch.status || 'processing'}</p>
           </div>
           <div className="rounded-xl border border-border bg-card px-4 py-3">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Failed</p>
             <p className="mt-2 text-sm font-semibold text-foreground">{failedCount}</p>
           </div>
         </div>
+
+        {startSection && onOpenSection ? (
+          <button
+            type="button"
+            onClick={() => onOpenSection(startSection)}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+          >
+            <Sparkles className="h-4 w-4" />
+            Start studying now
+          </button>
+        ) : null}
       </div>
 
-      <div className="space-y-3">
-        {meta.jobs.map((job) => {
-          const statusMeta = getJobStatusMeta(job.status)
-          const StatusIcon = statusMeta.icon
-          const fetchedOutput = meta.fetchedOutputs[job.jobId]
-          const sectionType = fetchedOutput?.sectionType ?? toUiSectionType(fetchedOutput?.taskType ?? job.type)
-          const canOpenSection = Boolean(fetchedOutput?.fetched && sectionType && onOpenSection)
-
-          return (
-            <div
-              key={job.jobId}
-              className="rounded-2xl border border-border bg-card/90 p-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{getTaskTypeLabel(job.type)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Job ID: {job.jobId}</p>
-                </div>
-
-                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${statusMeta.className}`}>
-                  <StatusIcon className={`h-3.5 w-3.5 ${job.status === 'pending' || job.status === 'started' ? 'animate-spin' : ''}`} />
-                  {statusMeta.label}
-                </span>
-              </div>
-
-              {job.error ? (
-                <p className="mt-3 text-xs text-red-600">{job.error}</p>
-              ) : null}
-
-              {fetchedOutput?.fetched ? (
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs text-emerald-600">Generated output fetched and saved locally.</p>
-                  {canOpenSection ? (
-                    <button
-                      type="button"
-                      onClick={() => onOpenSection?.(sectionType as StudySetUiSectionType)}
-                      className="inline-flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-                    >
-                      {getOpenUiSectionLabel(sectionType as StudySetUiSectionType)}
-                    </button>
-                  ) : null}
-                </div>
-              ) : fetchedOutput?.error ? (
-                <p className="mt-3 text-xs text-red-600">{fetchedOutput.error}</p>
-              ) : job.status === 'completed' ? (
-                <p className="mt-3 text-xs text-muted-foreground">Completion received. Fetching generated output.</p>
-              ) : (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  {job.status === 'failed'
-                    ? 'This job failed on the server.'
-                    : 'Waiting for server updates.'}
-                </p>
-              )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {sectionCards.map((card) => (
+          <div key={card.jobId} className="rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-foreground">{card.taskLabel}</p>
+              <span className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                {card.isReady ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                ) : card.isFailed ? (
+                  <TriangleAlert className="h-3.5 w-3.5 text-red-600" />
+                ) : card.statusLabel === 'Generating' ? (
+                  <LoaderCircle className="h-3.5 w-3.5 animate-spin text-amber-600" />
+                ) : (
+                  <Clock3 className="h-3.5 w-3.5" />
+                )}
+                {card.statusLabel}
+              </span>
             </div>
-          )
-        })}
+
+            {card.error ? <p className="mt-2 text-xs text-red-600">{card.error}</p> : null}
+
+            {card.canOpenSection ? (
+              <button
+                type="button"
+                onClick={() => onOpenSection?.(card.sectionType as StudySetUiSectionType)}
+                className="mt-3 inline-flex items-center justify-center rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary/40"
+              >
+                {getOpenUiSectionLabel(card.sectionType as StudySetUiSectionType)}
+              </button>
+            ) : (
+              <p className="mt-3 text-xs text-muted-foreground">
+                {card.isFailed ? 'Retry from dashboard later.' : 'This section will open when ready.'}
+              </p>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )

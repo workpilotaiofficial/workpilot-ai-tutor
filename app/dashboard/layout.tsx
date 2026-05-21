@@ -17,13 +17,15 @@ import {
 } from 'lucide-react'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { PortalShell, type PortalNavItem } from '@/components/portal/portal-shell'
-import { getStoredStudySetById, getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
+import { getStoredStudySetById, getStoredStudySets, subscribeToStoredStudySets, type StudySet } from '@/components/study-sets/utils'
 import SettingsModal, { type SettingsTab } from '@/components/settings/settings-modal'
 import { fetchCurrentSubscription } from '@/lib/api/billing.service'
 import { apiClient } from '@/lib/api/client'
-import { deleteCurrentSession, getPortalRouteByRole } from '@/lib/api/auth.service'
+import { deleteCurrentSession } from '@/lib/api/auth.service'
 import { clearAuthBrowserState, getStoredAuthObject, replaceStoredAuthObject } from '@/lib/api/session-storage'
+import { subscribeToStudySetGenerationMetaChanges } from '@/lib/api/study-sets.storage'
 import { auth } from '@/lib/firebase'
+import { getPortalRouteByPermissions } from '@/lib/rbac/permissions'
 
 const sectionIconMap: Record<string, any> = {
   notes: FileText,
@@ -128,8 +130,11 @@ function DashboardLayoutContent({
 
     setFooterProfileName(storedAuth.user_display_name?.trim() || auth?.currentUser?.displayName?.trim() || 'Account')
 
-    if (storedAuth.user_role === 'admin') {
-      router.replace(getPortalRouteByRole(storedAuth.user_role))
+    if (
+      storedAuth.user_role === 'admin' &&
+      getPortalRouteByPermissions(storedAuth.user_role, storedAuth.flattened_permission_keys ?? []) === '/admin'
+    ) {
+      router.replace('/admin')
     }
   }, [router])
 
@@ -203,6 +208,25 @@ function DashboardLayoutContent({
 
     const fallback = getStoredStudySets().find((set) => set.id === studySetId) ?? null
     setActiveStudySet(fallback)
+  }, [isStudySetDetail, studySetId])
+
+  useEffect(() => {
+    if (!isStudySetDetail || !studySetId) {
+      return
+    }
+
+    const refresh = () => {
+      const stored = getStoredStudySetById(studySetId)
+      setActiveStudySet(stored)
+    }
+
+    const unsubscribeStorage = subscribeToStoredStudySets(refresh)
+    const unsubscribeGeneration = subscribeToStudySetGenerationMetaChanges(refresh)
+
+    return () => {
+      unsubscribeStorage()
+      unsubscribeGeneration()
+    }
   }, [isStudySetDetail, studySetId])
 
   useEffect(() => {

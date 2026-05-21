@@ -60,6 +60,7 @@ const LATEST_STUDY_SET_UPLOAD_KEY = 'ai_tutora_latest_study_set_upload'
 const STUDY_SET_UPLOAD_MAP_KEY = 'ai_tutora_study_set_upload_meta'
 const LATEST_STUDY_SET_GENERATION_KEY = 'ai_tutora_latest_study_set_generation'
 const STUDY_SET_GENERATION_MAP_KEY = 'ai_tutora_study_set_generation_meta'
+const STUDY_SET_GENERATION_EVENT = 'ai_tutora_study_set_generation_changed'
 
 function isBrowser() {
   return typeof window !== 'undefined'
@@ -119,6 +120,7 @@ function writeGenerationMetaMap(value: Record<string, StoredStudySetGenerationMe
   }
 
   window.localStorage.setItem(STUDY_SET_GENERATION_MAP_KEY, JSON.stringify(value))
+  window.dispatchEvent(new CustomEvent(STUDY_SET_GENERATION_EVENT))
 }
 
 export function saveStudySetUploadMeta(meta: StoredStudySetUploadMeta) {
@@ -166,6 +168,7 @@ export function saveStudySetGenerationMeta(meta: StoredStudySetGenerationMeta) {
 
   writeGenerationMetaMap(nextMap)
   window.localStorage.setItem(LATEST_STUDY_SET_GENERATION_KEY, JSON.stringify(meta))
+  window.dispatchEvent(new CustomEvent(STUDY_SET_GENERATION_EVENT))
 }
 
 export function getStudySetGenerationMeta(documentId: string) {
@@ -198,4 +201,28 @@ export function updateStudySetGenerationMeta(
   const nextValue = updater(currentValue)
   saveStudySetGenerationMeta(nextValue)
   return nextValue
+}
+
+export function subscribeToStudySetGenerationMetaChanges(listener: () => void) {
+  if (!isBrowser()) {
+    return () => undefined
+  }
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === STUDY_SET_GENERATION_MAP_KEY || event.key === LATEST_STUDY_SET_GENERATION_KEY) {
+      listener()
+    }
+  }
+
+  const onLocal = () => {
+    listener()
+  }
+
+  window.addEventListener('storage', onStorage)
+  window.addEventListener(STUDY_SET_GENERATION_EVENT, onLocal)
+
+  return () => {
+    window.removeEventListener('storage', onStorage)
+    window.removeEventListener(STUDY_SET_GENERATION_EVENT, onLocal)
+  }
 }

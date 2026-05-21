@@ -5,7 +5,8 @@ import { Upload, Link as LinkIcon, Grid3x3, List } from 'lucide-react'
 import UploadModal from '@/components/study-sets/upload-modal'
 import PasteModal from '@/components/study-sets/paste-modal'
 import StudySetCard from '@/components/study-sets/study-set-card'
-import { getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
+import { getStoredStudySets, subscribeToStoredStudySets, type StudySet } from '@/components/study-sets/utils'
+import { subscribeToStudySetGenerationMetaChanges } from '@/lib/api/study-sets.storage'
 
 export default function StudySetsPage() {
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -16,6 +17,18 @@ export default function StudySetsPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setStudySets(getStoredStudySets())
+    }
+
+    const unsubscribeStorage = subscribeToStoredStudySets(() => {
+      setStudySets(getStoredStudySets())
+    })
+    const unsubscribeGeneration = subscribeToStudySetGenerationMetaChanges(() => {
+      setStudySets(getStoredStudySets())
+    })
+
+    return () => {
+      unsubscribeStorage()
+      unsubscribeGeneration()
     }
   }, [])
 
@@ -44,7 +57,7 @@ export default function StudySetsPage() {
             <Upload className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
             <div className="text-center">
               <p className="font-semibold text-foreground">Upload</p>
-              <p className="text-xs text-muted-foreground">Image, file, audio, video</p>
+              <p className="text-xs text-muted-foreground">One PDF file (max 10MB)</p>
             </div>
           </button>
 
@@ -55,7 +68,7 @@ export default function StudySetsPage() {
             <LinkIcon className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
             <div className="text-center">
               <p className="font-semibold text-foreground">Paste</p>
-              <p className="text-xs text-muted-foreground">YouTube, website, text</p>
+              <p className="text-xs text-muted-foreground">Lecture notes or raw text</p>
             </div>
           </button>
 

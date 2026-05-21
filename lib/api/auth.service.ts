@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api/client'
+import { type SessionPermissions } from '@/lib/rbac/permissions'
 
 export type CreateFirebaseSessionPayload = {
   firebaseIdToken: string
@@ -42,6 +43,7 @@ export type FirebaseSessionResponse = {
   auth: SessionAuth
   subscription: SessionSubscription
   token_balance: number
+  permissions: SessionPermissions
   is_new_user: boolean
 }
 

@@ -69,114 +69,9 @@ function createNotesMarkdown(title: string, sourceType: 'text' | 'pdf', sourceTe
 }
 
 function createSectionItems(type: OutputType, title: string) {
-  switch (type) {
-    case 'multipleChoice':
-      return [
-        {
-          question: `What is the current state of "${title}"?`,
-          options: [
-            'The upload step is complete',
-            'The upload has failed',
-            'The study set was deleted',
-            'The backend is fully finished',
-          ],
-          answer: 'The upload step is complete',
-          explanation: 'This phase only integrates the initial upload/create API step.',
-        },
-        {
-          question: 'What was stored locally after the upload response?',
-          options: [
-            'Only the title',
-            'Document id and embedding job id',
-            'Nothing was stored',
-            'Only generated quiz scores',
-          ],
-          answer: 'Document id and embedding job id',
-          explanation: 'The backend response metadata is stored for the next API integration steps.',
-        },
-        {
-          question: 'What remains unchanged in this phase?',
-          options: [
-            'The upload API contract',
-            'The current study-set UI flow',
-            'The auth session format',
-            'The backend response shape',
-          ],
-          answer: 'The current study-set UI flow',
-          explanation: 'Only the first upload/create step was switched to real backend APIs.',
-        },
-      ]
-    case 'flashcards':
-      return [
-        {
-          prompt: 'What completes in Phase 1?',
-          answer: 'Only the first upload/create API step.',
-        },
-        {
-          prompt: 'Which identifiers are stored locally?',
-          answer: 'The backend document id and embedding job id.',
-        },
-        {
-          prompt: 'What stays the same after upload?',
-          answer: 'The downstream study-set UI flow.',
-        },
-      ]
-    case 'podcast':
-      return [
-        {
-          title: 'Upload Complete',
-          duration: '02:00',
-          talkingPoints: [
-            'The file or text has been sent to the real backend upload API.',
-            'The backend document metadata is now available locally.',
-            'Future processing APIs will fill in the final study material.',
-          ],
-        },
-      ]
-    case 'tutorLesson':
-      return [
-        {
-          prompt: 'What has already happened after the upload?',
-          response:
-            'The upload request succeeded, and the response metadata was stored locally for the next backend steps.',
-          followUp: 'Which two response values are important for the next phase?',
-        },
-        {
-          prompt: 'Why does the UI still look the same?',
-          response:
-            'This phase intentionally keeps the downstream study-set experience unchanged while only replacing the initial upload step.',
-        },
-      ]
-    case 'writtenTests':
-      return [
-        {
-          prompt: 'Explain what Phase 1 changes in the study-set flow.',
-          idealResponse:
-            'Phase 1 replaces only the upload/create step with real backend APIs and stores the returned document id plus embedding job id locally.',
-          rubric: [
-            'Mentions real backend upload APIs',
-            'Mentions document id storage',
-            'Mentions embedding job id storage',
-            'Notes that downstream UI remains unchanged',
-          ],
-        },
-      ]
-    case 'fillInTheBlanks':
-      return [
-        {
-          sentence: 'After upload, the backend _____ id is stored locally.',
-          answer: 'document',
-          explanation: 'The document id comes from the upload response payload.',
-        },
-        {
-          sentence: 'Phase 1 keeps the downstream study-set _____ unchanged.',
-          answer: 'ui flow',
-          explanation: 'Only the initial upload step changes in this phase.',
-        },
-      ]
-    case 'notes':
-      return []
-  }
+  void title
+  void type
+  return []
 }
 
 function buildSections(title: string, selections: OutputType[], sourceType: 'text' | 'pdf', sourceText?: string) {
@@ -210,7 +105,7 @@ export function createUploadPlaceholderStudySet(params: CreateUploadPlaceholderS
   const studySet = normalizeStudySetPayload({
     id: params.documentId,
     title: params.title,
-    summary: 'Upload complete. The next backend integration step will populate final study materials.',
+    summary: 'Generation in progress. Study materials will appear as each section becomes ready.',
     items: countItems(sections),
     selections,
     sections,
@@ -223,6 +118,13 @@ export function createUploadPlaceholderStudySet(params: CreateUploadPlaceholderS
       learning: 0,
       familiar: 0,
       mastered: 0,
+    },
+    generation: {
+      status: 'generating',
+      total: selections.length,
+      completed: 0,
+      failed: 0,
+      updatedAt: new Date().toISOString(),
     },
   })
 

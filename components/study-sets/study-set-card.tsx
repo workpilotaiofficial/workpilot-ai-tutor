@@ -18,6 +18,10 @@ interface StudySetCardProps {
 
 export default function StudySetCard({ set, isListView }: StudySetCardProps) {
   const masteryProgress = set.items > 0 ? Math.round((set.stats.mastered / set.items) * 100) : 0
+  const generation = set.generation
+  const isGenerating = generation?.status === 'generating'
+  const isFailed = generation?.status === 'failed'
+  const isReady = !generation || generation.status === 'completed' || generation.status === 'idle'
 
   const stats = [
     {
@@ -71,6 +75,21 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
               <span className="rounded-md bg-secondary px-2 py-1 text-[11px] font-medium text-muted-foreground">
                 Mastery {masteryProgress}%
               </span>
+              {isGenerating ? (
+                <span className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700">
+                  Generating {generation.completed}/{generation.total}
+                </span>
+              ) : null}
+              {isFailed ? (
+                <span className="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
+                  Failed {generation.failed}
+                </span>
+              ) : null}
+              {isReady ? (
+                <span className="rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                  Continue
+                </span>
+              ) : null}
             </div>
 
             <h3 className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -113,10 +132,25 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
 
       <div className="relative mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            Study Set
-          </div>
+        <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+          <Sparkles className="h-3.5 w-3.5" />
+          Study Set
+        </div>
+          {isGenerating ? (
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+              Generating {generation?.completed}/{generation?.total}
+            </div>
+          ) : null}
+          {isFailed ? (
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700">
+              Failed {generation?.failed}
+            </div>
+          ) : null}
+          {isReady ? (
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+              Ready
+            </div>
+          ) : null}
           <h3 className="truncate text-xl font-semibold text-foreground transition-colors group-hover:text-primary">
             {set.title}
           </h3>
@@ -163,5 +197,4 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
     </Link>
   )
 }
-
 

@@ -17,6 +17,7 @@ import {
 } from '@/lib/api/study-sets.storage'
 import { normalizeBackendTaskType, toUiSectionType } from './generation-mapping'
 import { mergeGeneratedOutputIntoStudySet } from './generated-output'
+import { getStoredStudySetById, persistStudySet } from './utils'
 
 type GenerationListener = (meta: StoredStudySetGenerationMeta) => void
 
@@ -145,6 +146,48 @@ class StudySetGenerationTracker {
     for (const listener of this.listeners) {
       listener(this.meta)
     }
+    this.syncStudySetShellProgress()
+  }
+
+  private syncStudySetShellProgress() {
+    const studySet = getStoredStudySetById(this.meta.documentId)
+    if (!studySet) return
+
+    const completed = this.meta.jobs.filter((job) => job.status === 'completed').length
+    const failed = this.meta.jobs.filter((job) => job.status === 'failed').length
+    const total = Math.max(this.meta.jobs.length, this.meta.batch.totalJobs)
+
+    const status =
+      this.meta.batch.status === 'completed'
+        ? failed > 0
+          ? 'failed'
+          : 'completed'
+        : 'generating'
+
+    const nextGeneration = {
+      status,
+      total,
+      completed,
+      failed,
+      updatedAt: new Date().toISOString(),
+    } as const
+
+    const current = studySet.generation
+    if (
+      current &&
+      current.status === nextGeneration.status &&
+      current.total === nextGeneration.total &&
+      current.completed === nextGeneration.completed &&
+      current.failed === nextGeneration.failed
+    ) {
+      return
+    }
+
+    persistStudySet({
+      ...studySet,
+      generation: nextGeneration,
+      updatedAt: nextGeneration.updatedAt,
+    })
   }
 
   private syncMeta(updater: (current: StoredStudySetGenerationMeta) => StoredStudySetGenerationMeta) {

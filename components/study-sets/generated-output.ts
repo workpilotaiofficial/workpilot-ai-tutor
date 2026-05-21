@@ -325,7 +325,20 @@ export function mergeGeneratedOutputIntoStudySet(
     selections: nextSelections,
     sections: nextSections,
     items: countItems(nextSections),
-    notesMarkdown: normalizedOutput.notesMarkdown ?? currentStudySet.notesMarkdown,
+    generation: {
+      status: 'generating' as const,
+      total: Math.max(currentStudySet.generation?.total ?? 0, currentStudySet.selections.length),
+      completed: Math.min(
+        (currentStudySet.generation?.completed ?? 0) + 1,
+        Math.max(currentStudySet.generation?.total ?? 0, currentStudySet.selections.length),
+      ),
+      failed: currentStudySet.generation?.failed ?? 0,
+      updatedAt: new Date().toISOString(),
+    },
+    notesMarkdown:
+      'notesMarkdown' in normalizedOutput
+        ? normalizedOutput.notesMarkdown ?? currentStudySet.notesMarkdown
+        : currentStudySet.notesMarkdown,
     notesHtml: uiSectionType === 'notes' ? undefined : currentStudySet.notesHtml,
     updatedAt: new Date().toISOString(),
   }

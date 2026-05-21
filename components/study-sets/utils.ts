@@ -32,6 +32,13 @@ export type StudySet = {
   summary: string
   selections: string[]
   sections: StudySetSection[]
+  generation?: {
+    status: 'idle' | 'generating' | 'completed' | 'failed'
+    total: number
+    completed: number
+    failed: number
+    updatedAt: string
+  }
   sourceText?: string
   notesMarkdown?: string
   notesHtml?: string
@@ -48,6 +55,7 @@ export type StudySet = {
 export type StudySetPreview = Pick<StudySet, 'id' | 'title' | 'items' | 'stats'>
 
 const STORAGE_KEY = 'Tutora-ai-study-sets'
+const STUDY_SET_STORAGE_EVENT = 'ai_tutora_study_sets_changed'
 
 const defaultStats = {
   unfamiliar: 0,
@@ -597,6 +605,25 @@ export function normalizeStudySetPayload(payload: any, fallbackTitle?: string): 
     summary,
     selections,
     sections: normalizedSections,
+    generation:
+      payload.generation && typeof payload.generation === 'object'
+        ? {
+            status:
+              payload.generation.status === 'idle' ||
+              payload.generation.status === 'generating' ||
+              payload.generation.status === 'completed' ||
+              payload.generation.status === 'failed'
+                ? payload.generation.status
+                : 'idle',
+            total: Number(payload.generation.total) || 0,
+            completed: Number(payload.generation.completed) || 0,
+            failed: Number(payload.generation.failed) || 0,
+            updatedAt:
+              typeof payload.generation.updatedAt === 'string'
+                ? payload.generation.updatedAt
+                : new Date().toISOString(),
+          }
+        : undefined,
     sourceText:
       typeof payload.sourceText === 'string' && payload.sourceText.trim()
         ? payload.sourceText.trim()
@@ -646,6 +673,7 @@ function writeStoredStudySets(sets: StudySet[]) {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sets))
+    window.dispatchEvent(new CustomEvent(STUDY_SET_STORAGE_EVENT))
   } catch {
     // ignore storage errors
   }
@@ -671,6 +699,30 @@ export function getStoredStudySets() {
 
 export function getStoredStudySetById(id: string) {
   return readStoredStudySets().find((set) => set.id === id) ?? null
+}
+
+export function subscribeToStoredStudySets(listener: () => void) {
+  if (typeof window === 'undefined') {
+    return () => undefined
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY) {
+      listener()
+    }
+  }
+
+  const handleLocalEvent = () => {
+    listener()
+  }
+
+  window.addEventListener('storage', handleStorage)
+  window.addEventListener(STUDY_SET_STORAGE_EVENT, handleLocalEvent)
+
+  return () => {
+    window.removeEventListener('storage', handleStorage)
+    window.removeEventListener(STUDY_SET_STORAGE_EVENT, handleLocalEvent)
+  }
 }
 
 const seededStudySets: StudySet[] = [

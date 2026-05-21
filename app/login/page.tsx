@@ -3,17 +3,18 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { FirebaseError } from 'firebase/app'
 import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
 import { Eye, EyeOff, LoaderCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { createFirebaseSession, getPortalRouteByRole } from '@/lib/api/auth.service'
+import { createFirebaseSession } from '@/lib/api/auth.service'
 import { getApiClientErrorMessage } from '@/lib/api/client'
 import { clearAuthBrowserState, getStoredAuthObject, saveAuthObject } from '@/lib/api/session-storage'
 import { auth, googleProvider, isFirebaseConfigured } from '@/lib/firebase'
+import { flattenPermissionKeys, getPortalRouteByPermissions } from '@/lib/rbac/permissions'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -39,7 +40,7 @@ export default function LoginPage() {
       return
     }
 
-    router.replace(getPortalRouteByRole(storedAuth.user_role))
+    router.replace(getPortalRouteByPermissions(storedAuth.user_role, storedAuth.flattened_permission_keys ?? []))
   }, [router])
 
   if (!authCheckComplete) {
@@ -61,8 +62,10 @@ export default function LoginPage() {
       ...session.auth,
       user_role: session.user.role,
       user_display_name: session.user.display_name,
+      user_permissions: session.permissions,
+      flattened_permission_keys: flattenPermissionKeys(session.permissions),
     })
-    router.replace(getPortalRouteByRole(session.user.role))
+    router.replace(getPortalRouteByPermissions(session.user.role, flattenPermissionKeys(session.permissions)))
   }
 
   const handleEmailLogin = async (event: FormEvent<HTMLFormElement>) => {

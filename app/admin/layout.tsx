@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bot, Coins, LayoutDashboard, PanelsTopLeft, Users } from 'lucide-react'
+import { Bot, Coins, LayoutDashboard, PanelsTopLeft, ShieldCheck, Users } from 'lucide-react'
 import { signOut } from 'firebase/auth'
 
 import { PortalShell, type PortalNavItem } from '@/components/portal/portal-shell'
@@ -36,6 +36,11 @@ const adminNavItems: PortalNavItem[] = [
     label: 'Models',
     href: '/admin/models',
     icon: Bot,
+  },
+  {
+    label: 'Access',
+    href: '/admin/access',
+    icon: ShieldCheck,
   },
 ]
 
@@ -91,7 +96,10 @@ export default function AdminLayout({
       brandLabel="WorkPilot"
       navItems={adminNavItems.map((item) => ({
         ...item,
-        isActive: pathname === item.href || pathname.startsWith(`${item.href}/`),
+        isActive:
+          item.href === '/admin'
+            ? pathname === '/admin'
+            : pathname === item.href || pathname.startsWith(`${item.href}/`),
       }))}
       sidebarOpen={sidebarOpen}
       onSidebarToggle={() => setSidebarOpen((current) => !current)}

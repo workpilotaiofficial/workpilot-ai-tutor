@@ -24,9 +24,11 @@ import {
   getStoredStudySetById,
   getStoredStudySets,
   persistStudySet,
+  subscribeToStoredStudySets,
   type StudySet,
 } from '@/components/study-sets/utils'
 import { NotesEditor } from '@/components/study-sets/NotesEditor'
+import { subscribeToStudySetGenerationMetaChanges } from '@/lib/api/study-sets.storage'
 
 const editorTools = [
   Undo2,
@@ -267,6 +269,20 @@ export default function StudySetDetailPage({
     }
 
     setStudySet(null)
+  }, [id])
+
+  useEffect(() => {
+    if (!id) return
+    const refresh = () => {
+      const latest = getStoredStudySetById(id)
+      if (latest) setStudySet(latest)
+    }
+    const unsubscribeStorage = subscribeToStoredStudySets(refresh)
+    const unsubscribeGeneration = subscribeToStudySetGenerationMetaChanges(refresh)
+    return () => {
+      unsubscribeStorage()
+      unsubscribeGeneration()
+    }
   }, [id])
 
   useEffect(() => {
@@ -1044,6 +1060,13 @@ export default function StudySetDetailPage({
     }
 
     if (!activeSection || !activeItem) {
+      if (activeSection && studySet?.generation?.status === 'generating') {
+        return (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            This section is generating. Come back in a moment.
+          </div>
+        )
+      }
       return (
         <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
           Select a study method to view generated content.
