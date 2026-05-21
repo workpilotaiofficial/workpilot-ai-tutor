@@ -6,7 +6,7 @@ import {
   persistSyllabusResult,
   type SyllabusIntelligenceResult,
 } from './utils'
-import { waitForSyllabusSummary } from './summary-tracker'
+import { waitForSyllabusSummary, type SyllabusTrackingStage } from './summary-tracker'
 import { getApiClientErrorMessage, uploadSyllabusPdf, uploadSyllabusText } from '@/lib/api'
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
@@ -58,8 +58,22 @@ export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUplo
   const [title, setTitle] = useState('')
   const [semesterWeeks, setSemesterWeeks] = useState('16')
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingStage, setLoadingStage] = useState<'uploading' | SyllabusTrackingStage | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const loadingLabel =
+    loadingStage === 'uploading'
+      ? 'Uploading syllabus'
+      : loadingStage === 'connecting'
+        ? 'Connecting to live updates'
+        : loadingStage === 'processing'
+          ? 'Processing syllabus'
+          : loadingStage === 'fetching'
+            ? 'Fetching final content'
+            : loadingStage === 'completed'
+              ? 'Completed'
+              : ''
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files || [])
@@ -94,6 +108,7 @@ export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUplo
     if (!canSubmit) return
 
     setIsLoading(true)
+    setLoadingStage('uploading')
     setErrorMessage('')
     try {
       const resolvedTitle = title.trim() || 'Untitled Syllabus'
@@ -139,7 +154,7 @@ export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUplo
       const normalized = await waitForSyllabusSummary({
         syllabusId: uploadResponse.syllabus_id,
         websocket: uploadResponse.websocket,
-        titleFallback: resolvedTitle,
+        onStageChange: setLoadingStage,
       })
 
       persistSyllabusResult(normalized)
@@ -149,6 +164,7 @@ export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUplo
       setErrorMessage(getApiClientErrorMessage(error, 'Failed to analyze syllabus.'))
     } finally {
       setIsLoading(false)
+      setLoadingStage(null)
     }
   }
 
@@ -282,12 +298,22 @@ export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUplo
             </>
           )}
 
+          {isLoading ? (
+            <div className="rounded-xl border border-border/70 bg-secondary/20 px-4 py-3">
+              <p className="text-sm font-medium text-foreground">{loadingLabel || 'Processing syllabus'}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Keep this window open while the syllabus is processed and the final content is fetched.
+              </p>
+            </div>
+          ) : null}
+
           {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
         </div>
 
         <div className="p-6 border-t border-border flex gap-3">
           <button
             onClick={onClose}
+            disabled={isLoading}
             className="flex-1 px-4 py-2.5 border border-border rounded-lg hover:bg-secondary transition-colors"
           >
             Cancel
@@ -298,7 +324,7 @@ export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUplo
             className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
           >
             {isLoading ? (
-              'Analyzing...'
+              loadingLabel || 'Analyzing...'
             ) : (
               <>
                 <FileText className="w-4 h-4" />

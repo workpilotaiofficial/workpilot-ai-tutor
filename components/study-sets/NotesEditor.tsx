@@ -10,6 +10,13 @@ import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Highlight from '@tiptap/extension-highlight'
 import { JSONContent } from '@tiptap/core'
+import { unified } from 'unified'
+import remarkParse from 'remark-parse'
+import remarkGfm from 'remark-gfm'
+import remarkRehype from 'remark-rehype'
+import rehypeSanitize from 'rehype-sanitize'
+import rehypeHighlight from 'rehype-highlight'
+import rehypeStringify from 'rehype-stringify'
 import {
     Bold,
     Italic,
@@ -71,170 +78,42 @@ type RichNotesEditorProps = {
     showBubbleMenu?: boolean
 }
 
-function escapeHtml(input: string) {
-    return input
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;')
-}
+function normalizeMarkdown(markdown: string) {
+    const normalized = markdown
+        .replace(/\r\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/^(\s*[-*+]|\s*\d+\.)\S/gm, '$1 ')
+    const cleanedLines = normalized
+        .split('\n')
+        .filter((line) => {
+            const trimmed = line.trim()
+            if (!trimmed) return true
+            if (/^[-*+]\s*$/.test(trimmed)) return false
+            if (/^\d+\.\s*$/.test(trimmed)) return false
+            if (/^[-*+]\s*[*_`~\s-]*$/.test(trimmed)) return false
+            return true
+        })
 
-function renderInlineMarkdown(input: string) {
-    return escapeHtml(input)
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/__(.+?)__/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/_(.+?)_/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
+    return cleanedLines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }
 
 function buildMarkdownHtml(markdown: string) {
-    const lines = markdown.replace(/\r\n/g, '\n').split('\n')
-    const html: string[] = []
-    let inUl = false
-    let inOl = false
-    let inBlockQuote = false
-    let hasMainTitle = false
-    let hasBodyAfterMainTitle = false
-    let hasSubtitle = false
-    let activeBlockQuoteType: 'subtitle' | 'callout' | null = null
-
-    const closeLists = () => {
-        if (inUl) {
-            html.push('</ul>')
-            inUl = false
-        }
-        if (inOl) {
-            html.push('</ol>')
-            inOl = false
-        }
+    const normalized = normalizeMarkdown(markdown)
+    if (!normalized) {
+        return ''
     }
 
-    const closeBlockQuote = () => {
-        if (inBlockQuote) {
-            html.push('</blockquote>')
-            inBlockQuote = false
-            activeBlockQuoteType = null
-        }
-    }
+    const rendered = unified()
+        .use(remarkParse)
+        .use(remarkGfm)
+        .use(remarkRehype)
+        .use(rehypeSanitize)
+        .use(rehypeHighlight)
+        .use(rehypeStringify)
+        .processSync(normalized)
+        .toString()
 
-    for (const rawLine of lines) {
-        const line = rawLine.trim()
-
-        if (!line) {
-            closeLists()
-            closeBlockQuote()
-            continue
-        }
-
-        if (line.startsWith('# ')) {
-            closeLists()
-            closeBlockQuote()
-            html.push(`<h2>${renderInlineMarkdown(line.replace(/^#\s+/, ''))}</h2>`)
-            hasMainTitle = true
-            hasBodyAfterMainTitle = false
-            continue
-        }
-
-        if (line.startsWith('## ')) {
-            closeLists()
-            closeBlockQuote()
-            if (hasMainTitle) {
-                hasBodyAfterMainTitle = true
-            }
-            html.push(`<h3>${renderInlineMarkdown(line.replace(/^##\s+/, ''))}</h3>`)
-            continue
-        }
-
-        if (line.startsWith('### ')) {
-            closeLists()
-            closeBlockQuote()
-            if (hasMainTitle) {
-                hasBodyAfterMainTitle = true
-            }
-            html.push(`<h4>${renderInlineMarkdown(line.replace(/^###\s+/, ''))}</h4>`)
-            continue
-        }
-
-        if (line.startsWith('#### ')) {
-            closeLists()
-            closeBlockQuote()
-            if (hasMainTitle) {
-                hasBodyAfterMainTitle = true
-            }
-            html.push(`<h4>${renderInlineMarkdown(line.replace(/^####\s+/, ''))}</h4>`)
-            continue
-        }
-
-        if (line.startsWith('##### ')) {
-            closeLists()
-            closeBlockQuote()
-            if (hasMainTitle) {
-                hasBodyAfterMainTitle = true
-            }
-            html.push(`<h5>${renderInlineMarkdown(line.replace(/^#####\s+/, ''))}</h5>`)
-            continue
-        }
-
-        if (/^[-*]\s+/.test(line)) {
-            closeBlockQuote()
-            if (hasMainTitle) {
-                hasBodyAfterMainTitle = true
-            }
-            if (!inUl) {
-                closeLists()
-                html.push('<ul>')
-                inUl = true
-            }
-            html.push(`<li>${renderInlineMarkdown(line.replace(/^[-*]\s+/, ''))}</li>`)
-            continue
-        }
-
-        if (/^\d+\.\s+/.test(line)) {
-            closeBlockQuote()
-            if (hasMainTitle) {
-                hasBodyAfterMainTitle = true
-            }
-            if (!inOl) {
-                closeLists()
-                html.push('<ol>')
-                inOl = true
-            }
-            html.push(`<li>${renderInlineMarkdown(line.replace(/^\d+\.\s+/, ''))}</li>`)
-            continue
-        }
-
-        if (line.startsWith('> ')) {
-            closeLists()
-            if (!inBlockQuote) {
-                const isSubtitle = hasMainTitle && !hasSubtitle && !hasBodyAfterMainTitle
-                activeBlockQuoteType = isSubtitle ? 'subtitle' : 'callout'
-                if (isSubtitle) {
-                    hasSubtitle = true
-                }
-                html.push(`<blockquote data-note-${activeBlockQuoteType}="true">`)
-                inBlockQuote = true
-            }
-            if (hasMainTitle && activeBlockQuoteType !== 'subtitle') {
-                hasBodyAfterMainTitle = true
-            }
-            html.push(`<p>${renderInlineMarkdown(line.replace(/^>\s+/, ''))}</p>`)
-            continue
-        }
-
-        closeLists()
-        closeBlockQuote()
-        if (hasMainTitle) {
-            hasBodyAfterMainTitle = true
-        }
-        html.push(`<p>${renderInlineMarkdown(line)}</p>`)
-    }
-
-    closeLists()
-    closeBlockQuote()
-
-    return `<div class="rich-note-document markdown-note-document">${html.join('')}</div>`
+    return `<div class="rich-note-document markdown-note-document">${rendered}</div>`
 }
 
 function ToolbarButton({
@@ -310,14 +189,26 @@ export const NotesEditor = forwardRef<
                     'prose prose-stone min-h-[700px] max-w-none px-2 py-4 text-[18px] leading-9 focus:outline-none',
                     '[&_.rich-note-document]:mx-auto [&_.rich-note-document]:max-w-[760px]',
                     '[&_h1]:mb-4 [&_h1]:font-serif [&_h1]:text-3xl [&_h1]:leading-[1.1] lg:[&_h1]:text-5xl',
-                    '[&_h2]:m-0 [&_h2]:mb-3 [&_h2]:font-serif [&_h2]:font-bold [&_h2]:text-[1.8rem] [&_h2]:leading-[1.2] lg:[&_h2]:text-[2.2rem]',
+                    '[&_h2]:m-0 [&_h2]:mb-4 [&_h2]:font-serif [&_h2]:font-bold [&_h2]:text-[1.8rem] [&_h2]:leading-[1.2] lg:[&_h2]:text-[2.2rem]',
                     '[&_h3]:m-0 [&_h3]:mb-3 [&_h3]:font-serif [&_h3]:font-bold [&_h3]:text-[1.35rem] [&_h3]:leading-[1.25] lg:[&_h3]:text-[1.6rem]',
                     '[&_h4]:m-0 [&_h4]:mb-2 [&_h4]:font-serif [&_h4]:text-[1.15rem] [&_h4]:leading-[1.3] lg:[&_h4]:text-[1.25rem]',
                     '[&_h5]:m-0 [&_h5]:mb-2 [&_h5]:font-serif [&_h5]:text-[1.02rem] [&_h5]:leading-[1.35] lg:[&_h5]:text-[1.1rem]',
                     '[&_p]:my-0 [&_p]:mb-3 [&_p]:text-[#2f241d]',
-                    '[&_p+h2]:mt-8 [&_p+h3]:mt-8 [&_p+h4]:mt-6 [&_p+h5]:mt-5',
+                    '[&_h2]:mt-10 [&_h3]:mt-7 [&_h4]:mt-5 [&_h5]:mt-4',
+                    '[&_p+h2]:mt-10 [&_p+h3]:mt-7 [&_p+h4]:mt-5 [&_p+h5]:mt-4',
                     '[&_h2+p]:mt-0 [&_h3+p]:mt-0 [&_h4+p]:mt-0 [&_h5+p]:mt-0',
                     '[&_ul]:my-4 [&_ol]:my-4',
+                    '[&_ul]:list-disc [&_ul]:pl-7 [&_ol]:list-decimal [&_ol]:pl-7',
+                    '[&_li]:mb-2 [&_li]:text-[#47382e] [&_li]:leading-8',
+                    '[&_a]:font-medium [&_a]:text-[#744f38] [&_a]:underline [&_a]:underline-offset-4',
+                    '[&_code]:rounded-md [&_code]:bg-[#f6eee7] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.92em] [&_code]:text-[#5c3926]',
+                    '[&_pre]:my-6 [&_pre]:overflow-x-auto [&_pre]:rounded-2xl [&_pre]:border [&_pre]:border-[#ead8ca] [&_pre]:bg-[#221c19] [&_pre]:p-4',
+                    '[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-[0.92rem] [&_pre_code]:leading-7 [&_pre_code]:text-[#f7efe8]',
+                    '[&_table]:my-8 [&_table]:w-full [&_table]:border-collapse [&_table]:overflow-hidden [&_table]:rounded-xl [&_table]:border [&_table]:border-[#e8d7c8]',
+                    '[&_thead]:bg-[#f8eee6] [&_th]:border-b [&_th]:border-[#e8d7c8] [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-sm [&_th]:font-semibold [&_th]:text-[#523b2d]',
+                    '[&_td]:border-b [&_td]:border-[#f1e4d9] [&_td]:px-3 [&_td]:py-2 [&_td]:text-sm [&_td]:text-[#4a372b]',
+                    '[&_ul:empty]:hidden [&_ol:empty]:hidden',
+                    '[&_li:empty]:hidden',
                     '[&_[data-note-eyebrow=true]]:mb-3 [&_[data-note-eyebrow=true]]:text-xs [&_[data-note-eyebrow=true]]:font-semibold [&_[data-note-eyebrow=true]]:uppercase [&_[data-note-eyebrow=true]]:tracking-[0.24em] [&_[data-note-eyebrow=true]]:text-[#9a6d50]',
                     '[&_[data-note-overview=true]]:mb-16 [&_[data-note-overview=true]]:rounded-[30px] [&_[data-note-overview=true]]:border [&_[data-note-overview=true]]:border-[#edd7c7] [&_[data-note-overview=true]]:bg-[#fff7f0] [&_[data-note-overview=true]]:px-7 [&_[data-note-overview=true]]:py-6',
                     '[&_[data-note-overview-body=true]]:text-[1.08rem] [&_[data-note-overview-body=true]]:leading-9 [&_[data-note-overview-body=true]]:text-[#403128]',

@@ -1,5 +1,11 @@
 export { ApiClient, ApiClientError, apiClient, getApiClientErrorMessage } from '@/lib/api/client'
 export {
+  createAdminRole,
+  fetchAdminPermissions,
+  fetchAdminRoles,
+  updateAdminRolePermissions,
+} from '@/lib/api/admin-rbac.service'
+export {
   createAdminModelConfig,
   fetchAdminModelConfigs,
   updateAdminModelConfig,
@@ -53,7 +59,7 @@ export {
   uploadStudySetPdf,
   uploadStudySetText,
 } from '@/lib/api/study-sets.service'
-export { uploadSyllabusPdf, uploadSyllabusText } from '@/lib/api/syllabus.service'
+export { fetchSyllabusById, uploadSyllabusPdf, uploadSyllabusText } from '@/lib/api/syllabus.service'
 export {
   clearAuthBrowserState,
   clearStoredAuthObject,
@@ -66,6 +72,12 @@ export {
 } from '@/lib/api/session-storage'
 export type { FirebaseSessionResponse, SessionAuth, UserRole } from '@/lib/api/auth.service'
 export type { AdminPlan } from '@/lib/api/admin-plans.service'
+export type {
+  AdminPermission,
+  AdminRole,
+  CreateAdminRolePayload,
+  UpdateAdminRolePermissionsPayload,
+} from '@/lib/api/admin-rbac.service'
 export type {
   AdminModelConfig,
   CreateAdminModelConfigPayload,
@@ -119,4 +131,15 @@ export type {
   StudySetUploadResponse,
   StudySetWrittenTestResponse,
 } from '@/lib/api/study-sets.service'
-export type { SyllabusUploadResponse, SyllabusUploadWebsocket } from '@/lib/api/syllabus.service'
+export type {
+  SyllabusAnalysisResponse,
+  SyllabusDetailCourseworkItem,
+  SyllabusDetailModule,
+  SyllabusDetailPriorityTopic,
+  SyllabusDetailResponse,
+  SyllabusDetailTimelineItem,
+  SyllabusSocketSnapshotEvent,
+  SyllabusSocketSnapshotPayload,
+  SyllabusUploadResponse,
+  SyllabusUploadWebsocket,
+} from '@/lib/api/syllabus.service'
