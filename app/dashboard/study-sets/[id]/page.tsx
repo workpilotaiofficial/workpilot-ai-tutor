@@ -1183,7 +1183,7 @@ export default function StudySetDetailPage({
 
         <div className="flex-1 overflow-hidden">
           <div className="flex h-full flex-col lg:flex-row">
-            <section className={`min-w-0 flex-1 ${isShowingAssessmentFinalScreen ? 'max-w-none' : 'max-w-[850px]'}`}>
+            <section className={`min-w-0 flex-1 ${isShowingAssessmentFinalScreen ? 'max-w-none' : 'max-w-[1100px] mx-auto'}`}>
               {!activeModeFromQuery ? (
                 <div className="p-6">
                   <StudySetOverview
