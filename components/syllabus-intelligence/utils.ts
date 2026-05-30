@@ -299,12 +299,25 @@ export function persistSyllabusResult(result: SyllabusIntelligenceResult) {
   const current = readStoredResults()
   const index = current.findIndex((entry) => entry.id === result.id)
 
+  // Exclude rawExtractedText to save localStorage space
+  const { rawExtractedText: _, ...toStore } = result
+
   if (index >= 0) {
-    current[index] = result
+    current[index] = { ...toStore, rawExtractedText: '' }
   } else {
-    current.unshift(result)
+    current.unshift({ ...toStore, rawExtractedText: '' })
   }
 
-  writeStoredResults(current)
-  return current
+  // Cap at 20 most recent results
+  const pruned = current.slice(0, 20)
+  writeStoredResults(pruned)
+  return pruned
+}
+
+export function deleteSyllabusResult(resultId: string) {
+  if (typeof window === 'undefined') return
+
+  const current = readStoredResults()
+  const filtered = current.filter((entry) => entry.id !== resultId)
+  writeStoredResults(filtered)
 }

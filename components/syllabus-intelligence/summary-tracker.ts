@@ -38,19 +38,26 @@ function parseSnapshotEvent(message: unknown): SyllabusSocketSnapshotEvent | nul
     return null
   }
 
-  const event = message as Partial<SyllabusSocketSnapshotEvent>
+  const event = message as Partial<SyllabusSocketSnapshotEvent> & { processingStatus?: string; job_id?: string; timestamp?: string }
 
   if (typeof event.type !== 'string' || typeof event.syllabus_id !== 'string') {
     return null
   }
 
-  if (!event.payload || typeof event.payload !== 'object') {
-    return null
+  // Handle both payload-nested format and flat format
+  let processingStatus: string | undefined
+  let id: string | undefined
+
+  if (event.payload && typeof event.payload === 'object') {
+    const payload = event.payload as Partial<SyllabusSocketSnapshotEvent['payload']>
+    processingStatus = typeof payload.processingStatus === 'string' ? payload.processingStatus : undefined
+    id = typeof payload.id === 'string' ? payload.id : undefined
+  } else {
+    // Check for flat format (type, syllabus_id, timestamp) — "completed" type signals completion
+    processingStatus = event.type === 'completed' ? 'completed' : undefined
   }
 
-  const payload = event.payload as Partial<SyllabusSocketSnapshotEvent['payload']>
-
-  if (typeof payload.processingStatus !== 'string') {
+  if (!processingStatus) {
     return null
   }
 
@@ -58,8 +65,8 @@ function parseSnapshotEvent(message: unknown): SyllabusSocketSnapshotEvent | nul
     type: event.type,
     syllabus_id: event.syllabus_id,
     payload: {
-      id: typeof payload.id === 'string' ? payload.id : event.syllabus_id,
-      processingStatus: payload.processingStatus,
+      id: id || event.syllabus_id,
+      processingStatus,
     },
   }
 }
@@ -170,7 +177,6 @@ export function waitForSyllabusSummary({
           return
         }
 
-        onStageChange?.('completed')
         settleSuccess(normalized)
       } catch (error) {
         const message =
@@ -186,7 +192,7 @@ export function waitForSyllabusSummary({
     }
 
     socket.onclose = () => {
-      if (!settled) {
+      if (!settled && !finalFetchStarted) {
         settleError('Syllabus analysis connection closed before processing completed.')
       }
     }

@@ -158,6 +158,8 @@ export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUplo
       })
 
       persistSyllabusResult(normalized)
+      setLoadingStage('completed')
+      await new Promise(r => setTimeout(r, 400))
       onSuccess(normalized)
     } catch (error) {
       console.error('Error analyzing syllabus:', error)
@@ -168,89 +170,105 @@ export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUplo
     }
   }
 
+  const stageProgressPercent =
+    loadingStage === 'uploading' ? 25 :
+    loadingStage === 'connecting' ? 50 :
+    loadingStage === 'processing' ? 75 :
+    loadingStage === 'fetching' ? 90 :
+    loadingStage === 'completed' ? 100 : 0
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center">
-      <div className="w-full max-w-3xl max-h-screen overflow-y-auto rounded-2xl border border-border bg-card">
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-xl font-bold text-foreground">Syllabus Intelligence</h2>
+      <div className="w-full max-w-2xl max-h-screen overflow-y-auto rounded-2xl border border-slate-200/80 bg-white shadow-2xl">
+        {isLoading && (
+          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-[#5B65E0] transition-all duration-300" style={{ width: `${stageProgressPercent}%` }} />
+          </div>
+        )}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200/80">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Analyze Syllabus</h2>
+            <p className="text-xs text-slate-500 mt-1">Upload a PDF or paste a course outline to get started</p>
+          </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-secondary transition-colors"
+            disabled={isLoading}
+            className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex border-b border-border">
+        <div className="flex border-b border-slate-200/80">
           <button
             onClick={() => setInputMode('file')}
-            className={`flex-1 px-4 py-3 font-medium transition-colors ${
+            className={`flex-1 px-4 py-3 font-semibold transition-colors text-sm ${
               inputMode === 'file'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'text-[#5B65E0] border-b-2 border-[#5B65E0]'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Upload Syllabus
+            Upload File
           </button>
           <button
             onClick={() => setInputMode('text')}
-            className={`flex-1 px-4 py-3 font-medium transition-colors ${
+            className={`flex-1 px-4 py-3 font-semibold transition-colors text-sm ${
               inputMode === 'text'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'text-[#5B65E0] border-b-2 border-[#5B65E0]'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Paste Course Outline
+            Paste Text
           </button>
         </div>
 
         <div className="p-6 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Course Title</label>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">Course Title</label>
               <input
                 type="text"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="e.g., Data Structures and Algorithms"
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5B65E0]/50"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Semester Length (weeks)</label>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">Semester Length (weeks)</label>
               <input
                 type="number"
                 min={8}
                 max={24}
                 value={semesterWeeks}
                 onChange={(event) => setSemesterWeeks(event.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5B65E0]/50"
               />
             </div>
           </div>
 
           {inputMode === 'file' ? (
             <>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-slate-600">
                 Upload syllabus files, course outlines, assignment sheets, or instructor notes.
               </p>
               <div
                 onDrop={handleDrop}
                 onDragOver={(event) => event.preventDefault()}
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-border rounded-xl p-8 text-center bg-secondary/30 cursor-pointer hover:border-primary/50 transition-colors"
+                className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-slate-50 cursor-pointer hover:border-[#5B65E0]/50 hover:bg-slate-100 transition-colors"
               >
                 <input
                   ref={fileInputRef}
                   type="file"
                   multiple
                   onChange={handleFileSelect}
-                  accept=".pdf,.doc,.docx,.txt"
+                  accept=".pdf,.txt,.md,.markdown"
                   className="hidden"
                 />
-                <Upload className="w-12 h-12 text-primary mx-auto mb-3" />
-                <p className="font-semibold text-foreground">Click to upload or drag and drop</p>
-                <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, TXT up to 20MB</p>
+                <Upload className="w-12 h-12 text-[#5B65E0] mx-auto mb-3" />
+                <p className="font-semibold text-slate-900">Click to upload or drag and drop</p>
+                <p className="text-xs text-slate-500 mt-1">PDF or plain text (.txt, .md) up to 20MB</p>
               </div>
 
               {files.length > 0 && (
@@ -258,22 +276,22 @@ export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUplo
                   {files.map((file, index) => (
                     <div
                       key={`${file.name}-${index}`}
-                      className="rounded-lg bg-secondary/40 p-3 flex items-center justify-between"
+                      className="rounded-lg bg-slate-50 p-3 flex items-center justify-between border border-slate-200"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <CheckCircle
                           className={`w-5 h-5 flex-shrink-0 ${
-                            isUnsupportedSyllabusFile(file) ? 'text-amber-500' : 'text-green-500'
+                            isUnsupportedSyllabusFile(file) ? 'text-amber-500' : 'text-green-600'
                           }`}
                         />
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
+                          <p className="text-xs text-slate-500">
                             {(file.size / 1024 / 1024).toFixed(2)} MB
                           </p>
                           {isUnsupportedSyllabusFile(file) ? (
                             <p className="text-xs text-amber-600">
-                              Unsupported for backend analysis. Use PDF or TXT.
+                              Unsupported. Use PDF or TXT.
                             </p>
                           ) : null}
                         </div>
@@ -285,50 +303,54 @@ export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUplo
             </>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-slate-600">
                 Paste your complete syllabus or weekly course outline for deeper AI planning.
               </p>
               <textarea
                 value={text}
                 onChange={(event) => setText(event.target.value)}
                 placeholder="Paste full syllabus, weekly schedule, grading breakdown, and assignment details..."
-                className="w-full h-64 px-3 py-3 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                className="w-full h-64 px-3 py-3 border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5B65E0]/50 resize-none"
               />
-              <p className="text-xs text-muted-foreground">{text.length} characters</p>
+              <p className="text-xs text-slate-500">{text.length} characters</p>
             </>
           )}
 
           {isLoading ? (
-            <div className="rounded-xl border border-border/70 bg-secondary/20 px-4 py-3">
-              <p className="text-sm font-medium text-foreground">{loadingLabel || 'Processing syllabus'}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Keep this window open while the syllabus is processed and the final content is fetched.
+            <div className="rounded-lg border border-slate-200 bg-blue-50 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-900">{loadingLabel || 'Processing syllabus'}</p>
+              <p className="mt-1 text-xs text-slate-600">
+                Keep this window open while processing.
               </p>
             </div>
           ) : null}
 
-          {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+          {errorMessage ? (
+            <div className="rounded-lg border border-red-200/80 bg-red-50 px-4 py-3">
+              <p className="text-sm text-red-700">{errorMessage}</p>
+            </div>
+          ) : null}
         </div>
 
-        <div className="p-6 border-t border-border flex gap-3">
+        <div className="p-6 border-t border-slate-200/80 flex gap-3">
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="flex-1 px-4 py-2.5 border border-border rounded-lg hover:bg-secondary transition-colors"
+            className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             onClick={handleAnalyze}
             disabled={!canSubmit}
-            className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-2.5 rounded-lg bg-[#5B65E0] text-white hover:bg-[#4950c9] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-semibold"
           >
             {isLoading ? (
               loadingLabel || 'Analyzing...'
             ) : (
               <>
                 <FileText className="w-4 h-4" />
-                Generate Intelligence
+                Analyze
               </>
             )}
           </button>

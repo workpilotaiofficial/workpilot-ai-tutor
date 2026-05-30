@@ -46,9 +46,9 @@ function priorityWeight(priority: PriorityLevel) {
 
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-border/70 bg-secondary/15 p-6 text-center">
-      <p className="font-medium text-foreground">{title}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+      <p className="font-medium text-slate-900">{title}</p>
+      <p className="mt-1 text-sm text-slate-600">{description}</p>
     </div>
   )
 }
@@ -82,72 +82,71 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
   const sourceName = result.originalFilename ?? result.sourceType.toUpperCase()
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-background">
-      <header className="sticky top-0 z-20 border-b border-border/70 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-        <div className="mx-auto w-full max-w-7xl px-4 py-4 md:px-8">
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" size="sm" onClick={onBack} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
+    <div className="h-full w-full overflow-y-auto bg-white">
+      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 px-5 py-3 h-[70px] backdrop-blur-sm lg:px-8">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onBack}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 transition-colors hover:bg-slate-100"
+          >
+            <ArrowLeft className="h-5 w-5 text-slate-700" />
+          </button>
 
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-semibold text-foreground md:text-lg">{result.title}</p>
-              <p className="truncate text-xs text-muted-foreground md:text-sm">
-                Updated on {formatUTCDate(result.updatedAt)} • {result.sourceLength.toLocaleString()} characters analyzed
-              </p>
-            </div>
-
-            <Badge variant="outline" className="hidden rounded-full md:inline-flex">
-              {result.processingStatus}
-            </Badge>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-lg font-bold text-slate-900">
+              {result.title}
+            </h1>
+            <p className="truncate text-xs text-slate-500">
+              {result.sourceLength.toLocaleString()} characters • {formatUTCDate(result.updatedAt)}
+            </p>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8">
+      <main className="w-full px-5 py-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
         <Tabs defaultValue="overview" className="gap-4">
-          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border border-border/70 bg-card p-1">
+          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border border-slate-200/80 bg-white p-1">
             <TabsTrigger
               value="overview"
-              className="rounded-lg px-3 py-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="rounded-lg px-3 py-1.5 text-slate-600 data-[state=active]:bg-[#5B65E0] data-[state=active]:text-white"
             >
               Overview
             </TabsTrigger>
             <TabsTrigger
               value="modules"
-              className="rounded-lg px-3 py-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="rounded-lg px-3 py-1.5 text-slate-600 data-[state=active]:bg-[#5B65E0] data-[state=active]:text-white"
             >
               Modules
             </TabsTrigger>
             <TabsTrigger
               value="timeline"
-              className="rounded-lg px-3 py-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="rounded-lg px-3 py-1.5 text-slate-600 data-[state=active]:bg-[#5B65E0] data-[state=active]:text-white"
             >
               Timeline
             </TabsTrigger>
             <TabsTrigger
               value="priorities"
-              className="rounded-lg px-3 py-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="rounded-lg px-3 py-1.5 text-slate-600 data-[state=active]:bg-[#5B65E0] data-[state=active]:text-white"
             >
               Priority
             </TabsTrigger>
             <TabsTrigger
               value="planning"
-              className="rounded-lg px-3 py-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="rounded-lg px-3 py-1.5 text-slate-600 data-[state=active]:bg-[#5B65E0] data-[state=active]:text-white"
             >
               Coursework
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
-            <Card className="overflow-hidden border-border/80 shadow-sm">
-              <div className="h-1 bg-gradient-to-r from-primary/90 via-primary/40 to-transparent" />
+            <Card className="overflow-hidden border-slate-200/80 shadow-sm">
+              <div className="h-1 bg-gradient-to-r from-[#5B65E0]/90 via-[#5B65E0]/40 to-transparent" />
               <CardHeader className="pb-3">
-                <CardTitle className="text-xl">Course Summary</CardTitle>
+                <CardTitle className="text-xl text-slate-900">Course Summary</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-foreground/90 leading-relaxed">{summary}</p>
+                <p className="text-slate-700 leading-relaxed">{summary}</p>
               </CardContent>
             </Card>
 
@@ -155,24 +154,34 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
               {overviewStats.map((item) => {
                 const Icon = item.icon
                 return (
-                  <Card key={item.label} className="gap-3 border-border/70 py-4 shadow-sm">
+                  <Card key={item.label} className="gap-3 border-slate-200/80 py-4 shadow-sm">
                     <CardContent className="px-4">
-                      <div className="mb-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <div className="mb-2 inline-flex items-center gap-1.5 text-xs text-slate-600">
                         <Icon className="h-3.5 w-3.5" />
                         <span>{item.label}</span>
                       </div>
-                      <p className="text-2xl font-bold text-foreground">{item.value}</p>
+                      <p className="text-2xl font-bold text-slate-900">{item.value}</p>
                     </CardContent>
                   </Card>
                 )
               })}
             </div>
 
+            {result.analysis?.keyThemes && result.analysis.keyThemes.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {result.analysis.keyThemes.map((theme) => (
+                  <Badge key={theme} variant="secondary" className="text-xs">
+                    {theme}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
             <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-              <Card className="border-border/80 shadow-sm">
+              <Card className="border-slate-200/80 shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Target className="h-5 w-5 text-primary" />
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <Target className="h-5 w-5 text-[#5B65E0]" />
                     Learning Objectives
                   </CardTitle>
                 </CardHeader>
@@ -182,10 +191,10 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
                       {result.analysis.overallLearningObjectives.map((objective, index) => (
                         <div
                           key={`${objective}-${index}`}
-                          className="rounded-lg border border-border/70 bg-secondary/25 px-3 py-2.5 text-sm"
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
                         >
-                          <span className="mr-2 font-semibold text-primary">{index + 1}.</span>
-                          <span className="text-foreground/90">{objective}</span>
+                          <span className="mr-2 font-semibold text-[#5B65E0]">{index + 1}.</span>
+                          <span className="text-slate-700">{objective}</span>
                         </div>
                       ))}
                     </div>
@@ -198,56 +207,56 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
                 </CardContent>
               </Card>
 
-              <Card className="border-border/80 shadow-sm">
+              <Card className="border-slate-200/80 shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <FileText className="h-5 w-5 text-primary" />
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <FileText className="h-5 w-5 text-[#5B65E0]" />
                     Source Details
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm text-foreground/90">
+                <CardContent className="space-y-3 text-sm text-slate-700">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Source</span>
-                    <span className="truncate text-right">{sourceName}</span>
+                    <span className="text-slate-600">Source</span>
+                    <span className="truncate text-right text-slate-900">{sourceName}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Type</span>
-                    <span>{result.sourceType}</span>
+                    <span className="text-slate-600">Type</span>
+                    <span className="text-slate-900">{result.sourceType}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Created</span>
-                    <span>{formatUTCDate(result.createdAt)}</span>
+                    <span className="text-slate-600">Created</span>
+                    <span className="text-slate-900">{formatUTCDate(result.createdAt)}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Model</span>
-                    <span>{result.analysis?.modelName ?? 'Unknown'}</span>
+                    <span className="text-slate-600">Model</span>
+                    <span className="text-slate-900">{result.analysis?.modelName ?? 'Unknown'}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Provider</span>
-                    <span>{result.analysis?.provider ?? 'Unknown'}</span>
+                    <span className="text-slate-600">Provider</span>
+                    <span className="text-slate-900">{result.analysis?.provider ?? 'Unknown'}</span>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="border-border/80 shadow-sm">
+            <Card className="border-slate-200/80 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Flame className="h-5 w-5 text-primary" />
+                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                  <Flame className="h-5 w-5 text-[#5B65E0]" />
                   Highest Priority Topics
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {sortedPriorityTopics.length ? (
                   sortedPriorityTopics.slice(0, 3).map((item, index) => (
-                    <div key={`${item.topic}-${index}`} className="rounded-xl border border-border/70 bg-secondary/25 p-3.5">
+                    <div key={`${item.topic}-${index}`} className="rounded-xl border border-slate-200/80 bg-slate-50 p-3.5">
                       <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="font-semibold text-foreground">{item.topic}</p>
+                        <p className="font-semibold text-slate-900">{item.topic}</p>
                         <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${priorityClass(item.priority)}`}>
                           {item.priority}
                         </span>
                       </div>
-                      <p className="text-sm text-foreground/90">
+                      <p className="text-sm text-slate-700">
                         {item.reason || 'No recommendation details were provided.'}
                       </p>
                     </div>
@@ -263,10 +272,10 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
           </TabsContent>
 
           <TabsContent value="modules" className="space-y-4">
-            <Card className="border-border/80 shadow-sm">
+            <Card className="border-slate-200/80 shadow-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <BookOpenCheck className="h-5 w-5 text-primary" />
+                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                  <BookOpenCheck className="h-5 w-5 text-[#5B65E0]" />
                   Structured Modules
                 </CardTitle>
               </CardHeader>
@@ -277,7 +286,7 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
                       <AccordionItem value={`module-${index}`} key={`${module.title}-${index}`}>
                         <AccordionTrigger className="hover:no-underline">
                           <div className="flex w-full items-center justify-between gap-3 pr-2">
-                            <span className="text-left font-semibold text-foreground">{module.title}</span>
+                            <span className="text-left font-semibold text-slate-900">{module.title}</span>
                             {module.estimatedWeeks ? (
                               <Badge variant="outline" className="rounded-full gap-1.5">
                                 <Clock3 className="h-3.5 w-3.5" />
@@ -290,9 +299,9 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
                           {module.topics.length ? (
                             <div className="grid gap-2 md:grid-cols-2">
                               {module.topics.map((topic, topicIndex) => (
-                                <div key={`${topic}-${topicIndex}`} className="flex items-start gap-2 rounded-lg border border-border/70 bg-secondary/20 p-3">
-                                  <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/85" />
-                                  <span className="text-sm text-foreground/90">{topic}</span>
+                                <div key={`${topic}-${topicIndex}`} className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                  <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#5B65E0]/85" />
+                                  <span className="text-sm text-slate-700">{topic}</span>
                                 </div>
                               ))}
                             </div>
@@ -317,35 +326,35 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
           </TabsContent>
 
           <TabsContent value="timeline" className="space-y-4">
-            <Card className="border-border/80 shadow-sm">
+            <Card className="border-slate-200/80 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <CalendarRange className="h-5 w-5 text-primary" />
+                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                  <CalendarRange className="h-5 w-5 text-[#5B65E0]" />
                   Semester Study Timeline
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {result.timeline.length ? (
                   <div className="relative space-y-3 pl-6">
-                    <div className="absolute left-[10px] top-1 bottom-1 w-px bg-border" />
+                    <div className="absolute left-[10px] top-1 bottom-1 w-px bg-slate-300" />
                     {result.timeline.map((item, index) => (
-                      <div key={`${item.weekRange}-${index}`} className="relative rounded-xl border border-border/70 bg-secondary/20 p-4">
-                        <span className="absolute -left-[21px] top-6 h-3 w-3 rounded-full bg-primary ring-4 ring-background" />
+                      <div key={`${item.weekRange}-${index}`} className="relative rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <span className="absolute -left-[21px] top-6 h-3 w-3 rounded-full bg-[#5B65E0] ring-4 ring-white" />
                         <Badge variant="secondary" className="mb-2 rounded-full">
                           {item.weekRange}
                         </Badge>
-                        <p className="mb-2 font-semibold text-foreground">{item.focus}</p>
+                        <p className="mb-2 font-semibold text-slate-900">{item.focus}</p>
                         {item.outcomes.length ? (
                           <ul className="space-y-1.5">
                             {item.outcomes.map((outcome, outcomeIndex) => (
                               <li key={`${outcome}-${outcomeIndex}`} className="flex items-start gap-2 text-sm">
-                                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/85" />
-                                <span className="text-foreground/90">{outcome}</span>
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#5B65E0]/85" />
+                                <span className="text-slate-700">{outcome}</span>
                               </li>
                             ))}
                           </ul>
                         ) : (
-                          <p className="text-sm text-muted-foreground">No outcomes were provided for this timeline item.</p>
+                          <p className="text-sm text-slate-600">No outcomes were provided for this timeline item.</p>
                         )}
                       </div>
                     ))}
@@ -361,24 +370,24 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
           </TabsContent>
 
           <TabsContent value="priorities" className="space-y-4">
-            <Card className="border-border/80 shadow-sm">
+            <Card className="border-slate-200/80 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Flame className="h-5 w-5 text-primary" />
+                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                  <Flame className="h-5 w-5 text-[#5B65E0]" />
                   Priority Topic Recommendations
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-2">
                 {sortedPriorityTopics.length ? (
                   sortedPriorityTopics.map((item, index) => (
-                    <div key={`${item.topic}-${index}`} className="rounded-xl border border-border/70 bg-secondary/25 p-4">
+                    <div key={`${item.topic}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <div className="mb-2 flex items-start justify-between gap-2">
-                        <p className="font-semibold text-foreground">{item.topic}</p>
+                        <p className="font-semibold text-slate-900">{item.topic}</p>
                         <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${priorityClass(item.priority)}`}>
                           {item.priority}
                         </span>
                       </div>
-                      <p className="text-sm text-foreground/90">
+                      <p className="text-sm text-slate-700">
                         {item.reason || 'No recommendation details were provided.'}
                       </p>
                     </div>
@@ -396,23 +405,23 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
           </TabsContent>
 
           <TabsContent value="planning" className="space-y-4">
-            <Card className="border-border/80 shadow-sm">
+            <Card className="border-slate-200/80 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <ClipboardList className="h-5 w-5 text-primary" />
+                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                  <ClipboardList className="h-5 w-5 text-[#5B65E0]" />
                   Coursework Planning Assistance
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {result.coursework.length ? (
                   result.coursework.map((item, index) => (
-                    <div key={`${item.task}-${index}`} className="rounded-xl border border-border/70 bg-secondary/25 p-4">
-                      <p className="font-semibold text-foreground">{item.task}</p>
+                    <div key={`${item.task}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="font-semibold text-slate-900">{item.task}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {item.when ? <Badge variant="outline" className="rounded-full">{item.when}</Badge> : null}
                         {item.effort ? <Badge variant="outline" className="rounded-full">{item.effort}</Badge> : null}
                       </div>
-                      {item.tips ? <p className="mt-3 text-sm text-foreground/90">{item.tips}</p> : null}
+                      {item.tips ? <p className="mt-3 text-sm text-slate-700">{item.tips}</p> : null}
                     </div>
                   ))
                 ) : (
@@ -425,6 +434,7 @@ export default function SyllabusAnalysisResult({ result, onBack }: SyllabusAnaly
             </Card>
           </TabsContent>
         </Tabs>
+        </div>
       </main>
     </div>
   )

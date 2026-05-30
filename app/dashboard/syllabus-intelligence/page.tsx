@@ -1,16 +1,22 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, CalendarCheck2, Sparkles, Upload } from 'lucide-react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { ArrowUpRight, CalendarCheck2, Upload, Trash2, Sparkles } from 'lucide-react'
 import SyllabusUploadModal from '@/components/syllabus-intelligence/upload-modal'
 import SyllabusAnalysisResult from '@/components/syllabus-intelligence/analysis-result'
 import {
   getStoredSyllabusResults,
+  deleteSyllabusResult,
   type SyllabusIntelligenceResult,
 } from '@/components/syllabus-intelligence/utils'
 import { formatUTCDate } from '@/lib/utils'
 
 export default function SyllabusIntelligencePage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const resultIdParam = searchParams.get('id')
+
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [results, setResults] = useState<SyllabusIntelligenceResult[]>([])
   const [activeResult, setActiveResult] = useState<SyllabusIntelligenceResult | null>(null)
@@ -29,103 +35,146 @@ export default function SyllabusIntelligencePage() {
       return [result, ...filtered]
     })
     setActiveResult(result)
+    router.push(`?id=${result.id}`)
     setShowUploadModal(false)
-  }, [])
+  }, [router])
+
+  const handleDeleteResult = useCallback((resultId: string, event: React.MouseEvent) => {
+    event.stopPropagation()
+    if (window.confirm('Are you sure you want to delete this analysis?')) {
+      deleteSyllabusResult(resultId)
+      setResults((previous) => previous.filter((entry) => entry.id !== resultId))
+      if (activeResult?.id === resultId) {
+        setActiveResult(null)
+        router.push('?')
+      }
+    }
+  }, [activeResult, router])
+
+  const handleBack = useCallback(() => {
+    setActiveResult(null)
+    router.push('?')
+  }, [router])
 
   useEffect(() => {
-    setResults(getStoredSyllabusResults())
-  }, [])
+    const stored = getStoredSyllabusResults()
+    setResults(stored)
+
+    if (resultIdParam) {
+      const found = stored.find((r) => r.id === resultIdParam)
+      if (found) {
+        setActiveResult(found)
+      }
+    }
+  }, [resultIdParam])
 
   if (activeResult) {
-    return <SyllabusAnalysisResult result={activeResult} onBack={() => setActiveResult(null)} />
+    return <SyllabusAnalysisResult result={activeResult} onBack={handleBack} />
   }
 
   return (
-    <div className="w-full">
-      <div className="bg-gradient-to-br from-background to-secondary/30 px-8 py-12 border-b border-border">
-        <h1 className="text-4xl font-bold text-foreground mb-3 text-pretty">Syllabus Intelligence</h1>
-        <p className="text-muted-foreground text-lg mb-8 max-w-4xl">
-          Turn your syllabus into an actionable game plan with AI-powered summaries, modules,
-          objectives, and weekly execution guidance.
-        </p>
+    <div className="w-full bg-gradient-to-br from-white via-blue-50/30 to-white min-h-screen">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 py-8">
+        {/* Hero Section */}
+        <div className="mb-10 relative overflow-hidden rounded-3xl bg-linear-to-br from-primary via-[#3825b4]/90 to-primary p-8 sm:p-10">
+          {/* Decorative glow orbs */}
+          <div className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 bg-white/20 rounded-full blur-3xl"></div>
+          <div className="pointer-events-none absolute -bottom-32 -left-20 w-80 h-80 bg-[#9FCB98]/20 rounded-full blur-3xl"></div>
+          {/* Subtle dot grid */}
+          <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:20px_20px]"></div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
-          <button
-            type="button"
-            onClick={openUploadModal}
-            className="flex flex-col items-center gap-3 p-6 bg-card border border-border rounded-xl hover:border-primary/50 hover:shadow-md transition-all group"
-          >
-            <Upload className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
-            <div className="text-center">
-              <p className="font-semibold text-foreground">Upload Syllabus</p>
-              <p className="text-xs text-muted-foreground">PDF, DOC, DOCX, or text outline</p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={openUploadModal}
-            className="flex flex-col items-center gap-3 p-6 bg-card border border-border rounded-xl hover:border-primary/50 hover:shadow-md transition-all group"
-          >
-            <Sparkles className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
-            <div className="text-center">
-              <p className="font-semibold text-foreground">Generate Plan</p>
-              <p className="text-xs text-muted-foreground">Modules, timeline, and priorities</p>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      <div className="px-8 py-8 space-y-8">
-        <section>
-          <h2 className="text-2xl font-bold text-foreground mb-4">Recent Analyses</h2>
-
-          {sortedResults.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border p-10 text-center bg-secondary/20">
-              <CalendarCheck2 className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">
-                No syllabus analyzed yet. Upload your first syllabus to generate your semester
-                roadmap.
+          <div className="relative">
+            <div className="mb-7 max-w-2xl">
+              <div className="mb-4 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 border border-white/25 backdrop-blur-sm">
+                <Sparkles className="w-3.5 h-3.5 text-[#9FCB98]" />
+                <span className="text-xs font-bold text-white tracking-wide">SYLLABUS INTELLIGENCE</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 leading-tight tracking-tight">
+                Turn your syllabus into an action plan
+              </h2>
+              <p className="text-indigo-100 text-base sm:text-lg max-w-xl leading-relaxed">
+                Upload a syllabus and get AI-powered modules, learning objectives, timeline, and weekly priorities instantly.
               </p>
             </div>
-          ) : (
+
+            {/* Action button */}
+            <button
+              onClick={openUploadModal}
+              className="group flex items-center gap-4 p-5 bg-white/95 backdrop-blur-sm rounded-2xl border border-white/40 hover:bg-white hover:shadow-2xl hover:shadow-black/20 transition-all duration-300 hover:-translate-y-1 text-left max-w-xs"
+            >
+              <div className="shrink-0 p-3.5 rounded-xl bg-linear-to-br from-[#5B65E0] to-[#5100a7] text-white group-hover:scale-110 transition-transform duration-300">
+                <Upload className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="font-bold text-slate-900">Analyze Syllabus</p>
+                <p className="text-sm text-slate-500">PDF or plain text</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        {sortedResults.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="p-6 bg-linear-to-br from-slate-100 to-slate-200 rounded-xl mb-6">
+              <Sparkles className="w-12 h-12 text-slate-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">No syllabus analyzed yet</h2>
+            <p className="text-slate-600 mb-6 max-w-sm text-center">Use the upload button above to analyze your first syllabus and generate your semester roadmap</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <h3 className="text-2xl font-bold text-slate-900">Recent Analyses</h3>
             <ul className="space-y-3">
               {sortedResults.map((result) => (
                 <li key={result.id}>
                   <button
                     type="button"
-                    onClick={() => setActiveResult(result)}
+                    onClick={() => {
+                      setActiveResult(result)
+                      router.push(`?id=${result.id}`)
+                    }}
                     aria-label={`Open analysis for ${result.title}`}
-                    className="w-full rounded-xl border border-border/70 bg-card/90 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    className="w-full rounded-2xl border border-slate-200/80 bg-white hover:border-[#5B65E0]/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-5 text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
-                          <p className="font-semibold text-foreground truncate">{result.title}</p>
-                          <ArrowUpRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <p className="font-bold text-slate-900 truncate">{result.title}</p>
+                          <ArrowUpRight className="w-4 h-4 text-slate-400 flex-shrink-0 group-hover:text-slate-600 transition-colors" />
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                          <span className="rounded-full border border-border bg-secondary/50 px-2 py-1 text-muted-foreground">
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 font-medium">
                             {result.modules.length} modules
                           </span>
-                          <span className="rounded-full border border-border bg-secondary/50 px-2 py-1 text-muted-foreground">
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 font-medium">
                             {result.analysis?.overallLearningObjectives.length ?? 0} objectives
                           </span>
                         </div>
-                        <p className="mt-3 line-clamp-2 text-sm text-foreground/80">
+                        <p className="mt-3 line-clamp-2 text-sm text-slate-600">
                           {result.analysis?.courseSummary ?? 'No AI summary available yet.'}
                         </p>
                       </div>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">
-                        {formatUTCDate(result.createdAt)}
-                      </span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs text-slate-500 whitespace-nowrap">
+                          {formatUTCDate(result.createdAt)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteResult(result.id, e)}
+                          aria-label={`Delete analysis for ${result.title}`}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </button>
                 </li>
               ))}
             </ul>
-          )}
-        </section>
+          </div>
+        )}
       </div>
 
       {showUploadModal && (
