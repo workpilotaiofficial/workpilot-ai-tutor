@@ -20,7 +20,6 @@ import { getApiClientErrorMessage } from '@/lib/api/client'
 import { saveStudySetGenerationMeta, saveStudySetUploadMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
 import { generateStudySet, type StudySetUploadResponse, uploadStudySetPdf } from '@/lib/api/study-sets.service'
 import { ensureStudySetGenerationTracking, subscribeToStudySetGeneration } from './generation-tracker'
-import { GenerationStatusStep } from './generation-status-step'
 import { type StudySetUiSectionType, uiToBackendGenerationType } from './generation-mapping'
 import { createUploadPlaceholderStudySet } from './upload-placeholder'
 import { persistStudySet } from './utils'
@@ -84,7 +83,7 @@ const outputOptions: Array<{
   },
 ]
 
-const totalSteps = 3
+const totalSteps = 2
 
 interface UploadModalProps {
   onClose: () => void
@@ -100,7 +99,7 @@ export default function UploadModal({ onClose }: UploadModalProps) {
   const [uploadedResponse, setUploadedResponse] = useState<StudySetUploadResponse | null>(null)
   const [generationMeta, setGenerationMeta] = useState<StoredStudySetGenerationMeta | null>(null)
   const [studySetName, setStudySetName] = useState('')
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2>(1)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const progressPercent = (step / totalSteps) * 100
@@ -256,8 +255,9 @@ export default function UploadModal({ onClose }: UploadModalProps) {
 
       persistStudySet(normalizedSet)
       setGenerationMeta(nextGenerationMeta)
-      setStep(3)
       ensureStudySetGenerationTracking(uploadedResponse.document.id)
+      onClose()
+      router.push(`/dashboard/study-sets/${uploadedResponse.document.id}`)
     } catch (error) {
       console.error('Error generating study set:', error)
       setErrorMessage(getApiClientErrorMessage(error, 'Failed to generate study set. Please try again.'))
@@ -272,11 +272,6 @@ export default function UploadModal({ onClose }: UploadModalProps) {
       return
     }
 
-    if (step === 3) {
-      onClose()
-      return
-    }
-
     void handleGenerate()
   }
 
@@ -288,17 +283,6 @@ export default function UploadModal({ onClose }: UploadModalProps) {
     onClose()
   }
 
-  useEffect(() => {
-    if (step !== 3 || !uploadedResponse?.document.id) {
-      return
-    }
-
-    const unsubscribe = subscribeToStudySetGeneration(uploadedResponse.document.id, (nextMeta) => {
-      setGenerationMeta(nextMeta)
-    })
-
-    return unsubscribe
-  }, [step, uploadedResponse?.document.id])
 
   const handleOpenGeneratedSection = (sectionType: StudySetUiSectionType) => {
     const documentId = generationMeta?.documentId ?? uploadedResponse?.document.id
@@ -470,10 +454,6 @@ export default function UploadModal({ onClose }: UploadModalProps) {
     </div>
   )
 
-  const renderGenerationStep = () => (
-    <GenerationStatusStep meta={generationMeta} onOpenSection={handleOpenGeneratedSection} />
-  )
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-card rounded-2xl max-w-3xl w-full max-h-screen overflow-y-auto shadow-2xl">
@@ -485,16 +465,12 @@ export default function UploadModal({ onClose }: UploadModalProps) {
             <h2 className="text-2xl font-bold text-foreground">
               {step === 1
                 ? 'Please upload your file'
-                : step === 2
-                  ? 'Choose your study experiences'
-                  : 'Generating your study set'}
+                : 'Choose your study experiences'}
             </h2>
             <p className="text-sm text-muted-foreground">
               {step === 1
                 ? 'We will turn your files into insane study material.'
-                : step === 2
-                  ? 'Select formats like flashcards, notes, MCQs, and more before generating.'
-                  : 'Realtime status of each requested job is shown below.'}
+                : 'Select formats like flashcards, notes, MCQs, and more before generating.'}
             </p>
             <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
               <div
@@ -512,7 +488,7 @@ export default function UploadModal({ onClose }: UploadModalProps) {
         </div>
 
         <div className="p-6">
-          {step === 1 ? renderUploadStep() : step === 2 ? renderSelectionStep() : renderGenerationStep()}
+          {step === 1 ? renderUploadStep() : renderSelectionStep()}
         </div>
 
         {errorMessage ? (
@@ -528,16 +504,14 @@ export default function UploadModal({ onClose }: UploadModalProps) {
             onClick={handleSecondaryAction}
             className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors font-medium"
           >
-            {step === 2 ? 'Back' : step === 3 ? 'Close' : 'Cancel'}
+            {step === 2 ? 'Back' : 'Cancel'}
           </button>
           <button
             onClick={handlePrimaryAction}
             disabled={
               step === 1
                 ? !hasFiles || isUploading
-                : step === 2
-                  ? !hasSelections || isGenerating
-                  : !(generationMeta?.batch.status === 'completed')
+                : !hasSelections || isGenerating
             }
             className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity font-medium"
           >
@@ -545,13 +519,9 @@ export default function UploadModal({ onClose }: UploadModalProps) {
               ? isUploading
                 ? 'Uploading...'
                 : 'Next'
-              : step === 2
-                ? isGenerating
-                  ? 'Generating...'
-                  : 'Generate'
-                : generationMeta?.batch.status === 'completed'
-                  ? 'Done'
-                  : 'Tracking...'}
+              : isGenerating
+                ? 'Generating...'
+                : 'Generate'}
           </button>
         </div>
       </div>

@@ -91,7 +91,7 @@ export const DEFAULT_THEME_CUSTOMIZATION: ThemeCustomization = {
   buttonColor: '#5B65E0',
   accentColor: '#afc0fd',
   secondaryColor: '#F5F5F5',
-  sidebarColor: '#F0F3FF',
+  sidebarColor: '#f5f6ff',
   textColor: '#1A1A1A',
   bodyFontFamily: THEME_FONT_OPTIONS[0].value,
   headingFontFamily: THEME_FONT_OPTIONS[0].value,

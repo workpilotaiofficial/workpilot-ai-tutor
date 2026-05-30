@@ -26,7 +26,10 @@ import {
   persistStudySet,
   type StudySet,
 } from '@/components/study-sets/utils'
+import { subscribeToStudySetGeneration } from '@/components/study-sets/generation-tracker'
+import { getStudySetGenerationMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
 import { NotesEditor } from '@/components/study-sets/NotesEditor'
+import { StudySetOverview } from './overview'
 
 const editorTools = [
   Undo2,
@@ -237,6 +240,7 @@ export default function StudySetDetailPage({
   const { id } = use(params)
 
   const [studySet, setStudySet] = useState<StudySet | null>(null)
+  const [generationMeta, setGenerationMeta] = useState<StoredStudySetGenerationMeta | null>(null)
   const [activeSectionType, setActiveSectionType] = useState<string | null>(null)
   const [currentItemIndex, setCurrentItemIndex] = useState(0)
   const [flashcardFlipped, setFlashcardFlipped] = useState(false)
@@ -267,6 +271,18 @@ export default function StudySetDetailPage({
     }
 
     setStudySet(null)
+  }, [id])
+
+  useEffect(() => {
+    if (!id) return
+    const meta = getStudySetGenerationMeta(id)
+    if (!meta) return
+    setGenerationMeta(meta)
+    return subscribeToStudySetGeneration(id, (nextMeta) => {
+      setGenerationMeta(nextMeta)
+      const updated = getStoredStudySetById(id)
+      if (updated) setStudySet(updated)
+    })
   }, [id])
 
   useEffect(() => {
@@ -565,6 +581,24 @@ export default function StudySetDetailPage({
       persistStudySet(updatedSet)
       return updatedSet
     })
+  }
+
+  const handleOpenSection = (sectionType: string) => {
+    router.push(`/dashboard/study-sets/${id}?mode=${sectionType}`)
+  }
+
+  const handleRetrySection = async (sectionType: string) => {
+    if (!generationMeta || !uploadedResponse) return
+    try {
+      // Re-generate just this section
+      await generateStudySet({
+        documentId: uploadedResponse.document.id,
+        types: [sectionType],
+      })
+      ensureStudySetGenerationTracking(uploadedResponse.document.id)
+    } catch (error) {
+      console.error('Error retrying section:', error)
+    }
   }
 
   const renderMultipleChoice = (item: any) => {
@@ -1082,7 +1116,7 @@ export default function StudySetDetailPage({
 
     return (
       <div
-        className={`h-full rounded-[28px] border border-border bg-card shadow-sm ${isShowingAssessmentFinalScreen ? 'p-4 sm:p-8' : 'p-6'
+        className={`h-full max-w-[700px] mx-auto rounded-[28px] border border-border bg-card shadow-sm ${isShowingAssessmentFinalScreen ? 'p-4 sm:p-8' : 'p-6'
           }`}
       >
         {content}
@@ -1118,7 +1152,13 @@ export default function StudySetDetailPage({
 
           <div className="flex flex-wrap items-center gap-4">
             <button
-              onClick={() => router.push('/dashboard/study-sets')}
+              onClick={() => {
+                if (activeModeFromQuery) {
+                  router.push(`/dashboard/study-sets/${id}`)
+                } else {
+                  router.push('/dashboard/study-sets')
+                }
+              }}
               className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-background transition-colors hover:bg-secondary"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -1142,65 +1182,83 @@ export default function StudySetDetailPage({
         </header>
 
         <div className="flex-1 overflow-hidden">
-          <div className="flex h-full flex-col lg:flex-row">
-            <section className={`min-w-0 flex-1 ${isShowingAssessmentFinalScreen ? 'max-w-none' : 'max-w-[850px]'}`}>
-              <div className=" flex flex-wrap items-center justify-between gap-3">
-                {/* <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/70">
-                    Study Mode
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">
-                    {activeSection?.label ?? 'Select a method'}
-                  </p>
-                </div> */}
-
-                {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
-                  <span className="rounded-full mb-3 border border-border bg-white px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-                    Item {currentItemIndex + 1} of {totalItems}
-                  </span>
-                )}
-              </div>
-
-              <div >{renderActiveContent()}</div>
-
-              {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
-                <div className="mt-4 flex items-center gap-3">
-                  <button
-                    onClick={handlePrev}
-                    disabled={currentItemIndex === 0}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-white px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Previous
-                  </button>
-
-                  <button
-                    onClick={handleNext}
-                    disabled={isNextDisabled}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+          <div className="flex h-full flex-col lg:flex-row p-5">
+            <section className={`min-w-0 flex-1 ${isShowingAssessmentFinalScreen ? 'max-w-none' : 'max-w-[1400px] mx-auto'}`}>
+              {!activeModeFromQuery ? (
+                <div className="p-6">
+                  <StudySetOverview
+                    studySet={studySet}
+                    generationMeta={generationMeta}
+                    onOpenSection={handleOpenSection}
+                    onRetrySection={handleRetrySection}
+                  />
                 </div>
-              )}
+              ) : (
+                <>
+                  <div className=" flex flex-wrap items-center justify-between gap-3">
+                    {/* <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/70">
+                        Study Mode
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-foreground">
+                        {activeSection?.label ?? 'Select a method'}
+                      </p>
+                    </div> */}
 
-              {activeSection?.type === 'multipleChoice' && !isCurrentMcqAnswered && !isShowingAssessmentFinalScreen && (
-                <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
-                  Select an option to unlock the next question.
-                </p>
-              )}
+           
+                  </div>
+     <div className="mt-2 flex items-center gap-3 max-w-[700px] mx-auto">
+                      {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
+                        <span className="rounded-full mb-3 border border-border bg-white px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                          Item {currentItemIndex + 1} of {totalItems}
+                        </span>
+                      )}
+     </div>
+                  <div >
+                    
+                    {renderActiveContent()}</div>
 
-              {activeSection?.type === 'fillInTheBlanks' && !isCurrentFillAnswered && !isShowingAssessmentFinalScreen && (
-                <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
-                  Submit your blank answer to unlock the next question.
-                </p>
-              )}
+                  {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
+                    <div className="mt-4 flex items-center gap-3 max-w-[700px] mx-auto">
+                      
+                      <button
+                        onClick={handlePrev}
+                        disabled={currentItemIndex === 0}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-white px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </button>
 
-              {activeSection?.type === 'writtenTests' && !isCurrentWrittenAnswered && (
-                <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
-                  Evaluate your written response to unlock the next question.
-                </p>
+                      <button
+                        onClick={handleNext}
+                        disabled={isNextDisabled}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {activeSection?.type === 'multipleChoice' && !isCurrentMcqAnswered && !isShowingAssessmentFinalScreen && (
+                    <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
+                      Select an option to unlock the next question.
+                    </p>
+                  )}
+
+                  {activeSection?.type === 'fillInTheBlanks' && !isCurrentFillAnswered && !isShowingAssessmentFinalScreen && (
+                    <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
+                      Submit your blank answer to unlock the next question.
+                    </p>
+                  )}
+
+                  {activeSection?.type === 'writtenTests' && !isCurrentWrittenAnswered && (
+                    <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
+                      Evaluate your written response to unlock the next question.
+                    </p>
+                  )}
+                </>
               )}
             </section>
 

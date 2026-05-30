@@ -1,5 +1,11 @@
 export { ApiClient, ApiClientError, apiClient, getApiClientErrorMessage } from '@/lib/api/client'
 export {
+  createAdminRole,
+  fetchAdminPermissions,
+  fetchAdminRoles,
+  updateAdminRolePermissions,
+} from '@/lib/api/admin-rbac.service'
+export {
   createAdminModelConfig,
   fetchAdminModelConfigs,
   updateAdminModelConfig,
@@ -66,6 +72,12 @@ export {
 } from '@/lib/api/session-storage'
 export type { FirebaseSessionResponse, SessionAuth, UserRole } from '@/lib/api/auth.service'
 export type { AdminPlan } from '@/lib/api/admin-plans.service'
+export type {
+  AdminPermission,
+  AdminRole,
+  CreateAdminRolePayload,
+  UpdateAdminRolePermissionsPayload,
+} from '@/lib/api/admin-rbac.service'
 export type {
   AdminModelConfig,
   CreateAdminModelConfigPayload,

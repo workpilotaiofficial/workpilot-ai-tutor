@@ -176,35 +176,42 @@ export class ApiClient {
       return
     }
 
+    console.warn('Auth failure - clearing session')
+
     if (auth) {
-      // await signOut(auth).catch(() => null)
+      await signOut(auth).catch(() => null)
     }
 
-    // clearAuthBrowserState()
-    // window.location.replace('/')
+    clearAuthBrowserState()
   }
 
   async refreshAccessToken(refreshToken: string) {
-    const response = await this.request<unknown>('/api/v1/auth/refresh', {
-      method: 'POST',
-      body: {
-        refresh_token: refreshToken,
-      },
-      headers: {
-        'content-type': 'application/json',
-      },
-      omitDefaultHeaders: true,
-      omitAuthHeader: true,
-      retryOnUnauthorized: false,
-    })
+    try {
+      const response = await this.request<unknown>('/api/v1/auth/refresh', {
+        method: 'POST',
+        body: {
+          refresh_token: refreshToken,
+        },
+        headers: {
+          'accept': 'application/json',
+          'content-type': 'application/json',
+        },
+        omitAuthHeader: true,
+        retryOnUnauthorized: false,
+      })
 
-    const normalizedAuth = normalizeRefreshAuthPayload(response)
+      const normalizedAuth = normalizeRefreshAuthPayload(response)
 
-    if (!normalizedAuth) {
-      throw new ApiClientError('Refresh token response did not include a valid auth session.')
+      if (!normalizedAuth) {
+        console.error('Invalid refresh response format:', response)
+        throw new ApiClientError('Refresh token response did not include a valid auth session.')
+      }
+
+      return normalizedAuth
+    } catch (error) {
+      console.error('Refresh token error:', error)
+      throw error
     }
-
-    return normalizedAuth
   }
 
   private async refreshStoredSession() {
@@ -215,16 +222,26 @@ export class ApiClient {
     this.refreshPromise = (async () => {
       const storedAuth = getStoredAuthObject()
 
-      if (!storedAuth?.refresh_token || !isStoredRefreshTokenUsable()) {
+      if (!storedAuth?.refresh_token) {
+        console.warn('No refresh token available')
+        await this.handleAuthFailure()
+        return null
+      }
+
+      if (!isStoredRefreshTokenUsable()) {
+        console.warn('Refresh token is expired or unusable')
         await this.handleAuthFailure()
         return null
       }
 
       try {
+        console.log('Attempting to refresh access token...')
         const refreshedAuth = await this.refreshAccessToken(storedAuth.refresh_token)
         replaceStoredAuthObject(refreshedAuth)
+        console.log('Access token refreshed successfully')
         return refreshedAuth
-      } catch {
+      } catch (error) {
+        console.error('Failed to refresh access token:', error)
         await this.handleAuthFailure()
         return null
       } finally {
@@ -300,11 +317,15 @@ export class ApiClient {
       let response = await this.executeFetch(path, method, requestBody, requestHeaders, signal)
 
       if (response.status === 401 && !omitAuthHeader && retryOnUnauthorized) {
+        console.warn(`Got 401 for ${path}, attempting to refresh token...`)
         const refreshedAuth = await this.refreshStoredSession()
 
         if (refreshedAuth?.access_token) {
+          console.log(`Token refreshed, retrying ${path}...`)
           requestHeaders.set('authorization', `Bearer ${refreshedAuth.access_token}`)
           response = await this.executeFetch(path, method, requestBody, requestHeaders, signal)
+        } else {
+          console.error(`Token refresh failed for ${path}`)
         }
       }
 
