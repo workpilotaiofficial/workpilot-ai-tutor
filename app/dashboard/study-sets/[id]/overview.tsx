@@ -114,7 +114,7 @@ export function StudySetOverview({
 
   if (isGenerating) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
+      <div className="flex  flex-col items-center justify-center min-h-[60vh] space-y-8">
         <div className="flex flex-col items-center space-y-4">
           <div className="w-16 h-16 rounded-3xl bg-teal-100 flex items-center justify-center">
             <Sparkles className="w-8 h-8 text-teal-600 animate-pulse" />
@@ -188,28 +188,39 @@ export function StudySetOverview({
   return (
     <div className="space-y-8">
       {/* Header Card */}
-      <div className="rounded-3xl bg-linear-to-br from-primary/5 to-primary/10 border border-primary/20 p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-white  backdrop:blur-lg shadow-2xl shadow-primary/30 to-primary/10 border border-primary/20 p-8 sm:p-10">
+        <div className="absolute inset-0 opacity-[0.02]">
+          <div className="absolute -top-40 right-0 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl"></div>
+        </div>
+
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
           <div className="flex-1">
-            <div className="inline-block mb-4 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
-              <p className="text-xs font-semibold text-primary">Generated Study Set</p>
+            <div className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-linear-to-r from-blue-100/60 to-purple-100/60 border border-blue-200/40 backdrop-blur-sm">
+              <Sparkles className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-bold text-blue-700 tracking-wide">GENERATED STUDY SET</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">{studySet.title}</h1>
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <BookOpen className="w-4 h-4" />
-                <span>{selections.length} study formats</span>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 leading-tight">{studySet.title}</h1>
+            <div className="flex flex-wrap gap-6 text-sm text-slate-600">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-100/60 rounded-lg">
+                  <BookOpen className="w-4 h-4 text-blue-600" />
+                </div>
+                <span className="font-semibold">{selections.length} study formats</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span>Created just now</span>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-100/60 rounded-lg">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                </div>
+                <span className="font-semibold">Ready to learn</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col items-center">
-              <div className="relative w-20 h-20">
-                <svg className="w-20 h-20" viewBox="0 0 100 100">
+          <div className="flex flex-col sm:flex-row items-center gap-8 shrink-0">
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative w-28 h-28">
+                <svg className="w-28 h-28" viewBox="0 0 100 100">
                   <circle
                     cx="50"
                     cy="50"
@@ -217,27 +228,31 @@ export function StudySetOverview({
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
-                    className="text-secondary"
+                    className="text-slate-200"
                   />
                   <circle
                     cx="50"
                     cy="50"
                     r="45"
                     fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
+                    stroke="#5B65E0"
+                    strokeWidth="3"
                     strokeDasharray={`${(0 / 100) * 282.7} 282.7`}
-                    className="text-primary transition-all"
+                    className="transition-all"
                     strokeLinecap="round"
-                    style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
+                    style={{
+                      transform: 'rotate(-90deg)',
+                      transformOrigin: '50% 50%'
+                    }}
                   />
                 </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xs font-bold text-primary">0%</span>
+                <div className="absolute inset-0 flex items-center justify-center flex-col">
+                  <span className="text-3xl font-black text-blue-700">0%</span>
+                  <span className="text-xs text-slate-600 font-bold mt-1">MASTERY</span>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">mastery</p>
             </div>
+
             <button
               onClick={() => {
                 const firstSection = selections[0]
@@ -245,22 +260,24 @@ export function StudySetOverview({
                   onOpenSection(firstSection)
                 }
               }}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
+              className="px-8 py-4 bg-linear-to-r from-[#5B65E0] to-[#5100a7] text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-600/40 transition-all duration-300 whitespace-nowrap hover:scale-105 active:scale-95"
             >
-              Study now
+              Start Learning
             </button>
           </div>
         </div>
       </div>
 
-      {/* Generated Sections */}
+      {/* Generated Sections - 3 Column Grid */}
       <div>
-        <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          Generated for this set
+        <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
+          <div className="p-3 bg-linear-to-br from-blue-100/60 to-purple-100/60 rounded-xl border border-blue-200/40">
+            <Sparkles className="w-5 h-5 text-blue-600" />
+          </div>
+          Generated content
         </h2>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {selections.map((sectionType) => {
             const status = getCardStatus(sectionType, studySet, generationMeta)
             const Icon = getSectionIcon(sectionType)
@@ -270,14 +287,14 @@ export function StudySetOverview({
             const isReady = status === 'ready'
             const isFailed = status === 'failed'
 
-            let cardClasses = 'rounded-2xl border p-6 transition-all duration-200 animate-in fade-in-0 zoom-in-95 relative'
+            let cardClasses = 'rounded-2xl border p-6 transition-all duration-300 animate-in fade-in-0 zoom-in-95 relative group'
 
             if (isReady) {
-              cardClasses += ' border-primary/20 bg-primary/5 hover:border-primary/40 hover:shadow-md cursor-pointer'
+              cardClasses += ' border-blue-200/40 bg-white hover:border-blue-300/60 hover:shadow-lg hover:shadow-blue-200/20 hover:bg-blue-50/20 cursor-pointer'
             } else if (isFailed) {
-              cardClasses += ' border-red-200 bg-red-50'
+              cardClasses += ' border-red-200/60 bg-white'
             } else {
-              cardClasses += ' border-border bg-card cursor-not-allowed opacity-60'
+              cardClasses += ' border-slate-200 bg-slate-50 cursor-not-allowed opacity-60'
             }
 
             return (
@@ -287,31 +304,40 @@ export function StudySetOverview({
                   disabled={!isReady}
                   className="w-full text-left"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`rounded-xl p-3 w-fit ${isReady ? 'bg-primary/20 text-primary' : isFailed ? 'bg-red-100 text-red-600' : 'bg-secondary text-muted-foreground'}`}>
-                      {isFailed ? (
-                        <AlertCircle className="h-6 w-6" />
-                      ) : (
-                        <Icon className="h-6 w-6" />
-                      )}
-                    </div>
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Left side: Icon + Text */}
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className={`rounded-xl p-3 w-fit shrink-0 flex items-center justify-center ${
+                        isReady
+                          ? 'bg-blue-100/60 text-blue-600'
+                          : isFailed
+                            ? 'bg-red-100 text-red-600'
+                            : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {isFailed ? (
+                          <AlertCircle className="h-6 w-6" />
+                        ) : (
+                          <Icon className="h-6 w-6" />
+                        )}
+                      </div>
 
-                    <div className="flex-1 text-left">
-                      <p className="font-semibold text-foreground">{label}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{description}</p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {itemCount > 0 && (
-                        <div className="text-right">
-                          <p className="text-lg font-semibold text-foreground">{itemCount}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {sectionType === 'notes' ? 'page' : 'items'}
+                      <div className="text-left">
+                        <p className={`font-bold text-base transition-colors ${isReady ? 'text-slate-900 group-hover:text-blue-600' : 'text-slate-700'}`}>{label}</p>
+                        <p className="text-sm text-slate-600 mt-1">{description}</p>
+                        {itemCount > 0 && (
+                          <p className={`text-xs font-bold mt-2 tracking-wide ${isReady ? 'text-blue-600' : 'text-slate-500'}`}>
+                            {itemCount} {itemCount === 1 ? 'ITEM' : 'ITEMS'}
                           </p>
-                        </div>
-                      )}
-                      {isReady && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                        )}
+                      </div>
                     </div>
+
+                    {/* Right side: Arrow */}
+                    {isReady && (
+                      <div className="shrink-0 text-blue-400 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1">
+                        <ChevronRight className="h-6 w-6" />
+                      </div>
+                    )}
                   </div>
                 </button>
 
@@ -324,7 +350,7 @@ export function StudySetOverview({
                     className="absolute top-4 right-4 p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                     title="Retry generation for this section"
                   >
-                    <RotateCw className="h-4 w-4" />
+                    <RotateCw className="h-5 w-5" />
                   </button>
                 )}
               </div>

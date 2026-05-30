@@ -1116,7 +1116,7 @@ export default function StudySetDetailPage({
 
     return (
       <div
-        className={`h-full rounded-[28px] border border-border bg-card shadow-sm ${isShowingAssessmentFinalScreen ? 'p-4 sm:p-8' : 'p-6'
+        className={`h-full max-w-[700px] mx-auto rounded-[28px] border border-border bg-card shadow-sm ${isShowingAssessmentFinalScreen ? 'p-4 sm:p-8' : 'p-6'
           }`}
       >
         {content}
@@ -1182,8 +1182,8 @@ export default function StudySetDetailPage({
         </header>
 
         <div className="flex-1 overflow-hidden">
-          <div className="flex h-full flex-col lg:flex-row">
-            <section className={`min-w-0 flex-1 ${isShowingAssessmentFinalScreen ? 'max-w-none' : 'max-w-[1100px] mx-auto'}`}>
+          <div className="flex h-full flex-col lg:flex-row p-5">
+            <section className={`min-w-0 flex-1 ${isShowingAssessmentFinalScreen ? 'max-w-none' : 'max-w-[1400px] mx-auto'}`}>
               {!activeModeFromQuery ? (
                 <div className="p-6">
                   <StudySetOverview
@@ -1205,17 +1205,22 @@ export default function StudySetDetailPage({
                       </p>
                     </div> */}
 
-                    {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
-                      <span className="rounded-full mb-3 border border-border bg-white px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-                        Item {currentItemIndex + 1} of {totalItems}
-                      </span>
-                    )}
+           
                   </div>
-
-                  <div >{renderActiveContent()}</div>
+     <div className="mt-2 flex items-center gap-3 max-w-[700px] mx-auto">
+                      {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
+                        <span className="rounded-full mb-3 border border-border bg-white px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                          Item {currentItemIndex + 1} of {totalItems}
+                        </span>
+                      )}
+     </div>
+                  <div >
+                    
+                    {renderActiveContent()}</div>
 
                   {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
-                    <div className="mt-4 flex items-center gap-3">
+                    <div className="mt-4 flex items-center gap-3 max-w-[700px] mx-auto">
+                      
                       <button
                         onClick={handlePrev}
                         disabled={currentItemIndex === 0}

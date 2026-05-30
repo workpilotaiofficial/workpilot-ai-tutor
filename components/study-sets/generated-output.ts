@@ -52,7 +52,9 @@ function extractMarkdownHeading(markdown: string) {
 function buildNotesMarkdownFromResponse(payload: any, title: string) {
   const directMarkdown =
     payload?.notes?.markdown_content ??
+    payload?.notes?.markdownContent ??
     payload?.notes?.plain_text_content ??
+    payload?.notes?.plainTextContent ??
     payload?.notesMarkdown ??
     payload?.notes_markdown ??
     payload?.markdown ??
@@ -83,11 +85,8 @@ function buildNotesMarkdownFromResponse(payload: any, title: string) {
     }
 
     const heading =
-      typeof section.heading === 'string' && section.heading.trim()
-        ? section.heading.trim()
-        : typeof section.title === 'string' && section.title.trim()
-          ? section.title.trim()
-          : null
+      (typeof section.heading === 'string' && section.heading.trim() ? section.heading.trim() : null) ||
+      (typeof section.title === 'string' && section.title.trim() ? section.title.trim() : null)
 
     if (heading) {
       markdownLines.push('', `## ${heading}`)
@@ -125,7 +124,8 @@ function normalizeNotesSection(payload: any, title: string): { section: StudySet
 }
 
 function normalizeTutorLessonSection(payload: any): StudySetSection {
-  const sourceSections = Array.isArray(payload?.tutor_lesson?.sections) ? payload.tutor_lesson.sections : []
+  const tutorLessonData = payload?.tutor_lesson ?? payload?.tutorLesson
+  const sourceSections = Array.isArray(tutorLessonData?.sections) ? tutorLessonData.sections : []
 
   return {
     type: 'tutorLesson',
@@ -135,13 +135,21 @@ function normalizeTutorLessonSection(payload: any): StudySetSection {
         ? section.comprehension_questions.find(
             (item: any) => item && typeof item === 'object' && typeof item.question === 'string'
           )
-        : null
+        : Array.isArray(section?.comprehensionQuestions)
+          ? section.comprehensionQuestions.find(
+              (item: any) => item && typeof item === 'object' && typeof item.question === 'string'
+            )
+          : null
+
+      const solutionSteps = Array.isArray(section?.solution_steps)
+        ? section.solution_steps
+        : Array.isArray(section?.solutionSteps)
+          ? section.solutionSteps
+          : []
 
       const bodySegments = [
         typeof section?.body === 'string' ? section.body : '',
-        ...(Array.isArray(section?.solution_steps)
-          ? section.solution_steps.filter((step: unknown): step is string => typeof step === 'string' && step.trim().length > 0)
-          : []),
+        ...solutionSteps.filter((step: unknown): step is string => typeof step === 'string' && step.trim().length > 0),
         typeof section?.answer === 'string' ? section.answer : '',
       ].filter((value) => typeof value === 'string' && value.trim().length > 0)
 
@@ -149,6 +157,7 @@ function normalizeTutorLessonSection(payload: any): StudySetSection {
         prompt:
           (typeof section?.heading === 'string' && section.heading.trim()) ||
           (typeof section?.problem_statement === 'string' && section.problem_statement.trim()) ||
+          (typeof section?.problemStatement === 'string' && section.problemStatement.trim()) ||
           `Lesson ${index + 1}`,
         response: bodySegments.join('\n\n') || 'Generated tutor lesson content is available.',
         followUp:
@@ -168,10 +177,14 @@ function normalizeMultipleChoiceSection(payload: any): StudySetSection {
     label: 'Multiple Choice',
     items: questions.map((question: any) => {
       const options = Array.isArray(question?.options) ? question.options : []
-      const matchingOption = options.find((option: any) => option?.id === question?.correct_option_id)
+      const correctId = question?.correct_option_id ?? question?.correctOptionId
+      const matchingOption = options.find((option: any) => option?.id === correctId)
 
       return {
-        question: question?.question_text ?? 'Question unavailable',
+        question:
+          question?.question_text ??
+          question?.questionText ??
+          'Question unavailable',
         options: options.map((option: any) => option?.text ?? '').filter(Boolean),
         answer: typeof matchingOption?.text === 'string' ? matchingOption.text : null,
         explanation: typeof question?.explanation === 'string' ? question.explanation : null,
@@ -187,8 +200,16 @@ function normalizeFlashcardsSection(payload: any): StudySetSection {
     type: 'flashcards',
     label: 'Flashcards',
     items: cards.map((card: any) => ({
-      prompt: card?.term ?? 'Card',
-      answer: card?.definition ?? '',
+      prompt:
+        card?.term ??
+        card?.prompt ??
+        card?.question ??
+        'Card',
+      answer:
+        card?.definition ??
+        card?.answer ??
+        card?.response ??
+        '',
     })),
   }
 }
@@ -204,9 +225,17 @@ function normalizeFillInTheBlanksSection(payload: any): StudySetSection {
         Array.isArray(question?.blanks) && question.blanks.length > 0 ? question.blanks[0] : null
 
       return {
-        sentence: question?.display_sentence ?? question?.full_sentence ?? 'Generated blank question',
+        sentence:
+          question?.display_sentence ??
+          question?.displaySentence ??
+          question?.full_sentence ??
+          question?.fullSentence ??
+          'Generated blank question',
         answer: typeof firstBlank?.answer === 'string' ? firstBlank.answer : '',
-        explanation: typeof firstBlank?.hint === 'string' ? firstBlank.hint : null,
+        explanation:
+          typeof firstBlank?.hint === 'string' ? firstBlank.hint :
+          typeof question?.explanation === 'string' ? question.explanation :
+          null,
       }
     }),
   }
@@ -219,11 +248,22 @@ function normalizeWrittenTestSection(payload: any): StudySetSection {
     type: 'writtenTests',
     label: 'Written Tests',
     items: questions.map((question: any) => ({
-      prompt: question?.question_text ?? 'Generated written question',
-      idealResponse: typeof question?.model_answer === 'string' ? question.model_answer : null,
+      prompt:
+        question?.question_text ??
+        question?.questionText ??
+        question?.prompt ??
+        'Generated written question',
+      idealResponse:
+        typeof question?.model_answer === 'string' ? question.model_answer :
+        typeof question?.modelAnswer === 'string' ? question.modelAnswer :
+        typeof question?.ideal_response === 'string' ? question.ideal_response :
+        typeof question?.idealResponse === 'string' ? question.idealResponse :
+        null,
       rubric: Array.isArray(question?.key_points)
         ? question.key_points.filter((point: unknown): point is string => typeof point === 'string' && point.trim().length > 0)
-        : [],
+        : Array.isArray(question?.keyPoints)
+          ? question.keyPoints.filter((point: unknown): point is string => typeof point === 'string' && point.trim().length > 0)
+          : [],
     })),
   }
 }
@@ -232,30 +272,36 @@ function normalizePodcastSection(payload: any): StudySetSection {
   const podcast = payload?.podcast && typeof payload.podcast === 'object' ? payload.podcast : {}
   const talkingPoints = Array.isArray(podcast?.talking_points)
     ? podcast.talking_points.filter((point: unknown): point is string => typeof point === 'string' && point.trim().length > 0)
-    : Array.isArray(podcast?.segments)
-      ? podcast.segments
-          .map((segment: any) =>
-            typeof segment?.title === 'string' && segment.title.trim()
-              ? segment.title.trim()
-              : typeof segment?.body === 'string'
-                ? segment.body.trim()
-                : ''
-          )
-          .filter(Boolean)
-      : []
+    : Array.isArray(podcast?.talkingPoints)
+      ? podcast.talkingPoints.filter((point: unknown): point is string => typeof point === 'string' && point.trim().length > 0)
+      : Array.isArray(podcast?.segments)
+        ? podcast.segments
+            .map((segment: any) =>
+              typeof segment?.title === 'string' && segment.title.trim()
+                ? segment.title.trim()
+                : typeof segment?.body === 'string'
+                  ? segment.body.trim()
+                  : ''
+            )
+            .filter(Boolean)
+        : []
 
   return {
     type: 'podcast',
     label: 'Podcast',
     items: [
       {
-        title: typeof podcast?.title === 'string' && podcast.title.trim() ? podcast.title.trim() : 'Podcast',
+        title:
+          (typeof podcast?.title === 'string' && podcast.title.trim() ? podcast.title.trim() : null) ||
+          'Podcast',
         duration:
           typeof podcast?.estimated_duration_minutes === 'number'
             ? `${podcast.estimated_duration_minutes} minutes`
-            : typeof podcast?.duration === 'string'
-              ? podcast.duration
-              : undefined,
+            : typeof podcast?.estimatedDurationMinutes === 'number'
+              ? `${podcast.estimatedDurationMinutes} minutes`
+              : typeof podcast?.duration === 'string'
+                ? podcast.duration
+                : undefined,
         talkingPoints,
       },
     ],

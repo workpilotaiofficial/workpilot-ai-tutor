@@ -154,10 +154,33 @@ export type StudySetTutorLessonResponse = {
   tutor_lesson: Record<string, unknown>
 }
 
+export type MultipleChoiceOption = {
+  id: string
+  text: string
+}
+
+export type MultipleChoiceQuestion = {
+  id: string
+  studySetId: string
+  userId: string
+  typeJobId: string
+  questionText: string
+  options: MultipleChoiceOption[]
+  correctOptionId: string
+  explanation?: string
+  topic?: string
+  difficulty?: string | null
+  position: number
+  isDeleted: boolean
+  isUserEdited: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export type StudySetMultipleChoiceResponse = {
   study_set_id: string
   total_questions: number
-  questions: Array<Record<string, unknown>>
+  questions: MultipleChoiceQuestion[]
 }
 
 export type StudySetFlashcardsResponse = {
@@ -166,10 +189,30 @@ export type StudySetFlashcardsResponse = {
   cards: Array<Record<string, unknown>>
 }
 
+export type FillInTheBlanksQuestion = {
+  id: string
+  studySetId: string
+  userId: string
+  typeJobId: string
+  fullSentence: string
+  displaySentence: string
+  blanks: Array<{
+    answer: string
+    position: number
+  }>
+  topic?: string
+  difficulty?: string | null
+  position: number
+  isDeleted: boolean
+  isUserEdited: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export type StudySetFillInTheBlanksResponse = {
   study_set_id: string
   total_questions: number
-  questions: Array<Record<string, unknown>>
+  questions: FillInTheBlanksQuestion[]
 }
 
 export type StudySetWrittenTestResponse = {
@@ -352,6 +395,57 @@ export async function generateStudySet(payload: GenerateStudySetPayload) {
   })
 
   return normalizeGenerateResponse(response)
+}
+
+function normalizeFillInTheBlanksQuestion(question: FillInTheBlanksQuestion): Record<string, unknown> {
+  const blanksArray = Array.isArray(question.blanks) ? question.blanks : []
+  const firstBlank = blanksArray[0]
+  const answer = firstBlank?.answer ?? ''
+
+  return {
+    id: question.id,
+    sentence: question.displaySentence || question.fullSentence,
+    answer,
+    topic: question.topic,
+    difficulty: question.difficulty,
+    position: question.position,
+    isDeleted: question.isDeleted,
+    isUserEdited: question.isUserEdited,
+    createdAt: question.createdAt,
+    updatedAt: question.updatedAt,
+    blanks: blanksArray,
+  }
+}
+
+function normalizeFillInTheBlanksResponse(payload: unknown): StudySetFillInTheBlanksResponse {
+  if (!payload || typeof payload !== 'object') {
+    throw new ApiClientError('Fill in the blanks response failed: invalid response payload.')
+  }
+
+  const response = payload as Partial<StudySetFillInTheBlanksResponse>
+
+  if (typeof response.study_set_id !== 'string' || !response.study_set_id.trim()) {
+    throw new ApiClientError('Fill in the blanks response failed: missing study set id.')
+  }
+
+  const questions = Array.isArray(response.questions)
+    ? response.questions
+        .filter((q): q is FillInTheBlanksQuestion => {
+          return Boolean(
+            q &&
+              typeof q === 'object' &&
+              typeof (q as FillInTheBlanksQuestion).id === 'string' &&
+              (typeof (q as FillInTheBlanksQuestion).fullSentence === 'string' ||
+                typeof (q as FillInTheBlanksQuestion).displaySentence === 'string')
+          )
+        })
+    : []
+
+  return {
+    study_set_id: response.study_set_id,
+    total_questions: typeof response.total_questions === 'number' ? response.total_questions : questions.length,
+    questions,
+  }
 }
 
 function normalizeBatchStatusResponse(payload: unknown): StudySetBatchStatusResponse {

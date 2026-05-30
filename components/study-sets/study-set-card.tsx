@@ -8,6 +8,7 @@ import {
   MoreVertical,
   Sparkles,
   Trophy,
+  ChevronRight,
 } from 'lucide-react'
 import type { StudySet } from './utils'
 
@@ -24,35 +25,29 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
       label: 'Unfamiliar',
       value: set.stats.unfamiliar,
       icon: AlertCircle,
-      containerClass: 'bg-red-50/80 dark:bg-red-950/30 border-red-200/70 dark:border-red-900/40',
-      textClass: 'text-red-600 dark:text-red-300',
-      subTextClass: 'text-red-600/80 dark:text-red-300/80',
+      color: 'text-red-600',
+      bg: 'bg-red-100',
     },
     {
       label: 'Learning',
       value: set.stats.learning,
       icon: Clock3,
-      containerClass:
-        'bg-orange-50/80 dark:bg-orange-950/30 border-orange-200/70 dark:border-orange-900/40',
-      textClass: 'text-orange-600 dark:text-orange-300',
-      subTextClass: 'text-orange-600/80 dark:text-orange-300/80',
+      color: 'text-orange-600',
+      bg: 'bg-orange-100',
     },
     {
       label: 'Familiar',
       value: set.stats.familiar,
       icon: BookMarked,
-      containerClass: 'bg-blue-50/80 dark:bg-blue-950/30 border-blue-200/70 dark:border-blue-900/40',
-      textClass: 'text-blue-600 dark:text-blue-300',
-      subTextClass: 'text-blue-600/80 dark:text-blue-300/80',
+      color: 'text-cyan-600',
+      bg: 'bg-cyan-100',
     },
     {
       label: 'Mastered',
       value: set.stats.mastered,
       icon: Trophy,
-      containerClass:
-        'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200/70 dark:border-emerald-900/40',
-      textClass: 'text-emerald-600 dark:text-emerald-300',
-      subTextClass: 'text-emerald-600/80 dark:text-emerald-300/80',
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-100',
     },
   ]
 
@@ -60,33 +55,49 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
     return (
       <Link
         href={`/dashboard/study-sets/${set.id}`}
-        className="group block rounded-xl border border-border/70 bg-card/90 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10"
+        className="group flex items-center gap-4 p-4 bg-white border border-slate-200/80 rounded-xl hover:border-[#5B65E0]/40 hover:shadow-lg hover:shadow-[#5B65E0]/10 transition-all duration-300"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
-                {set.items} items
-              </span>
-              <span className="rounded-md bg-secondary px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                Mastery {masteryProgress}%
-              </span>
-            </div>
+        {/* Branded icon tile */}
+        <div className="shrink-0 w-12 h-12 rounded-xl bg-linear-to-br from-[#5B65E0]/70 to-[#5100a7]/70 flex items-center justify-center">
+          <Sparkles className="w-5 h-5 text-white" />
+        </div>
 
-            <h3 className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors">
-              {set.title}
-            </h3>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {stats.map((item) => (
-                <span
-                  key={item.label}
-                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium ${item.containerClass} ${item.subTextClass}`}
-                >
-                  <item.icon className="h-3.5 w-3.5" />
-                  {item.value} {item.label}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base font-bold text-slate-900 group-hover:text-[#5B65E0] transition-colors truncate">
+            {set.title}
+          </h3>
+          <div className="flex items-center gap-3 mt-1.5">
+            <span className="text-xs font-medium text-slate-500">{set.items} items</span>
+            <div className="flex gap-1.5">
+              {stats.map((stat) => (
+                <span key={stat.label} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${stat.bg}`}>
+                  <span className={`text-xs font-bold ${stat.color}`}>{stat.value}</span>
                 </span>
               ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 shrink-0">
+          {/* Mastery ring */}
+          <div className="relative w-12 h-12">
+            <svg className="w-12 h-12 -rotate-90" viewBox="0 0 44 44">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="#e2e8f0" strokeWidth="4" />
+              <circle
+                cx="22"
+                cy="22"
+                r="18"
+                fill="none"
+                stroke="#5B65E0"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 18}
+                strokeDashoffset={2 * Math.PI * 18 - (masteryProgress / 100) * 2 * Math.PI * 18}
+                className="transition-all duration-700"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-black text-slate-700">{masteryProgress}%</span>
             </div>
           </div>
 
@@ -95,31 +106,36 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
               e.preventDefault()
               e.stopPropagation()
             }}
-            className="ml-1 flex-shrink-0 rounded-lg p-2 transition-colors hover:bg-secondary"
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           >
-            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+            <MoreVertical className="w-4 h-4" />
           </button>
+
+          <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#5B65E0] group-hover:translate-x-0.5 transition-all" />
         </div>
       </Link>
     )
   }
 
+  const ringCircumference = 2 * Math.PI * 18
+
   return (
     <Link
       href={`/dashboard/study-sets/${set.id}`}
-      className="group relative block overflow-hidden rounded-2xl border border-border/70 bg-card/90 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10"
+      className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white hover:border-[#5B65E0]/40 shadow-xl shadow-[#5B65E0]/10 transition-all duration-300 hover:-translate-y-1 h-full flex flex-col"
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-r from-primary/10 via-purple-500/5 to-cyan-500/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      {/* Branded cover header */}
+      <div className="relative  overflow-hidden  p-5">
+  
 
-      <div className="relative mb-4 flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            Study Set
+        <div className="relative flex items-start justify-between">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/15 border border-primary/25 rounded-full backdrop-blur-sm">
+            <Sparkles className="w-3 h-3 text-primary" />
+            <span className="text-[11px] font-bold text-primary tracking-wide">Study Set</span>
           </div>
-          <h3 className="truncate text-xl font-semibold text-foreground transition-colors group-hover:text-primary">
-            {set.title}
-          </h3>
+
+          {/* Mastery ring */}
+     
         </div>
 
         <button
@@ -127,41 +143,47 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
             e.preventDefault()
             e.stopPropagation()
           }}
-          className="flex-shrink-0 rounded-lg p-2 transition-colors hover:bg-secondary"
+          className="absolute bottom-3 right-3 p-1.5 text-white/60 hover:text-white hover:bg-white/15 rounded-lg transition-colors"
         >
-          <MoreVertical className="w-4 h-4 text-muted-foreground" />
+          <MoreVertical className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="relative space-y-4">
-        <div className="grid grid-cols-2 gap-2.5 text-sm pt-4">
-          {stats.map((item) => (
-            <div key={item.label} className={`rounded-xl border p-3 ${item.containerClass}`}>
-              <div className="mb-1 flex items-center justify-between">
-                <p className={`text-lg font-bold leading-none ${item.textClass}`}>{item.value}</p>
-                <item.icon className={`h-4 w-4 ${item.subTextClass}`} />
-              </div>
-              <p className={`text-xs font-medium ${item.subTextClass}`}>{item.label}</p>
+      {/* Content */}
+      <div className="relative p-5 flex flex-col flex-1">
+        <h3 className="text-base font-bold text-slate-900 group-hover:text-[#5B65E0] transition-colors line-clamp-2 mb-4 min-h-10">
+          {set.title}
+        </h3>
+
+        {/* Stats Grid - 4 columns */}
+        {/* <div className="grid grid-cols-2 gap-2 mb-4">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className={`${stat.bg} rounded-xl py-2.5 flex flex-col items-center gap-1`}
+            >
+              <stat.icon className={`w-3.5 h-3.5 ${stat.color}`} />
+              <p className={`text-base font-black leading-none ${stat.color}`}>{stat.value}</p>
             </div>
           ))}
-        </div>
+        </div> */}
 
-        <div className="rounded-xl border border-border/70 bg-background/70 p-3">
-          <div className="mb-2 flex items-center justify-between text-xs font-medium">
-            <p className="text-muted-foreground">Mastery Progress</p>
-            <p className="text-foreground">{masteryProgress}%</p>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-secondary">
+        {/* Progress bar */}
+        <div className="mt-auto pt-3 border-t border-slate-100">
+          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-2">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-primary to-cyan-500 transition-all"
+              className="h-full bg-linear-to-r from-[#5B65E0] to-[#5100a7] transition-all duration-700 rounded-full"
               style={{ width: `${masteryProgress}%` }}
             />
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">Total items: {set.items}</p>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-500 font-medium">{set.items} items</span>
+            <span className="font-bold text-slate-600">
+              {masteryProgress === 100 ? '✨ Mastered' : `${100 - masteryProgress}% to go`}
+            </span>
+          </div>
         </div>
       </div>
     </Link>
   )
 }
-
-
