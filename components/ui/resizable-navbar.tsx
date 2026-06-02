@@ -121,7 +121,7 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
     <motion.div
       onMouseLeave={() => setHovered(null)}
       className={cn(
-        "  inset-0 hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium text-zinc-600 transition duration-200 hover:text-zinc-800 lg:flex lg:space-x-2",
+        "  inset-0 hidden flex-1 flex-row max-w-[33%] items-center space-x-2 text-sm font-medium text-zinc-600 transition duration-200 hover:text-zinc-800 lg:flex lg:space-x-2",
         className,
       )}
     >
@@ -235,11 +235,13 @@ export const NavbarLogo = () => {
   return (
     <a
       href="#"
-      className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal text-black"
+      className="relative z-20 mr-4 flex items-center justify-center space-x-2 px-2 py-1 text-sm font-normal text-black"
     >
-      <div className="text-3xl flex font-bold  ">
-        {/* <Image src='/icon.png' alt="WorkPilot.AI" width={30} height={30} /> */}
-        workpilot
+      <div className="text-3xl flex font-bold items-center gap-2   ">
+        <Image src='/logo-icon.png' alt="WorkPilot.AI" width={50} height={25} />
+        <span className="hidden text-shadow-md sm:inline-block mt-2 text-blue-900 font-extrabold">
+          <span className="">Work</span>
+          Pilot</span>
       </div>
     </a>
   );

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Sparkles, ClipboardCheck, TrendingUp, ArrowRight, Plus } from 'lucide-react'
+import { BookOpen, Sparkles, ClipboardCheck, ArrowRight } from 'lucide-react'
 import { getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
 
 export default function DashboardIndexPage() {
@@ -30,12 +30,12 @@ export default function DashboardIndexPage() {
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Welcome Hero */}
         <div className="mb-16">
-          <div className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-linear-to-r from-blue-50 to-purple-50 border border-blue-200/60 shadow-sm mb-6">
+          {/* <div className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-linear-to-r from-blue-50 to-purple-50 border border-blue-200/60 shadow-sm mb-6">
             <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
             <span className="text-sm font-semibold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Welcome back!</span>
-          </div>
+          </div> */}
           <div className="space-y-4">
-            <h1 className="text-5xl md:text-6xl font-black bg-linear-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent leading-tight tracking-tight">
+            <h1 className="text-2xl md:text-5xl font-black bg-linear-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent leading-tight tracking-tight">
               Let's continue learning
             </h1>
             <p className="text-lg text-slate-600 max-w-3xl leading-relaxed font-medium">
@@ -45,103 +45,154 @@ export default function DashboardIndexPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
           {/* Study Sets Stats */}
-          <div className="group relative p-8 bg-white rounded-3xl border border-slate-200/40 hover:border-blue-300/60 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-100/30 overflow-hidden">
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-linear-to-br from-blue-100 to-transparent opacity-0 group-hover:opacity-40 transition-opacity duration-500 rounded-full blur-2xl"></div>
-            <div className="relative z-10">
-              <div className="flex items-start justify-between mb-5">
-                <div className="p-4 bg-linear-to-br from-blue-100/80 to-blue-50/40 rounded-2xl group-hover:from-blue-100 transition-all duration-300 shadow-sm">
-                  <BookOpen className="w-7 h-7 text-blue-600" />
+          <div className="group relative overflow-hidden p-6 bg-linear-to-br from-blue-50 to-white rounded-2xl border border-blue-200/30 hover:border-blue-300/50 transition-all duration-300 shadow-xl">
+            <div className="absolute -right-8 -top-8 w-24 h-24 bg-blue-100/40 rounded-full blur-2xl group-hover:bg-blue-100/60 transition-all"></div>
+            <div className="relative z-10 flex items-end justify-between">
+              <div className="flex-1">
+                <p className="text-xs text-slate-500 font-semibold mb-2">Study Sets</p>
+                <div className="mb-2">
+                  <h3 className="text-4xl font-black text-blue-600">{studySets.length}</h3>
                 </div>
-                <div className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 rounded-full">
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-xs font-bold text-emerald-700">+12%</span>
-                </div>
+                <span className="inline-block px-3 py-1 text-xs font-bold text-emerald-700 bg-emerald-100/70 rounded-full">+12%</span>
               </div>
-              <p className="text-sm font-semibold text-slate-500 mb-2">Study Sets</p>
-              <h3 className="text-4xl font-black text-slate-900 mb-1">{studySets.length}</h3>
-              <p className="text-xs text-slate-500 font-medium">Created topics</p>
+              <div className="p-4 bg-linear-to-br from-blue-100 to-blue-50 rounded-xl group-hover:shadow-lg transition-all">
+                <BookOpen className="w-6 h-6 text-blue-600" />
+              </div>
             </div>
           </div>
 
           {/* Learning Streak */}
-          <div className="group relative p-8 bg-white rounded-3xl border border-slate-200/40 hover:border-purple-300/60 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-100/30 overflow-hidden">
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-linear-to-br from-purple-100 to-transparent opacity-0 group-hover:opacity-40 transition-opacity duration-500 rounded-full blur-2xl"></div>
-            <div className="relative z-10">
-              <div className="flex items-start justify-between mb-5">
-                <div className="p-4 bg-linear-to-br from-purple-100/80 to-purple-50/40 rounded-2xl group-hover:from-purple-100 transition-all duration-300 shadow-sm">
-                  <Sparkles className="w-7 h-7 text-purple-600" />
+          <div className="group relative overflow-hidden p-6 bg-linear-to-br from-purple-50 to-white rounded-2xl border border-purple-200/30 hover:border-purple-300/50 transition-all duration-300 shadow-xl">
+            <div className="absolute -right-8 -top-8 w-24 h-24 bg-purple-100/40 rounded-full blur-2xl group-hover:bg-purple-100/60 transition-all"></div>
+            <div className="relative z-10 flex items-end justify-between">
+              <div className="flex-1">
+                <p className="text-xs text-slate-500 font-semibold mb-2">Ready to Generate</p>
+                <div className="mb-2">
+                  <h3 className="text-4xl font-black text-purple-600">{studySets.length > 0 ? '∞' : '0'}</h3>
                 </div>
-                <div className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 rounded-full">
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-xs font-bold text-emerald-700">Unlimited</span>
-                </div>
+                <span className="inline-block px-3 py-1 text-xs font-bold text-emerald-700 bg-emerald-100/70 rounded-full">Unlimited</span>
               </div>
-              <p className="text-sm font-semibold text-slate-500 mb-2">Ready to Generate</p>
-              <h3 className="text-4xl font-black text-slate-900 mb-1">{studySets.length > 0 ? '∞' : '0'}</h3>
-              <p className="text-xs text-slate-500 font-medium">Study materials</p>
+              <div className="p-4 bg-linear-to-br from-purple-100 to-purple-50 rounded-xl group-hover:shadow-lg transition-all">
+                <Sparkles className="w-6 h-6 text-purple-600" />
+              </div>
             </div>
           </div>
 
           {/* Features */}
-          <div className="group relative p-8 bg-white rounded-3xl border border-slate-200/40 hover:border-cyan-300/60 transition-all duration-500 hover:shadow-2xl hover:shadow-cyan-100/30 overflow-hidden">
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-linear-to-br from-cyan-100 to-transparent opacity-0 group-hover:opacity-40 transition-opacity duration-500 rounded-full blur-2xl"></div>
-            <div className="relative z-10">
-              <div className="flex items-start justify-between mb-5">
-                <div className="p-4 bg-linear-to-br from-cyan-100/80 to-cyan-50/40 rounded-2xl group-hover:from-cyan-100 transition-all duration-300 shadow-sm">
-                  <ClipboardCheck className="w-7 h-7 text-cyan-600" />
+          <div className="group relative overflow-hidden p-6 bg-linear-to-br from-cyan-50 to-white rounded-2xl border border-cyan-200/30 hover:border-cyan-300/50 transition-all duration-300 shadow-xl">
+            <div className="absolute -right-8 -top-8 w-24 h-24 bg-cyan-100/40 rounded-full blur-2xl group-hover:bg-cyan-100/60 transition-all"></div>
+            <div className="relative z-10 flex items-end justify-between">
+              <div className="flex-1">
+                <p className="text-xs text-slate-500 font-semibold mb-2">Tools Available</p>
+                <div className="mb-2">
+                  <h3 className="text-4xl font-black text-cyan-600">5+</h3>
                 </div>
-                <div className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 rounded-full">
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-xs font-bold text-emerald-700">Active</span>
-                </div>
+                <span className="inline-block px-3 py-1 text-xs font-bold text-emerald-700 bg-emerald-100/70 rounded-full">Active</span>
               </div>
-              <p className="text-sm font-semibold text-slate-500 mb-2">Tools Available</p>
-              <h3 className="text-4xl font-black text-slate-900 mb-1">5+</h3>
-              <p className="text-xs text-slate-500 font-medium">Learning features</p>
+              <div className="p-4 bg-linear-to-br from-cyan-100 to-cyan-50 rounded-xl group-hover:shadow-lg transition-all">
+                <ClipboardCheck className="w-6 h-6 text-cyan-600" />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="mb-16">
-          <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
+        {/* Quick Actions with Enhanced Animations & Effects */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
             <div className="w-1 h-8 bg-linear-to-b from-blue-600 to-purple-600 rounded-full"></div>
             Quick Actions
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          <style>{`
+            @keyframes float-up {
+              0%, 100% { transform: translateY(0px); }
+              50% { transform: translateY(-6px); }
+            }
+            @keyframes gradient-shimmer {
+              0% { background-position: -1000px 0; }
+              100% { background-position: 1000px 0; }
+            }
+            @keyframes pulse-border {
+              0%, 100% { border-color: rgba(59, 130, 246, 0.3); }
+              50% { border-color: rgba(147, 51, 234, 0.5); }
+            }
+            .action-button {
+              position: relative;
+              overflow: hidden;
+              transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+              background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            }
+            .action-button::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+              opacity: 0;
+              transition: opacity 0.4s;
+            }
+            .action-button:hover {
+              transform: translateY(-4px);
+              box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2), 0 0 0 1px rgba(59, 130, 246, 0.15);
+              border-color: rgba(59, 130, 246, 0.6);
+              background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+            }
+            .action-button:hover::before {
+              opacity: 1;
+              animation: gradient-shimmer 0.6s;
+            }
+            .action-icon {
+              transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+              animation: float-up 3s ease-in-out infinite;
+            }
+            .action-button:hover .action-icon {
+              transform: scale(1.1) rotate(5deg);
+              animation: none;
+              filter: brightness(1.2);
+            }
+            .action-arrow {
+              transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .action-button:hover .action-arrow {
+              transform: translateX(6px);
+              color: inherit;
+            }
+          `}</style>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={() => router.push('/dashboard/study-sets')}
-              className="group relative p-8 bg-white rounded-3xl border border-slate-200/40 hover:border-blue-300/60 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-100/30 text-left overflow-hidden"
+              className="action-button group p-5 bg-linear-to-br from-blue-100 to-blue-50 rounded-xl border border-blue-200/50 text-left"
             >
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-linear-to-br from-blue-100 to-transparent opacity-0 group-hover:opacity-30 transition-opacity duration-500 rounded-full blur-3xl"></div>
-              <div className="relative flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="w-14 h-14 bg-linear-to-br from-blue-100/80 to-blue-50/40 rounded-2xl flex items-center justify-center mb-4 group-hover:from-blue-100 transition-all duration-300 shadow-sm group-hover:shadow-md">
-                    <BookOpen className="w-7 h-7 text-blue-600" />
-                  </div>
-                  <h3 className="font-bold text-lg text-slate-900 mb-2">Create Study Sets</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">Upload files or paste content to generate study materials</p>
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="p-2.5 bg-blue-50 rounded-lg shrink-0">
+                  <BookOpen className="action-icon w-5 h-5 text-blue-600" />
                 </div>
-                <ArrowRight className="w-6 h-6 text-slate-400 group-hover:text-blue-600 transition-all duration-300 group-hover:translate-x-1 mt-1 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-sm text-slate-900 mb-1">Create Study Sets</h3>
+                  <p className="text-xs text-slate-600 line-clamp-2">Upload files or paste content to generate study materials</p>
+                </div>
+                <ArrowRight className="action-arrow w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0 mt-0.5" />
               </div>
             </button>
 
             <button
               onClick={() => router.push('/dashboard/syllabus-intelligence')}
-              className="group relative p-8 bg-white rounded-3xl border border-slate-200/40 hover:border-purple-300/60 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-100/30 text-left overflow-hidden"
+              className="action-button group p-5 bg-linear-to-br from-purple-100 to-purple-50 rounded-xl border border-purple-200/50 text-left"
             >
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-linear-to-br from-purple-100 to-transparent opacity-0 group-hover:opacity-30 transition-opacity duration-500 rounded-full blur-3xl"></div>
-              <div className="relative flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="w-14 h-14 bg-linear-to-br from-purple-100/80 to-purple-50/40 rounded-2xl flex items-center justify-center mb-4 group-hover:from-purple-100 transition-all duration-300 shadow-sm group-hover:shadow-md">
-                    <Sparkles className="w-7 h-7 text-purple-600" />
-                  </div>
-                  <h3 className="font-bold text-lg text-slate-900 mb-2">Syllabus Intelligence</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">Analyze and generate insights from your syllabus</p>
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="p-2.5 bg-purple-50 rounded-lg shrink-0">
+                  <Sparkles className="action-icon w-5 h-5 text-purple-600" />
                 </div>
-                <ArrowRight className="w-6 h-6 text-slate-400 group-hover:text-purple-600 transition-all duration-300 group-hover:translate-x-1 mt-1 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-sm text-slate-900 mb-1">Syllabus Intelligence</h3>
+                  <p className="text-xs text-slate-600 line-clamp-2">Analyze and generate insights from your syllabus</p>
+                </div>
+                <ArrowRight className="action-arrow w-4 h-4 text-slate-400 group-hover:text-purple-600 shrink-0 mt-0.5" />
               </div>
             </button>
           </div>
@@ -167,7 +218,7 @@ export default function DashboardIndexPage() {
                 <button
                   key={set.id}
                   onClick={() => router.push(`/dashboard/study-sets/${encodeURIComponent(set.id)}`)}
-                  className="group relative p-7 bg-white rounded-3xl border border-slate-200/40 hover:border-blue-300/60 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-100/30 text-left overflow-hidden"
+                  className="group relative p-7 bg-white rounded-xl border border-slate-200 hover:border-blue-300/60 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-100/30 text-left overflow-hidden"
                 >
                   <div className="absolute -top-20 -right-20 w-40 h-40 bg-linear-to-br from-blue-100 to-transparent opacity-0 group-hover:opacity-40 transition-opacity duration-500 rounded-full blur-2xl"></div>
                   <div className="relative">
