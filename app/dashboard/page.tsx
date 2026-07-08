@@ -228,7 +228,7 @@ export default function DashboardIndexPage() {
                     <p className="text-sm text-slate-600 line-clamp-2 mb-5 leading-relaxed">{set.description || 'No description'}</p>
                     <div className="flex flex-wrap gap-2">
                       {set.sections.slice(0, 2).map((section) => (
-                        <span key={section.id} className="px-3 py-1.5 bg-linear-to-r from-blue-50 to-blue-50/50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100/40">
+                        <span key={section.type} className="px-3 py-1.5 bg-linear-to-r from-blue-50 to-blue-50/50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100/40">
                           {section.label}
                         </span>
                       ))}
