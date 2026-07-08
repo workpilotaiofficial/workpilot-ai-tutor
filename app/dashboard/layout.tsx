@@ -261,6 +261,7 @@ function DashboardLayoutContent({
           setSettingsInitialTab('personalizedAi')
           setShowSettingsModal(true)
         }}
+        //here
         onOpenBilling={() => {
           setSettingsInitialTab('billing')
           setShowSettingsModal(true)
