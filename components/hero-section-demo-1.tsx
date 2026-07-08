@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowRight, Dot, Play, Sparkles } from "lucide-react";
-import Image from "next/image";
-import { motion, useMotionTemplate, useMotionValue } from "motion/react";
-import type { Variants } from "motion/react";
 import { FlipWords } from "@/components/ui/flip-words";
+import { ArrowRight, Play } from "lucide-react";
+import type { Variants } from "motion/react";
+import { motion, useMotionTemplate, useMotionValue } from "motion/react";
+import Image from "next/image";
 
 const container: Variants = {
   hidden: {},

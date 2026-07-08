@@ -1,9 +1,12 @@
 'use client'
 
-import { AlertCircle, CheckCircle2, Edit3, FileText, GraduationCap, Headphones, Layers, ListChecks, LoaderCircle, PenSquare, Sparkles, RotateCw, ChevronRight, BookOpen } from 'lucide-react'
-import type { StudySet } from '@/components/study-sets/utils'
-import type { StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
 import { type StudySetUiSectionType, toUiSectionType, uiSectionTypeLabels } from '@/components/study-sets/generation-mapping'
+import type { StudySet } from '@/components/study-sets/utils'
+import { fetchStudySetProgress, type StudySetProgressResponse } from '@/lib/api/study-sets.service'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import type { StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
+import { AlertCircle, BookOpen, CheckCircle2, ChevronRight, Edit3, FileText, GraduationCap, Headphones, Layers, ListChecks, LoaderCircle, PenSquare, RotateCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 type CardStatus = 'ready' | 'generating' | 'fetching' | 'failed'
 
@@ -78,7 +81,71 @@ function getItemCount(sectionType: StudySetUiSectionType, studySet: StudySet | n
   return section?.items?.length || 0
 }
 
+// Weighted mastery: unfamiliar counts 0, learning 1/3, familiar 2/3, mastered 1.
+function calculateMasteryPercentage(progress: StudySetProgressResponse | null): number {
+  const summary = progress?.summary
+  if (!summary || summary.total_items <= 0) return 0
+
+  const weighted =
+    summary.learning * (1 / 3) +
+    summary.familiar * (2 / 3) +
+    summary.mastered * 1
+
+  return Math.round((weighted / summary.total_items) * 100)
+}
+
+// Fixed stage order and colors: identity is carried by the legend labels + counts,
+// color is a secondary cue with distinct lightness per stage.
+const masteryStages = [
+  { key: 'unfamiliar', label: 'Unfamiliar', color: '#cbd5e1' },
+  { key: 'learning', label: 'Learning', color: '#fbbf24' },
+  { key: 'familiar', label: 'Familiar', color: '#3b82f6' },
+  { key: 'mastered', label: 'Mastered', color: '#059669' },
+] as const
+
+type MasteryStageCounts = Record<(typeof masteryStages)[number]['key'], number>
+
+// Accuracy may arrive as a 0–1 fraction; normalize to a 0–100 percent.
+function toPercent(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0
+  return Math.round(value <= 1 ? value * 100 : value)
+}
+
+function formatItemTypeLabel(itemType: string): string {
+  const labels: Record<string, string> = {
+    mcq: 'Multiple Choice',
+    multiple_choice: 'Multiple Choice',
+    flashcard: 'Flashcards',
+    flashcards: 'Flashcards',
+    fill_blank: 'Fill in the Blanks',
+    fill_in_blanks: 'Fill in the Blanks',
+    written_test: 'Written Test',
+  }
+  return labels[itemType] || itemType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function MasteryStackedBar({ counts, total }: { counts: MasteryStageCounts; total: number }) {
+  if (total <= 0) return null
+  return (
+    <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100" role="img" aria-label={masteryStages.map((s) => `${s.label}: ${counts[s.key]}`).join(', ')}>
+      {masteryStages.map((stage) => {
+        const count = counts[stage.key]
+        if (count <= 0) return null
+        return (
+          <div
+            key={stage.key}
+            className="h-full border-r-2 border-white last:border-r-0"
+            style={{ width: `${(count / total) * 100}%`, backgroundColor: stage.color }}
+            title={`${stage.label}: ${count}`}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 interface StudySetOverviewProps {
+  studySetId: string
   studySet: StudySet | null
   generationMeta: StoredStudySetGenerationMeta | null
   onOpenSection: (sectionType: StudySetUiSectionType) => void
@@ -86,11 +153,34 @@ interface StudySetOverviewProps {
 }
 
 export function StudySetOverview({
+  studySetId,
   studySet,
   generationMeta,
   onOpenSection,
   onRetrySection,
 }: StudySetOverviewProps) {
+  const [progress, setProgress] = useState<StudySetProgressResponse | null>(null)
+  const [showProgressModal, setShowProgressModal] = useState(false)
+
+  useEffect(() => {
+    if (!studySetId) return
+    let cancelled = false
+
+    fetchStudySetProgress(studySetId)
+      .then((response) => {
+        if (!cancelled) setProgress(response)
+      })
+      .catch((error) => {
+        console.error('Error fetching study set progress:', error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [studySetId])
+
+  const masteryPercentage = calculateMasteryPercentage(progress)
+
   if (!studySet) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -116,9 +206,7 @@ export function StudySetOverview({
     return (
       <div className="flex  flex-col items-center justify-center min-h-[60vh] space-y-8">
         <div className="flex flex-col items-center space-y-4">
-          <div className="w-16 h-16 rounded-3xl bg-teal-100 flex items-center justify-center">
-            <Sparkles className="w-8 h-8 text-teal-600 animate-pulse" />
-          </div>
+    
           <div className="text-center">
             <h2 className="text-3xl font-bold text-foreground">Building your study set</h2>
             <p className="text-muted-foreground mt-2">This usually takes a few seconds.</p>
@@ -197,7 +285,6 @@ export function StudySetOverview({
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
           <div className="flex-1">
             <div className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-linear-to-r from-blue-100/60 to-purple-100/60 border border-blue-200/40 backdrop-blur-sm">
-              <Sparkles className="w-4 h-4 text-blue-600" />
               <span className="text-xs font-bold text-blue-700 tracking-wide">GENERATED STUDY SET</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 leading-tight">{studySet.title}</h1>
@@ -209,9 +296,7 @@ export function StudySetOverview({
                 <span className="font-semibold">{selections.length} study formats</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-100/60 rounded-lg">
-                  <Sparkles className="w-4 h-4 text-emerald-600" />
-                </div>
+               
                 <span className="font-semibold">Ready to learn</span>
               </div>
             </div>
@@ -237,7 +322,7 @@ export function StudySetOverview({
                     fill="none"
                     stroke="#5B65E0"
                     strokeWidth="3"
-                    strokeDasharray={`${(0 / 100) * 282.7} 282.7`}
+                    strokeDasharray={`${(masteryPercentage / 100) * 282.7} 282.7`}
                     className="transition-all"
                     strokeLinecap="round"
                     style={{
@@ -247,10 +332,16 @@ export function StudySetOverview({
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center flex-col">
-                  <span className="text-3xl font-black text-blue-700">0%</span>
+                  <span className="text-3xl font-black text-blue-700">{masteryPercentage}%</span>
                   <span className="text-xs text-slate-600 font-bold mt-1">MASTERY</span>
                 </div>
               </div>
+              <button
+                onClick={() => setShowProgressModal(true)}
+                className="px-4 py-2 text-sm font-bold text-blue-700 bg-blue-100/60 hover:bg-blue-100 border border-blue-200/40 rounded-xl transition-colors"
+              >
+                View progress
+              </button>
             </div>
 
             <button
@@ -268,12 +359,85 @@ export function StudySetOverview({
         </div>
       </div>
 
+      {/* Progress Details Modal */}
+      <Dialog open={showProgressModal} onOpenChange={setShowProgressModal}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Your progress</DialogTitle>
+          </DialogHeader>
+
+          {progress && progress.summary.total_items > 0 ? (
+            <div className="space-y-8">
+            {/* Summary stat tiles */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">Overall accuracy</p>
+                <p className="mt-2 text-2xl font-black text-slate-900">{toPercent(progress.summary.overall_accuracy)}%</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">Items tracked</p>
+                <p className="mt-2 text-2xl font-black text-slate-900">{progress.summary.total_items}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">Total attempts</p>
+                <p className="mt-2 text-2xl font-black text-slate-900">{progress.summary.total_attempts}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">Correct answers</p>
+                <p className="mt-2 text-2xl font-black text-slate-900">{progress.summary.total_correct}</p>
+              </div>
+            </div>
+
+            {/* Overall mastery distribution */}
+            <div>
+              <p className="text-sm font-bold text-slate-700 mb-3">Mastery distribution</p>
+              <MasteryStackedBar counts={progress.summary} total={progress.summary.total_items} />
+              <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+                {masteryStages.map((stage) => (
+                  <div key={stage.key} className="flex items-center gap-2 text-sm text-slate-600">
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
+                    <span>{stage.label}</span>
+                    <span className="font-bold text-slate-900">{progress.summary[stage.key]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Per-type breakdown */}
+            {progress.by_type.length > 0 && (
+              <div>
+                <p className="text-sm font-bold text-slate-700 mb-3">By study format</p>
+                <div className="space-y-4">
+                  {progress.by_type.map((typeProgress) => (
+                    <div key={typeProgress.item_type} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                      <p className="w-full sm:w-40 shrink-0 text-sm font-semibold text-slate-900">
+                        {formatItemTypeLabel(typeProgress.item_type)}
+                      </p>
+                      <div className="flex-1 min-w-0">
+                        <MasteryStackedBar counts={typeProgress} total={typeProgress.total} />
+                      </div>
+                      <p className="w-full sm:w-44 shrink-0 text-xs text-slate-500 sm:text-right">
+                        {toPercent(typeProgress.accuracy)}% accuracy · {typeProgress.total_attempts}{' '}
+                        {typeProgress.total_attempts === 1 ? 'attempt' : 'attempts'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-slate-500">
+              No progress yet. Start answering questions to see your progress report here.
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Generated Sections - 3 Column Grid */}
       <div>
         <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
-          <div className="p-3 bg-linear-to-br from-blue-100/60 to-purple-100/60 rounded-xl border border-blue-200/40">
-            <Sparkles className="w-5 h-5 text-blue-600" />
-          </div>
+  
           Generated content
         </h2>
 

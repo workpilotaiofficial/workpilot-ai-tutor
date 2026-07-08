@@ -1,15 +1,14 @@
 'use client'
 
-import Link from 'next/link'
 import {
   AlertCircle,
   BookMarked,
+  ChevronRight,
   Clock3,
   MoreVertical,
-  Sparkles,
-  Trophy,
-  ChevronRight,
+  Trophy
 } from 'lucide-react'
+import Link from 'next/link'
 import type { StudySet } from './utils'
 
 interface StudySetCardProps {
@@ -58,9 +57,7 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
         className="group flex items-center gap-4 p-4 bg-card border border-border/50 rounded-xl hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300"
       >
         {/* Branded icon tile */}
-        <div className="shrink-0 w-12 h-12 rounded-xl bg-linear-to-br from-primary/70 to-thirdary/70 flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-white" />
-        </div>
+
 
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors truncate">
@@ -128,7 +125,6 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
       <div className="relative bg-linear-to-br from-primary/10 to-thirdary/10 overflow-hidden p-5">
         <div className="relative flex items-start justify-between">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/15 border border-primary/25 rounded-full backdrop-blur-sm">
-            <Sparkles className="w-3 h-3 text-primary" />
             <span className="text-[11px] font-bold text-primary tracking-wide">Study Set</span>
           </div>
         </div>

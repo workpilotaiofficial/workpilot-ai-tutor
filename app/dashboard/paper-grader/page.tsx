@@ -6,21 +6,22 @@ import GraderUploadModal from '@/components/paper-grader/upload-modal'
 import GradingResult from '@/components/paper-grader/grading-result'
 import { formatUTCDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import type { GraderResult, GraderResultResponse, GraderSubmitResponse } from '@/lib/api'
+import { subscribeToGraderSubmission } from '@/components/paper-grader/grader-tracker'
 
-interface Submission {
+const STORAGE_KEY = 'paper_grader_submissions'
+
+function isProcessingStatus(status: string) {
+  return status === 'processing' || status === 'queued' || status === 'pending'
+}
+
+export interface Submission {
   submission_id: string
   title: string
   status: string
   created_at: string
-  grading: {
-    score: number | null
-    grade: string | null
-    summary: string | null
-    strengths: string[]
-    weaknesses: string[]
-    suggestions: string[]
-    detailed_feedback: string | null
-  }
+  completed_at: string | null
+  result: GraderResult | null
 }
 
 export default function PaperGraderPage() {
@@ -33,12 +34,21 @@ export default function PaperGraderPage() {
     loadSubmissions()
   }, [])
 
-  const loadSubmissions = async () => {
+  const loadSubmissions = () => {
     setIsLoadingSubmissions(true)
     try {
-      const stored = localStorage.getItem('paper_grader_submissions')
+      const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
-        setSubmissions(JSON.parse(stored))
+        const parsed = JSON.parse(stored) as Submission[]
+        setSubmissions(parsed)
+
+        // Resume tracking for any submission still in progress (websocket token has
+        // expired by now, so the tracker falls back to polling the result endpoint).
+        parsed
+          .filter((sub) => isProcessingStatus(sub.status))
+          .forEach((sub) => {
+            subscribeToGraderSubmission({ submissionId: sub.submission_id }, applyGraderResult)
+          })
       }
     } catch (error) {
       console.error('Error loading submissions:', error)
@@ -47,73 +57,50 @@ export default function PaperGraderPage() {
     }
   }
 
-  const handleUploadSuccess = async (submissionId: string, title: string) => {
+  // Merge a grading result emitted by the tracker into local state + storage.
+  const applyGraderResult = (response: GraderResultResponse) => {
+    const { submission, result } = response
+
+    setSubmissions((prev) => {
+      const next = prev.map((sub) =>
+        sub.submission_id === submission.id
+          ? { ...sub, status: submission.status, completed_at: submission.completed_at, result }
+          : sub
+      )
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+
+    setActiveSubmission((prev) =>
+      prev && prev.submission_id === submission.id
+        ? { ...prev, status: submission.status, completed_at: submission.completed_at, result }
+        : prev
+    )
+  }
+
+  const handleUploadSuccess = (response: GraderSubmitResponse) => {
+    const { submission, websocket } = response
+
     const newSubmission: Submission = {
-      submission_id: submissionId,
-      title,
-      status: 'processing',
-      created_at: new Date().toISOString(),
-      grading: {
-        score: null,
-        grade: null,
-        summary: null,
-        strengths: [],
-        weaknesses: [],
-        suggestions: [],
-        detailed_feedback: null,
-      },
+      submission_id: submission.id,
+      title: submission.title,
+      status: isProcessingStatus(submission.status) ? submission.status : 'processing',
+      created_at: submission.created_at,
+      completed_at: null,
+      result: null,
     }
 
-    setSubmissions([newSubmission, ...submissions])
-    localStorage.setItem('paper_grader_submissions', JSON.stringify([newSubmission, ...submissions]))
+    setSubmissions((prev) => {
+      const next = [newSubmission, ...prev]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
     setActiveSubmission(newSubmission)
     setShowUploadModal(false)
 
-    pollForResults(submissionId)
-  }
-
-  const pollForResults = async (submissionId: string, maxAttempts = 30) => {
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      try {
-        const response = await fetch(`/api/v1/grader/result/${submissionId}`)
-
-        if (response.ok) {
-          const result = await response.json()
-
-          setSubmissions((prev) =>
-            prev.map((sub) =>
-              sub.submission_id === submissionId
-                ? { ...sub, status: result.status, grading: result.grading }
-                : sub
-            )
-          )
-
-          setActiveSubmission((prev) =>
-            prev && prev.submission_id === submissionId
-              ? { ...prev, status: result.status, grading: result.grading }
-              : prev
-          )
-
-          if (result.status !== 'processing') {
-            localStorage.setItem(
-              'paper_grader_submissions',
-              JSON.stringify(
-                submissions.map((sub) =>
-                  sub.submission_id === submissionId
-                    ? { ...sub, status: result.status, grading: result.grading }
-                    : sub
-                )
-              )
-            )
-            break
-          }
-        }
-      } catch (error) {
-        console.error('Error polling for results:', error)
-      }
-    }
+    // Connect to the grading websocket; once the job completes the tracker fetches
+    // the submission by id and emits it through applyGraderResult.
+    subscribeToGraderSubmission({ submissionId: submission.id, websocket }, applyGraderResult)
   }
 
   return (
@@ -184,13 +171,14 @@ export default function PaperGraderPage() {
                             </p>
                             <p className="text-sm text-muted-foreground mt-1">
                               {formatUTCDate(submission.created_at)} •{' '}
-                              {submission.status === 'processing' ? (
+                              {isProcessingStatus(submission.status) ? (
                                 <span className="text-primary font-semibold">
                                   Processing...
                                 </span>
-                              ) : submission.grading.score !== null ? (
+                              ) : submission.result?.overall_score !== null &&
+                                submission.result?.overall_score !== undefined ? (
                                 <span className="font-semibold text-foreground/70">
-                                  Score: {submission.grading.score}%
+                                  Score: {submission.result.overall_score}/{submission.result.max_score ?? 100}
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">
@@ -201,16 +189,23 @@ export default function PaperGraderPage() {
                           </div>
                         </div>
 
-                        {submission.grading.score !== null && (
-                          <div className="text-right shrink-0">
-                            <p className="text-4xl font-black bg-linear-to-r from-primary to-thirdary bg-clip-text text-transparent">
-                              {submission.grading.score}%
-                            </p>
-                            <p className="text-sm font-bold text-muted-foreground mt-1">
-                              Grade: <span className="text-lg text-foreground">{submission.grading.grade}</span>
-                            </p>
-                          </div>
-                        )}
+                        {submission.result?.overall_score !== null &&
+                          submission.result?.overall_score !== undefined && (
+                            <div className="text-right shrink-0">
+                              <p className="text-4xl font-black bg-linear-to-r from-primary to-thirdary bg-clip-text text-transparent">
+                                {submission.result.overall_score}
+                                <span className="text-xl text-muted-foreground">
+                                  /{submission.result.max_score ?? 100}
+                                </span>
+                              </p>
+                              <p className="text-sm font-bold text-muted-foreground mt-1">
+                                Grade:{' '}
+                                <span className="text-lg text-foreground">
+                                  {submission.result.overall_grade ?? '-'}
+                                </span>
+                              </p>
+                            </div>
+                          )}
 
                         <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                       </div>

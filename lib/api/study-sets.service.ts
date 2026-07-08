@@ -226,6 +226,80 @@ export type StudySetPodcastResponse = {
   podcast: Record<string, unknown>
 }
 
+export type StudySetProgressSummary = {
+  total_items: number
+  unfamiliar: number
+  learning: number
+  familiar: number
+  mastered: number
+  overall_accuracy: number
+  total_attempts: number
+  total_correct: number
+}
+
+export type StudySetProgressByType = {
+  item_type: string
+  total: number
+  unfamiliar: number
+  learning: number
+  familiar: number
+  mastered: number
+  accuracy: number
+  total_attempts: number
+}
+
+export type StudySetProgressResponse = {
+  study_set_id: string
+  summary: StudySetProgressSummary
+  by_type: StudySetProgressByType[]
+}
+
+export type StudySetAnswerMastery = {
+  previous_state: string
+  new_state: string
+  streak: number
+  accuracy_rate: number
+  attempts: number
+  correct_count: number
+  incorrect_count: number
+}
+
+export type StudySetMcqAnswerResponse = {
+  is_correct: boolean
+  correct_option_id: string | null
+  explanation: string | null
+  mastery: StudySetAnswerMastery | null
+}
+
+export type StudySetFlashcardReviewResponse = {
+  mastery: StudySetAnswerMastery | null
+} & Record<string, unknown>
+
+export type StudySetFillBlankAnswerResponse = {
+  is_correct?: boolean
+  correct_answer?: string | null
+  explanation?: string | null
+  mastery?: StudySetAnswerMastery | null
+} & Record<string, unknown>
+
+type SubmitMcqAnswerPayload = {
+  questionId: string
+  selectedOptionId: string
+  responseTimeMs: number
+}
+
+type SubmitFlashcardReviewPayload = {
+  flashcardId: string
+  wasCorrect: boolean
+  responseTimeMs: number
+}
+
+type SubmitFillBlankAnswerPayload = {
+  questionId: string
+  answers: Array<{ position: number; answer: string }>
+  responseTimeMs: number
+}
+
 type UploadStudySetTextPayload = {
   title: string
   text: string
@@ -529,6 +603,45 @@ export function fetchStudySetWrittenTest(studySetId: string) {
 
 export function fetchStudySetPodcast(studySetId: string) {
   return fetchStudySetOutput<StudySetPodcastResponse>(studySetId, 'podcast')
+}
+
+export function fetchStudySetProgress(studySetId: string) {
+  return apiClient.request<StudySetProgressResponse>(`/api/v1/study-sets/${studySetId}/progress`, {
+    method: 'GET',
+  })
+}
+
+export function submitStudySetMcqAnswer(studySetId: string, payload: SubmitMcqAnswerPayload) {
+  return apiClient.request<StudySetMcqAnswerResponse>(`/api/v1/study-sets/${studySetId}/mcq/answer`, {
+    method: 'POST',
+    body: {
+      question_id: payload.questionId,
+      selected_option_id: payload.selectedOptionId,
+      response_time_ms: Math.max(0, Math.round(payload.responseTimeMs)),
+    },
+  })
+}
+
+export function submitStudySetFlashcardReview(studySetId: string, payload: SubmitFlashcardReviewPayload) {
+  return apiClient.request<StudySetFlashcardReviewResponse>(`/api/v1/study-sets/${studySetId}/flashcard/review`, {
+    method: 'POST',
+    body: {
+      flashcard_id: payload.flashcardId,
+      was_correct: payload.wasCorrect,
+      response_time_ms: Math.max(0, Math.round(payload.responseTimeMs)),
+    },
+  })
+}
+
+export function submitStudySetFillBlankAnswer(studySetId: string, payload: SubmitFillBlankAnswerPayload) {
+  return apiClient.request<StudySetFillBlankAnswerResponse>(`/api/v1/study-sets/${studySetId}/fill_blank/answer`, {
+    method: 'POST',
+    body: {
+      question_id: payload.questionId,
+      answers: payload.answers,
+      response_time_ms: Math.max(0, Math.round(payload.responseTimeMs)),
+    },
+  })
 }
 
 export function fetchCompletedStudySetOutput(studySetId: string, type: StudySetGenerateType) {

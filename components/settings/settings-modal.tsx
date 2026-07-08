@@ -1,10 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { BarChart3, LoaderCircle, RefreshCcw, RotateCcw, Upload, X } from 'lucide-react'
+import { BarChart3, LoaderCircle, RefreshCcw, RotateCcw, X } from 'lucide-react'
 import BillingSettings from '@/components/settings/billing-settings'
 import { Button } from '@/components/ui/button'
-import { fetchCreditBalance, getApiClientErrorMessage } from '@/lib/api'
+import {
+  fetchCreditBalance,
+  fetchPersonalization,
+  getApiClientErrorMessage,
+  PERSONALIZATION_INSTRUCTIONS_MAX_LENGTH,
+  updatePersonalization,
+} from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import {
   applyThemeCustomization,
@@ -18,16 +24,6 @@ import {
 } from '@/components/settings/theme-customization'
 
 export type SettingsTab = 'account' | 'profile' | 'usage' | 'billing' | 'personalizedAi' | 'customizeTheme'
-
-type PersonalizedAiSettings = {
-  writingSampleName: string
-  writingSampleSize: number
-  writingSampleType: string
-  writingSampleText?: string
-  savedAt: string
-}
-
-const STORAGE_KEY = 'Tutora-ai-personalized-settings'
 
 const menuItems: Array<{ id: SettingsTab; label: string }> = [
   { id: 'account', label: 'Account' },
@@ -43,19 +39,6 @@ interface SettingsModalProps {
   initialTab?: SettingsTab
 }
 
-const formatFileSize = (size: number) =>
-  size < 1024 ? `${size} B` : size < 1024 * 1024 ? `${(size / 1024).toFixed(1)} KB` : `${(size / (1024 * 1024)).toFixed(1)} MB`
-
-const readWritingSample = async (file: File) => {
-  const name = file.name.toLowerCase()
-  if (!file.type.startsWith('text/') && !name.endsWith('.txt') && !name.endsWith('.md') && !name.endsWith('.markdown')) return undefined
-  try {
-    return (await file.text()).slice(0, 12000)
-  } catch {
-    return undefined
-  }
-}
-
 const LIGHT_BACKGROUND_REFERENCE = '#FFFFFF'
 const DARK_BACKGROUND_REFERENCE = '#1A1A1A'
 
@@ -69,8 +52,9 @@ const getContrastRating = (ratio: number) => {
 export default function SettingsModal({ onClose, initialTab = 'personalizedAi' }: SettingsModalProps) {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [savedData, setSavedData] = useState<PersonalizedAiSettings | null>(null)
+  const [instructions, setInstructions] = useState('')
+  const [hasLoadedPersonalization, setHasLoadedPersonalization] = useState(false)
+  const [isPersonalizationLoading, setIsPersonalizationLoading] = useState(false)
   const [themeSettings, setThemeSettings] = useState<ThemeCustomization>(DEFAULT_THEME_CUSTOMIZATION)
   const [isSaving, setIsSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
@@ -83,16 +67,33 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi' }
 
   useEffect(() => {
     setThemeSettings(getStoredThemeCustomization())
+  }, [])
+
+  const loadPersonalization = useCallback(async () => {
+    setIsPersonalizationLoading(true)
 
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw) as PersonalizedAiSettings
-      if (parsed?.writingSampleName) setSavedData(parsed)
-    } catch {
-      localStorage.removeItem(STORAGE_KEY)
+      const result = await fetchPersonalization()
+      setInstructions(result.instructions)
+      setHasLoadedPersonalization(true)
+    } catch (error) {
+      toast({
+        title: 'Unable to load instructions',
+        description: getApiClientErrorMessage(error, 'Your personalization could not be loaded.'),
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPersonalizationLoading(false)
     }
-  }, [])
+  }, [toast])
+
+  useEffect(() => {
+    if (activeTab !== 'personalizedAi' || hasLoadedPersonalization) {
+      return
+    }
+
+    void loadPersonalization()
+  }, [activeTab, hasLoadedPersonalization, loadPersonalization])
 
   useEffect(() => {
     const onEsc = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
@@ -126,20 +127,26 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi' }
     void loadCreditBalance()
   }, [activeTab, hasLoadedUsage, loadCreditBalance])
 
-  const saveSample = async () => {
-    if (!selectedFile) return
+  const saveInstructions = async () => {
+    const trimmed = instructions.trim()
+    if (!trimmed) return
+
     setIsSaving(true)
-    const payload: PersonalizedAiSettings = {
-      writingSampleName: selectedFile.name,
-      writingSampleSize: selectedFile.size,
-      writingSampleType: selectedFile.type || 'unknown',
-      writingSampleText: await readWritingSample(selectedFile),
-      savedAt: new Date().toISOString(),
+    setStatus(null)
+
+    try {
+      const result = await updatePersonalization({ instructions: trimmed })
+      setInstructions(result.instructions || trimmed)
+      setStatus('Personalized AI instructions saved successfully.')
+    } catch (error) {
+      toast({
+        title: 'Unable to save instructions',
+        description: getApiClientErrorMessage(error, 'Your instructions could not be saved.'),
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSaving(false)
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
-    setSavedData(payload)
-    setStatus('Personalized AI writing sample saved successfully.')
-    setIsSaving(false)
   }
 
   const saveThemeSettings = () => {
@@ -181,23 +188,28 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi' }
               <div className="space-y-5">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Personalized AI</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Upload the student&apos;s writing sample. This will be used for future AI personalization.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Add custom instructions to tailor how the AI responds to you. These will be applied across your sessions.</p>
                 </div>
 
-                <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-secondary/20 p-8 text-center hover:border-primary/40">
-                  <Upload className="h-6 w-6 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Click to upload writing sample</p>
-                    <p className="text-xs text-muted-foreground">TXT, MD, DOC, DOCX, PDF</p>
-                  </div>
-                  <input type="file" className="hidden" accept=".txt,.md,.markdown,.doc,.docx,.pdf,text/plain,text/markdown,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => { setSelectedFile(event.target.files?.[0] ?? null); setStatus(null) }} />
-                </label>
+                <div className="space-y-2">
+                  <label htmlFor="personalization-instructions" className="text-sm font-medium text-foreground">Instructions</label>
+                  <textarea
+                    id="personalization-instructions"
+                    value={instructions}
+                    maxLength={PERSONALIZATION_INSTRUCTIONS_MAX_LENGTH}
+                    onChange={(event) => { setInstructions(event.target.value); setStatus(null) }}
+                    disabled={isPersonalizationLoading}
+                    rows={8}
+                    placeholder="e.g. Explain concepts step by step, use simple language, and include practice examples."
+                    className="w-full resize-y rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <p className="text-right text-xs text-muted-foreground">{instructions.length} / {PERSONALIZATION_INSTRUCTIONS_MAX_LENGTH}</p>
+                </div>
 
-                {selectedFile && <div className="rounded-lg border border-border bg-background p-3 text-sm"><p className="font-medium text-foreground">Selected file: {selectedFile.name}</p><p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p></div>}
-                {savedData && <div className="rounded-lg border border-border bg-secondary/20 p-3 text-sm"><p className="font-medium text-foreground">Saved sample: {savedData.writingSampleName}</p><p className="text-xs text-muted-foreground">{formatFileSize(savedData.writingSampleSize)}</p></div>}
+                {isPersonalizationLoading && <p className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="h-4 w-4 animate-spin" />Loading your instructions...</p>}
                 {status && <p className="text-sm text-primary">{status}</p>}
 
-                <button onClick={saveSample} disabled={!selectedFile || isSaving} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button>
+                <button onClick={saveInstructions} disabled={!instructions.trim() || isSaving || isPersonalizationLoading} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button>
               </div>
             ) : activeTab === 'usage' ? (
               <div className="space-y-5">

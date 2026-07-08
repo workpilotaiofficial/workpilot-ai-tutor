@@ -181,11 +181,14 @@ function normalizeMultipleChoiceSection(payload: any): StudySetSection {
       const matchingOption = options.find((option: any) => option?.id === correctId)
 
       return {
+        id: typeof question?.id === 'string' ? question.id : undefined,
         question:
           question?.question_text ??
           question?.questionText ??
           'Question unavailable',
         options: options.map((option: any) => option?.text ?? '').filter(Boolean),
+        optionIds: options.map((option: any) => (typeof option?.id === 'string' ? option.id : '')),
+        correctOptionId: typeof correctId === 'string' ? correctId : undefined,
         answer: typeof matchingOption?.text === 'string' ? matchingOption.text : null,
         explanation: typeof question?.explanation === 'string' ? question.explanation : null,
       }
@@ -200,6 +203,7 @@ function normalizeFlashcardsSection(payload: any): StudySetSection {
     type: 'flashcards',
     label: 'Flashcards',
     items: cards.map((card: any) => ({
+      id: typeof card?.id === 'string' ? card.id : undefined,
       prompt:
         card?.term ??
         card?.prompt ??
@@ -225,6 +229,7 @@ function normalizeFillInTheBlanksSection(payload: any): StudySetSection {
         Array.isArray(question?.blanks) && question.blanks.length > 0 ? question.blanks[0] : null
 
       return {
+        id: typeof question?.id === 'string' ? question.id : undefined,
         sentence:
           question?.display_sentence ??
           question?.displaySentence ??
@@ -232,6 +237,7 @@ function normalizeFillInTheBlanksSection(payload: any): StudySetSection {
           question?.fullSentence ??
           'Generated blank question',
         answer: typeof firstBlank?.answer === 'string' ? firstBlank.answer : '',
+        blanks: Array.isArray(question?.blanks) ? question.blanks : [],
         explanation:
           typeof firstBlank?.hint === 'string' ? firstBlank.hint :
           typeof question?.explanation === 'string' ? question.explanation :

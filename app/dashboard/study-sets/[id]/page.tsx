@@ -28,6 +28,11 @@ import {
 } from '@/components/study-sets/utils'
 import { subscribeToStudySetGeneration } from '@/components/study-sets/generation-tracker'
 import { getStudySetGenerationMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
+import {
+  submitStudySetFillBlankAnswer,
+  submitStudySetFlashcardReview,
+  submitStudySetMcqAnswer,
+} from '@/lib/api/study-sets.service'
 import { NotesEditor } from '@/components/study-sets/NotesEditor'
 import { StudySetOverview } from './overview'
 
@@ -208,6 +213,25 @@ function getAssessmentImprovementTip(scorePercent: number, wrongCount: number) {
   return 'Start with the notes section to rebuild fundamentals, then retry this quiz after a short focused review.'
 }
 
+type McqItemResult = {
+  isCorrect: boolean
+  correctOptionIndex: number | null
+  explanation: string | null
+}
+
+type FillItemResult = {
+  isCorrect: boolean
+  correctAnswer: string | null
+  explanation: string | null
+}
+
+function getLocalCorrectOptionIndex(item: any) {
+  const options: unknown[] = Array.isArray(item?.options) ? item.options : []
+  return options.findIndex(
+    (option, idx) => typeof option === 'string' && isCorrectMultipleChoiceOption(item, option, idx),
+  )
+}
+
 async function syncStudySetStatsToDatabase(
   studySetId: string,
   stats: { unfamiliar: number; learning: number; familiar: number; mastered: number },
@@ -245,8 +269,12 @@ export default function StudySetDetailPage({
   const [currentItemIndex, setCurrentItemIndex] = useState(0)
   const [flashcardFlipped, setFlashcardFlipped] = useState(false)
   const [mcqSelections, setMcqSelections] = useState<Record<number, number>>({})
+  const [mcqResults, setMcqResults] = useState<Record<number, McqItemResult>>({})
   const [fillAnswers, setFillAnswers] = useState<Record<number, string>>({})
   const [fillSubmitted, setFillSubmitted] = useState<Record<number, boolean>>({})
+  const [fillResults, setFillResults] = useState<Record<number, FillItemResult>>({})
+  const [flashcardReviews, setFlashcardReviews] = useState<Record<number, boolean>>({})
+  const questionStartedAtRef = useRef(Date.now())
   const [writtenAnswers, setWrittenAnswers] = useState<Record<number, string>>({})
   const [writtenEvaluations, setWrittenEvaluations] = useState<
     Record<number, { submitted: boolean; score: number; feedback: string; missingKeywords: string[] }>
@@ -309,6 +337,10 @@ export default function StudySetDetailPage({
     setFlashcardFlipped(false)
   }, [activeSectionType])
 
+  useEffect(() => {
+    questionStartedAtRef.current = Date.now()
+  }, [activeSectionType, currentItemIndex])
+
   const activeSection = useMemo(
     () => studySet?.sections.find((section) => section.type === activeSectionType) ?? null,
     [studySet, activeSectionType],
@@ -332,18 +364,11 @@ export default function StudySetDetailPage({
   )
 
   const mcqCorrectCount = useMemo(() => {
-    return multipleChoiceItems.reduce((totalCorrect: number, item: any, itemIndex: number) => {
-      const selectedOptionIndex = mcqSelections[itemIndex]
-      if (selectedOptionIndex === undefined) return totalCorrect
-
-      const selectedOption = item?.options?.[selectedOptionIndex]
-      if (typeof selectedOption !== 'string') return totalCorrect
-
-      return isCorrectMultipleChoiceOption(item, selectedOption, selectedOptionIndex)
-        ? totalCorrect + 1
-        : totalCorrect
+    return multipleChoiceItems.reduce((totalCorrect: number, _item: any, itemIndex: number) => {
+      if (mcqSelections[itemIndex] === undefined) return totalCorrect
+      return mcqResults[itemIndex]?.isCorrect ? totalCorrect + 1 : totalCorrect
     }, 0)
-  }, [multipleChoiceItems, mcqSelections])
+  }, [multipleChoiceItems, mcqSelections, mcqResults])
 
   const mcqWrongCount = Math.max(0, mcqAnsweredCount - mcqCorrectCount)
   const mcqTotalCount = multipleChoiceItems.length
@@ -366,9 +391,13 @@ export default function StudySetDetailPage({
     () =>
       fillInBlankItems.reduce((count: number, item: any, idx: number) => {
         if (!fillSubmitted[idx]) return count
-        return isFillAnswerCorrect(item, fillAnswers[idx] ?? '') ? count + 1 : count
+        const result = fillResults[idx]
+        const isCorrect = result
+          ? result.isCorrect
+          : isFillAnswerCorrect(item, fillAnswers[idx] ?? '')
+        return isCorrect ? count + 1 : count
       }, 0),
-    [fillInBlankItems, fillAnswers, fillSubmitted],
+    [fillInBlankItems, fillAnswers, fillSubmitted, fillResults],
   )
 
   const fillTotalCount = fillInBlankItems.length
@@ -446,8 +475,13 @@ export default function StudySetDetailPage({
         unfamiliar += 1
         return
       }
+      const result = mcqResults[idx]
       const selectedOption = item?.options?.[selectedIdx]
-      if (typeof selectedOption === 'string' && isCorrectMultipleChoiceOption(item, selectedOption, selectedIdx)) {
+      const isCorrect = result
+        ? result.isCorrect
+        : typeof selectedOption === 'string' &&
+          isCorrectMultipleChoiceOption(item, selectedOption, selectedIdx)
+      if (isCorrect) {
         mastered += 1
       } else {
         learning += 1
@@ -459,7 +493,9 @@ export default function StudySetDetailPage({
         unfamiliar += 1
         return
       }
-      if (isFillAnswerCorrect(item, fillAnswers[idx] ?? '')) {
+      const result = fillResults[idx]
+      const isCorrect = result ? result.isCorrect : isFillAnswerCorrect(item, fillAnswers[idx] ?? '')
+      if (isCorrect) {
         mastered += 1
       } else {
         learning += 1
@@ -489,7 +525,7 @@ export default function StudySetDetailPage({
       mastered,
       total: unfamiliar + learning + familiar + mastered,
     }
-  }, [allFillItems, allMultipleChoiceItems, allWrittenItems, fillAnswers, fillSubmitted, mcqSelections, writtenEvaluations])
+  }, [allFillItems, allMultipleChoiceItems, allWrittenItems, fillAnswers, fillSubmitted, fillResults, mcqSelections, mcqResults, writtenEvaluations])
 
   const hasAnyInteractiveSubmission = useMemo(
     () =>
@@ -601,6 +637,135 @@ export default function StudySetDetailPage({
     }
   }
 
+  const backendStudySetId = generationMeta?.studySetId?.trim() || id
+
+  const getResponseTimeMs = () => Math.max(0, Date.now() - questionStartedAtRef.current)
+
+  const handleMcqSelect = async (item: any, optionIndex: number) => {
+    const itemIndex = currentItemIndex
+    if (mcqSelections[itemIndex] !== undefined) return
+
+    const responseTimeMs = getResponseTimeMs()
+    setMcqSelections((prev) => ({ ...prev, [itemIndex]: optionIndex }))
+
+    const localCorrectIndex = getLocalCorrectOptionIndex(item)
+    setMcqResults((prev) => ({
+      ...prev,
+      [itemIndex]: {
+        isCorrect: localCorrectIndex === optionIndex,
+        correctOptionIndex: localCorrectIndex >= 0 ? localCorrectIndex : null,
+        explanation: typeof item?.explanation === 'string' ? item.explanation : null,
+      },
+    }))
+
+    const questionId = typeof item?.id === 'string' ? item.id : null
+    const selectedOptionId =
+      Array.isArray(item?.optionIds) && typeof item.optionIds[optionIndex] === 'string'
+        ? item.optionIds[optionIndex]
+        : null
+
+    if (!questionId || !selectedOptionId) return
+
+    try {
+      const result = await submitStudySetMcqAnswer(backendStudySetId, {
+        questionId,
+        selectedOptionId,
+        responseTimeMs,
+      })
+
+      const optionIds: string[] = Array.isArray(item?.optionIds) ? item.optionIds : []
+      const backendCorrectIndex = result.correct_option_id
+        ? optionIds.indexOf(result.correct_option_id)
+        : result.is_correct
+          ? optionIndex
+          : localCorrectIndex
+
+      setMcqResults((prev) => ({
+        ...prev,
+        [itemIndex]: {
+          isCorrect: result.is_correct,
+          correctOptionIndex: backendCorrectIndex >= 0 ? backendCorrectIndex : null,
+          explanation:
+            result.explanation ?? (typeof item?.explanation === 'string' ? item.explanation : null),
+        },
+      }))
+    } catch {
+      // Backend marking unavailable: local marking already applied above.
+    }
+  }
+
+  const handleFillSubmit = async (item: any) => {
+    const itemIndex = currentItemIndex
+    const answerText = (fillAnswers[itemIndex] ?? '').trim()
+    if (!answerText) return
+
+    const responseTimeMs = getResponseTimeMs()
+    setFillSubmitted((prev) => ({ ...prev, [itemIndex]: true }))
+    setFillResults((prev) => ({
+      ...prev,
+      [itemIndex]: {
+        isCorrect: isFillAnswerCorrect(item, answerText),
+        correctAnswer: typeof item?.answer === 'string' ? item.answer : null,
+        explanation: typeof item?.explanation === 'string' ? item.explanation : null,
+      },
+    }))
+
+    const questionId = typeof item?.id === 'string' ? item.id : null
+    if (!questionId) return
+
+    const firstBlank =
+      Array.isArray(item?.blanks) && item.blanks.length > 0 ? item.blanks[0] : null
+
+    try {
+      const result = await submitStudySetFillBlankAnswer(backendStudySetId, {
+        questionId,
+        answers: [
+          {
+            position: typeof firstBlank?.position === 'number' ? firstBlank.position : 1,
+            answer: answerText,
+          },
+        ],
+        responseTimeMs,
+      })
+
+      if (typeof result?.is_correct === 'boolean') {
+        setFillResults((prev) => ({
+          ...prev,
+          [itemIndex]: {
+            isCorrect: result.is_correct as boolean,
+            correctAnswer:
+              (typeof result.correct_answer === 'string' ? result.correct_answer : null) ??
+              (typeof item?.answer === 'string' ? item.answer : null),
+            explanation:
+              (typeof result.explanation === 'string' ? result.explanation : null) ??
+              (typeof item?.explanation === 'string' ? item.explanation : null),
+          },
+        }))
+      }
+    } catch {
+      // Backend marking unavailable: local marking already applied above.
+    }
+  }
+
+  const handleFlashcardReview = (item: any, wasCorrect: boolean) => {
+    const itemIndex = currentItemIndex
+    if (flashcardReviews[itemIndex] !== undefined) return
+
+    const responseTimeMs = getResponseTimeMs()
+    setFlashcardReviews((prev) => ({ ...prev, [itemIndex]: wasCorrect }))
+
+    const flashcardId = typeof item?.id === 'string' ? item.id : null
+    if (!flashcardId) return
+
+    void submitStudySetFlashcardReview(backendStudySetId, {
+      flashcardId,
+      wasCorrect,
+      responseTimeMs,
+    }).catch(() => {
+      // Review tracking is best-effort; local state already reflects the choice.
+    })
+  }
+
   const renderMultipleChoice = (item: any) => {
     if (isMcqComplete) {
       return (
@@ -618,6 +783,7 @@ export default function StudySetDetailPage({
               type="button"
               onClick={() => {
                 setMcqSelections({})
+                setMcqResults({})
                 setCurrentItemIndex(0)
               }}
               className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-secondary/60"
@@ -631,14 +797,9 @@ export default function StudySetDetailPage({
 
     const selectedOptionIndex = mcqSelections[currentItemIndex]
     const hasSelectedOption = selectedOptionIndex !== undefined
-    const selectedOption =
-      hasSelectedOption && typeof item?.options?.[selectedOptionIndex] === 'string'
-        ? item.options[selectedOptionIndex]
-        : null
-
-    const isSelectedAnswerCorrect =
-      selectedOption !== null &&
-      isCorrectMultipleChoiceOption(item, selectedOption, selectedOptionIndex)
+    const currentResult = mcqResults[currentItemIndex]
+    const isSelectedAnswerCorrect = Boolean(currentResult?.isCorrect)
+    const correctOptionIndex = currentResult?.correctOptionIndex ?? null
 
     return (
       <div
@@ -656,10 +817,10 @@ export default function StudySetDetailPage({
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {(item?.options ?? []).map((option: string, idx: number) => {
-            const isCorrectOption = isCorrectMultipleChoiceOption(item, option, idx)
             const isSelectedOption = selectedOptionIndex === idx
-            const showCorrectState = hasSelectedOption && isCorrectOption
-            const showIncorrectState = hasSelectedOption && isSelectedOption && !isCorrectOption
+            const showCorrectState = hasSelectedOption && correctOptionIndex === idx
+            const showIncorrectState =
+              hasSelectedOption && isSelectedOption && !isSelectedAnswerCorrect
 
             const optionStyle = showCorrectState
               ? 'border-green-500 bg-green-50'
@@ -681,13 +842,9 @@ export default function StudySetDetailPage({
               <button
                 type="button"
                 key={`${option}-${idx}`}
-                onClick={() =>
-                  setMcqSelections((prev) => ({
-                    ...prev,
-                    [currentItemIndex]: idx,
-                  }))
-                }
-                className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-200 ease-out hover:-translate-y-0.5 ${optionStyle}`}
+                onClick={() => void handleMcqSelect(item, idx)}
+                disabled={hasSelectedOption}
+                className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-200 ease-out hover:-translate-y-0.5 disabled:cursor-default disabled:hover:translate-y-0 ${optionStyle}`}
               >
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${badgeStyle}`}
@@ -724,7 +881,7 @@ export default function StudySetDetailPage({
             <p className="mb-1 font-semibold text-foreground">
               {isSelectedAnswerCorrect ? 'Nice! You got it right.' : 'Not quite. Keep going!'}
             </p>
-            {item?.explanation && <p>{item.explanation}</p>}
+            {currentResult?.explanation && <p>{currentResult.explanation}</p>}
           </div>
         )}
 
@@ -740,7 +897,11 @@ export default function StudySetDetailPage({
     )
   }
 
-  const renderFlashcard = (item: any) => (
+  const renderFlashcard = (item: any) => {
+    const currentReview = flashcardReviews[currentItemIndex]
+    const hasReviewed = currentReview !== undefined
+
+    return (
     <div className="space-y-4">
       <p className="text-sm uppercase tracking-wide text-muted-foreground">Flashcard</p>
 
@@ -776,8 +937,36 @@ export default function StudySetDetailPage({
       <p className="text-center text-xs text-muted-foreground">
         Click card to {flashcardFlipped ? 'see prompt again' : 'reveal answer'}
       </p>
+
+      {flashcardFlipped && !hasReviewed && (
+        <div className="flex items-center justify-center gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+          <button
+            type="button"
+            onClick={() => handleFlashcardReview(item, false)}
+            className="rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-100"
+          >
+            I got it wrong
+          </button>
+          <button
+            type="button"
+            onClick={() => handleFlashcardReview(item, true)}
+            className="rounded-xl border border-green-300 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-100"
+          >
+            I got it right
+          </button>
+        </div>
+      )}
+
+      {hasReviewed && (
+        <p
+          className={`text-center text-sm font-semibold ${currentReview ? 'text-green-700' : 'text-red-700'}`}
+        >
+          {currentReview ? 'Marked as correct. Keep it up!' : 'Marked for review. You will see this again.'}
+        </p>
+      )}
     </div>
-  )
+    )
+  }
 
   const renderFillInBlank = (item: any) => {
     if (isFillComplete) {
@@ -795,6 +984,7 @@ export default function StudySetDetailPage({
               onClick={() => {
                 setFillAnswers({})
                 setFillSubmitted({})
+                setFillResults({})
                 setCurrentItemIndex(0)
               }}
               className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-secondary/60"
@@ -808,7 +998,8 @@ export default function StudySetDetailPage({
 
     const currentAnswer = fillAnswers[currentItemIndex] ?? ''
     const hasSubmitted = Boolean(fillSubmitted[currentItemIndex])
-    const isCorrect = hasSubmitted && isFillAnswerCorrect(item, currentAnswer)
+    const currentResult = fillResults[currentItemIndex]
+    const isCorrect = hasSubmitted && Boolean(currentResult?.isCorrect)
 
     return (
       <div key={`fill-item-${currentItemIndex}`} className="space-y-4 animate-in fade-in-0 slide-in-from-right-2 duration-300">
@@ -836,12 +1027,7 @@ export default function StudySetDetailPage({
             <button
               type="button"
               disabled={!currentAnswer.trim()}
-              onClick={() =>
-                setFillSubmitted((prev) => ({
-                  ...prev,
-                  [currentItemIndex]: true,
-                }))
-              }
+              onClick={() => void handleFillSubmit(item)}
               className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-60"
             >
               {hasSubmitted ? 'Re-check answer' : 'Check answer'}
@@ -867,11 +1053,16 @@ export default function StudySetDetailPage({
 
               {!isCorrect && (
                 <p>
-                  Correct answer: <span className="font-semibold">{item?.answer ?? 'N/A'}</span>
+                  Correct answer:{' '}
+                  <span className="font-semibold">
+                    {currentResult?.correctAnswer ?? item?.answer ?? 'N/A'}
+                  </span>
                 </p>
               )}
 
-              {item?.explanation && <p className="mt-2">{item.explanation}</p>}
+              {(currentResult?.explanation ?? item?.explanation) && (
+                <p className="mt-2">{currentResult?.explanation ?? item?.explanation}</p>
+              )}
             </div>
           )}
 
@@ -1187,6 +1378,7 @@ export default function StudySetDetailPage({
               {!activeModeFromQuery ? (
                 <div className="p-6">
                   <StudySetOverview
+                    studySetId={backendStudySetId}
                     studySet={studySet}
                     generationMeta={generationMeta}
                     onOpenSection={handleOpenSection}

@@ -61,6 +61,12 @@ export {
 } from '@/lib/api/study-sets.service'
 export { fetchSyllabusById, uploadSyllabusPdf, uploadSyllabusText } from '@/lib/api/syllabus.service'
 export {
+  PERSONALIZATION_INSTRUCTIONS_MAX_LENGTH,
+  fetchPersonalization,
+  updatePersonalization,
+} from '@/lib/api/user-settings.service'
+export { fetchGraderResult, submitGraderAssignment } from '@/lib/api/paper-grader.service'
+export {
   clearAuthBrowserState,
   clearStoredAuthObject,
   getStoredAccessToken,
@@ -131,6 +137,20 @@ export type {
   StudySetUploadResponse,
   StudySetWrittenTestResponse,
 } from '@/lib/api/study-sets.service'
+export type {
+  GraderCriterion,
+  GraderResult,
+  GraderResultResponse,
+  GraderResultSubmission,
+  GraderSubmission,
+  GraderSubmitResponse,
+  GraderWebsocket,
+} from '@/lib/api/paper-grader.service'
+export type {
+  PersonalizationProfile,
+  PersonalizationSettings,
+  UpdatePersonalizationPayload,
+} from '@/lib/api/user-settings.service'
 export type {
   SyllabusAnalysisResponse,
   SyllabusDetailCourseworkItem,

@@ -1,29 +1,29 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { PortalShell, type PortalNavItem } from '@/components/portal/portal-shell'
+import SettingsModal, { type SettingsTab } from '@/components/settings/settings-modal'
+import { getStoredStudySetById, getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
+import { deleteCurrentSession, getPortalRouteByRole } from '@/lib/api/auth.service'
+import { fetchCurrentSubscription } from '@/lib/api/billing.service'
+import { apiClient } from '@/lib/api/client'
+import { clearAuthBrowserState, getStoredAuthObject, replaceStoredAuthObject } from '@/lib/api/session-storage'
+import { auth } from '@/lib/firebase'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import {
   BookOpen,
   ClipboardCheck,
   FileText,
   GraduationCap,
   Headphones,
-  LayoutDashboard,
   Layers,
+  LayoutDashboard,
   ListChecks,
   NotebookPen,
   PenSquare,
   Sparkles,
 } from 'lucide-react'
-import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { PortalShell, type PortalNavItem } from '@/components/portal/portal-shell'
-import { getStoredStudySetById, getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
-import SettingsModal, { type SettingsTab } from '@/components/settings/settings-modal'
-import { fetchCurrentSubscription } from '@/lib/api/billing.service'
-import { apiClient } from '@/lib/api/client'
-import { deleteCurrentSession, getPortalRouteByRole } from '@/lib/api/auth.service'
-import { clearAuthBrowserState, getStoredAuthObject, replaceStoredAuthObject } from '@/lib/api/session-storage'
-import { auth } from '@/lib/firebase'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 
 const sectionIconMap: Record<string, any> = {
   notes: FileText,
@@ -97,7 +97,7 @@ function DashboardLayoutContent({
     {
       label: 'Syllabus Intelligence',
       href: '/dashboard/syllabus-intelligence',
-      icon: Sparkles,
+      icon: GraduationCap,
     },
     {
       label: 'Paper Grader',

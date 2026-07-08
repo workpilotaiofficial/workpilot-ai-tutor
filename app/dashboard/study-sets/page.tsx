@@ -83,9 +83,7 @@ export default function StudySetsPage() {
         {/* Content Area */}
         {studySets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="p-6 bg-secondary rounded-xl mb-6">
-              <Sparkles className="w-12 h-12 text-muted-foreground" />
-            </div>
+        
             <h2 className="text-2xl font-bold text-foreground mb-2">No study sets yet</h2>
             <p className="text-muted-foreground mb-6 max-w-sm text-center">Use the upload or paste button above to create your first study set</p>
           </div>

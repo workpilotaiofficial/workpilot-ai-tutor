@@ -2,10 +2,11 @@
 
 import { useState, useRef } from 'react'
 import { X, Upload, Trash2, CheckCircle, AlertCircle } from 'lucide-react'
+import { getApiClientErrorMessage, submitGraderAssignment, type GraderSubmitResponse } from '@/lib/api'
 
 interface GraderUploadModalProps {
   onClose: () => void
-  onSuccess: (submissionId: string, title: string) => void
+  onSuccess: (response: GraderSubmitResponse) => void
 }
 
 export default function GraderUploadModal({
@@ -65,26 +66,16 @@ export default function GraderUploadModal({
     setError('')
 
     try {
-      const formData = new FormData()
-      formData.append('assignment_file', assignmentFile)
-      formData.append('rubric_file', rubricFile)
-      formData.append('title', title.trim())
-
-      const response = await fetch('/api/v1/grader/submit', {
-        method: 'POST',
-        body: formData,
+      const data = await submitGraderAssignment({
+        title: title.trim(),
+        assignmentFile,
+        rubricFile,
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to submit assignment')
-      }
-
-      const data = await response.json()
-      onSuccess(data.submission_id, title.trim())
+      onSuccess(data)
     } catch (err) {
       console.error('Error submitting assignment:', err)
-      setError(err instanceof Error ? err.message : 'Failed to submit assignment')
+      setError(getApiClientErrorMessage(err, 'Failed to submit assignment'))
     } finally {
       setIsLoading(false)
     }

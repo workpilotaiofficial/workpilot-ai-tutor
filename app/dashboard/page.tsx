@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { BookOpen, Sparkles, ClipboardCheck, ArrowRight } from 'lucide-react'
 import { getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
+import { ArrowRight, BookOpen, ClipboardCheck } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 export default function DashboardIndexPage() {
   const [studySets, setStudySets] = useState<StudySet[]>([])
@@ -74,9 +74,7 @@ export default function DashboardIndexPage() {
                 </div>
                 <span className="inline-block px-3 py-1 text-xs font-bold text-emerald-700 bg-emerald-100/70 rounded-full">Unlimited</span>
               </div>
-              <div className="p-4 bg-linear-to-br from-purple-100 to-purple-50 rounded-xl group-hover:shadow-lg transition-all">
-                <Sparkles className="w-6 h-6 text-purple-600" />
-              </div>
+             
             </div>
           </div>
 
@@ -185,9 +183,7 @@ export default function DashboardIndexPage() {
               className="action-button group p-5 bg-linear-to-br from-purple-100 to-purple-50 rounded-xl border border-purple-200/50 text-left"
             >
               <div className="flex items-start gap-4 relative z-10">
-                <div className="p-2.5 bg-purple-50 rounded-lg shrink-0">
-                  <Sparkles className="action-icon w-5 h-5 text-purple-600" />
-                </div>
+           
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-sm text-slate-900 mb-1">Syllabus Intelligence</h3>
                   <p className="text-xs text-slate-600 line-clamp-2">Analyze and generate insights from your syllabus</p>
@@ -232,7 +228,7 @@ export default function DashboardIndexPage() {
                     <p className="text-sm text-slate-600 line-clamp-2 mb-5 leading-relaxed">{set.description || 'No description'}</p>
                     <div className="flex flex-wrap gap-2">
                       {set.sections.slice(0, 2).map((section) => (
-                        <span key={section.id} className="px-3 py-1.5 bg-linear-to-r from-blue-50 to-blue-50/50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100/40">
+                        <span key={section.type} className="px-3 py-1.5 bg-linear-to-r from-blue-50 to-blue-50/50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100/40">
                           {section.label}
                         </span>
                       ))}

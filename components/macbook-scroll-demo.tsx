@@ -1,10 +1,8 @@
 "use client";
 
-import React from "react";
-import Image from "next/image";
-import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
 import { MacbookScroll } from "@/components/ui/macbook-scroll";
+import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function MacbookScrollDemo() {
   return (
@@ -31,7 +29,6 @@ export default function MacbookScrollDemo() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <Sparkles className="h-4 w-4" />
           Powerful Dashboard
         </motion.span>
 

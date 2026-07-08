@@ -1,16 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { ArrowUpRight, Upload, Trash2, Sparkles } from 'lucide-react'
-import SyllabusUploadModal from '@/components/syllabus-intelligence/upload-modal'
 import SyllabusAnalysisResult from '@/components/syllabus-intelligence/analysis-result'
+import SyllabusUploadModal from '@/components/syllabus-intelligence/upload-modal'
 import {
-  getStoredSyllabusResults,
   deleteSyllabusResult,
+  getStoredSyllabusResults,
   type SyllabusIntelligenceResult,
 } from '@/components/syllabus-intelligence/utils'
 import { formatUTCDate } from '@/lib/utils'
+import { ArrowUpRight, Trash2, Upload } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export default function SyllabusIntelligenceContent() {
   const router = useRouter()
@@ -85,10 +85,7 @@ export default function SyllabusIntelligenceContent() {
 
           <div className="relative">
             <div className="mb-7 max-w-2xl">
-              <div className="mb-4 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 border border-white/25 backdrop-blur-sm">
-                <Sparkles className="w-3.5 h-3.5 text-[#9FCB98]" />
-                <span className="text-xs font-bold text-white tracking-wide">SYLLABUS INTELLIGENCE</span>
-              </div>
+        
               <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 leading-tight tracking-tight">
                 Turn your syllabus into an action plan
               </h2>
@@ -116,9 +113,7 @@ export default function SyllabusIntelligenceContent() {
         {/* Content Area */}
         {sortedResults.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="p-6 bg-linear-to-br from-slate-100 to-slate-200 rounded-xl mb-6">
-              <Sparkles className="w-12 h-12 text-slate-600" />
-            </div>
+  
             <h2 className="text-2xl font-bold text-slate-900 mb-2">No syllabus analyzed yet</h2>
             <p className="text-slate-600 mb-6 max-w-sm text-center">Use the upload button above to analyze your first syllabus and generate your semester roadmap</p>
           </div>
