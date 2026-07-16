@@ -1,6 +1,7 @@
 'use client'
 
 import { PortalShell, type PortalNavItem } from '@/components/portal/portal-shell'
+import PersonalizedAiOnboardingModal from '@/components/settings/personalized-ai-onboarding-modal'
 import SettingsModal, { type SettingsTab } from '@/components/settings/settings-modal'
 import { getStoredStudySetById, getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
 import { deleteCurrentSession, getPortalRouteByRole } from '@/lib/api/auth.service'
@@ -57,6 +58,7 @@ function DashboardLayoutContent({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showPersonalizationOnboarding, setShowPersonalizationOnboarding] = useState(false)
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('personalizedAi')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [footerProfileName, setFooterProfileName] = useState('Account')
@@ -137,8 +139,7 @@ function DashboardLayoutContent({
     const hasSeenPersonalizationOnboarding = window.localStorage.getItem(PERSONALIZATION_ONBOARDING_KEY) === 'true'
     if (!hasSeenPersonalizationOnboarding) {
       window.localStorage.setItem(PERSONALIZATION_ONBOARDING_KEY, 'true')
-      setSettingsInitialTab('personalizedAi')
-      setShowSettingsModal(true)
+      setShowPersonalizationOnboarding(true)
     }
   }, [router])
 
@@ -284,6 +285,10 @@ function DashboardLayoutContent({
       >
         {children}
       </PortalShell>
+
+      {showPersonalizationOnboarding && (
+        <PersonalizedAiOnboardingModal onClose={() => setShowPersonalizationOnboarding(false)} />
+      )}
 
       {showSettingsModal && (
         <SettingsModal onClose={() => setShowSettingsModal(false)} initialTab={settingsInitialTab} />
