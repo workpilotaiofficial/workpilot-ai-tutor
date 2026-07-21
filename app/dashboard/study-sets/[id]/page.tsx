@@ -1,27 +1,19 @@
 'use client'
 
-import { use, useEffect, useMemo, useRef, useState } from 'react'
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { normalizeStudySetResponse, type StudySet } from '@/components/study-sets/utils'
 import {
-  getStoredStudySetById,
-  getStoredStudySets,
-  persistStudySet,
-  type StudySet,
-} from '@/components/study-sets/utils'
-import { subscribeToStudySetGeneration } from '@/components/study-sets/generation-tracker'
-import { getStudySetGenerationMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
-import {
-  generateStudySet,
+  fetchStudySetFillInTheBlanks,
+  fetchStudySetFlashcards,
+  fetchStudySetMultipleChoice,
+  fetchUnifiedStudySet,
   submitStudySetFillBlankAnswer,
   submitStudySetFlashcardReview,
   submitStudySetMcqAnswer,
 } from '@/lib/api/study-sets.service'
-import { ensureStudySetGenerationTracking } from '@/components/study-sets/generation-tracker'
-import {
-  uiToBackendGenerationType,
-  type StudySetUiSectionType,
-} from '@/components/study-sets/generation-mapping'
+import type { StudySetUiSectionType } from '@/components/study-sets/generation-mapping'
 import { getApiClientErrorMessage } from '@/lib/api/client'
 import { toast } from '@/hooks/use-toast'
 import { NotesEditor } from '@/components/study-sets/NotesEditor'
@@ -190,6 +182,81 @@ function getAssessmentImprovementTip(scorePercent: number, wrongCount: number) {
   return 'Start with the notes section to rebuild fundamentals, then retry this quiz after a short focused review.'
 }
 
+function hasStableItemIds(section: StudySet['sections'][number]) {
+  if (!section.items.length) return true
+  if (section.type === 'multipleChoice') {
+    return section.items.every(
+      (item) =>
+        typeof item?.id === 'string' &&
+        Array.isArray(item?.optionIds) &&
+        item.optionIds.length === item.options?.length &&
+        item.optionIds.every((optionId: unknown) => typeof optionId === 'string' && optionId.length > 0),
+    )
+  }
+  if (section.type === 'flashcards' || section.type === 'fillInTheBlanks') {
+    return section.items.every((item) => typeof item?.id === 'string' && item.id.length > 0)
+  }
+  return true
+}
+
+async function hydrateInteractiveSectionIds(studySet: StudySet, signal?: AbortSignal): Promise<StudySet> {
+  const sections = await Promise.all(
+    studySet.sections.map(async (section) => {
+      if (hasStableItemIds(section) || section.status === 'processing' || section.status === 'pending') return section
+
+      try {
+        if (section.type === 'multipleChoice') {
+          const response = await fetchStudySetMultipleChoice(studySet.id, signal)
+          return {
+            ...section,
+            items: response.questions.map((question) => ({
+              ...question,
+              id: question.id,
+              question: question.questionText,
+              options: question.options.map((option) => option.text),
+              optionIds: question.options.map((option) => option.id),
+              correctOptionId: question.correctOptionId,
+              answer: question.options.find((option) => option.id === question.correctOptionId)?.text,
+            })),
+          }
+        }
+
+        if (section.type === 'flashcards') {
+          const response = await fetchStudySetFlashcards(studySet.id, signal)
+          return {
+            ...section,
+            items: response.cards.map((card: any) => ({
+              ...card,
+              id: card?.id ?? card?.flashcard_id ?? card?.flashcardId,
+              prompt: card?.prompt ?? card?.term ?? card?.question,
+              answer: card?.answer ?? card?.definition ?? card?.response,
+            })),
+          }
+        }
+
+        if (section.type === 'fillInTheBlanks') {
+          const response = await fetchStudySetFillInTheBlanks(studySet.id, signal)
+          return {
+            ...section,
+            items: response.questions.map((question) => ({
+              ...question,
+              id: question.id,
+              sentence: question.displaySentence || question.fullSentence,
+              answer: question.blanks[0]?.answer ?? '',
+            })),
+          }
+        }
+      } catch (error) {
+        if (!signal?.aborted) console.error(`Error hydrating ${section.type} item IDs:`, error)
+      }
+
+      return section
+    }),
+  )
+
+  return { ...studySet, sections }
+}
+
 type McqItemResult = {
   isCorrect: boolean
   correctOptionIndex: number | null
@@ -219,7 +286,8 @@ export default function StudySetDetailPage({
   const { id } = use(params)
 
   const [studySet, setStudySet] = useState<StudySet | null>(null)
-  const [generationMeta, setGenerationMeta] = useState<StoredStudySetGenerationMeta | null>(null)
+  const [isLoadingStudySet, setIsLoadingStudySet] = useState(true)
+  const [studySetError, setStudySetError] = useState('')
   const [activeSectionType, setActiveSectionType] = useState<string | null>(null)
   const [currentItemIndex, setCurrentItemIndex] = useState(0)
   const [flashcardFlipped, setFlashcardFlipped] = useState(false)
@@ -235,36 +303,48 @@ export default function StudySetDetailPage({
     Record<number, { submitted: boolean; score: number; feedback: string; missingKeywords: string[] }>
   >({})
   const activeModeFromQuery = searchParams.get('mode')
+  const shouldAutoOpenFirst = searchParams.get('autoOpenFirst') === '1'
 
-  useEffect(() => {
+  const loadStudySet = useCallback(async (signal?: AbortSignal, showLoading = true) => {
     if (!id) return
+    if (showLoading) setIsLoadingStudySet(true)
+    setStudySetError('')
 
-    const stored = getStoredStudySetById(id)
-    if (stored) {
-      setStudySet(stored)
-      return
+    try {
+      const response = await fetchUnifiedStudySet(id, signal)
+      const normalized = normalizeStudySetResponse(response.studySet)
+      if (!normalized) throw new Error('The study set response is invalid.')
+      const hydrated = await hydrateInteractiveSectionIds(normalized, signal)
+      if (!signal?.aborted) setStudySet(hydrated)
+    } catch (error) {
+      if (signal?.aborted) return
+      console.error('Error fetching study set:', error)
+      if (showLoading) setStudySet(null)
+      setStudySetError(getApiClientErrorMessage(error, 'Failed to load this study set. Please try again.'))
+    } finally {
+      if (!signal?.aborted && showLoading) setIsLoadingStudySet(false)
     }
-
-    const fallback = getStoredStudySets().find((set) => set.id === id) || null
-    if (fallback) {
-      setStudySet(fallback)
-      return
-    }
-
-    setStudySet(null)
   }, [id])
 
   useEffect(() => {
-    if (!id) return
-    const meta = getStudySetGenerationMeta(id)
-    if (!meta) return
-    setGenerationMeta(meta)
-    return subscribeToStudySetGeneration(id, (nextMeta) => {
-      setGenerationMeta(nextMeta)
-      const updated = getStoredStudySetById(id)
-      if (updated) setStudySet(updated)
-    })
-  }, [id])
+    const abortController = new AbortController()
+    void loadStudySet(abortController.signal)
+    return () => abortController.abort()
+  }, [loadStudySet])
+
+  useEffect(() => {
+    const generatingStatuses = new Set(['processing', 'pending', 'in_progress', 'generating', 'queued'])
+    if (!studySet?.sections.some((section) => section.status && generatingStatuses.has(section.status))) return
+    const abortController = new AbortController()
+    const timeoutId = window.setTimeout(() => {
+      void loadStudySet(abortController.signal, false)
+    }, 1000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      abortController.abort()
+    }
+  }, [loadStudySet, studySet])
 
   useEffect(() => {
     if (!studySet) {
@@ -284,6 +364,20 @@ export default function StudySetDetailPage({
 
     setActiveSectionType((current) => (current === nextSectionType ? current : nextSectionType))
   }, [activeModeFromQuery, studySet])
+
+  useEffect(() => {
+    if (!shouldAutoOpenFirst || !studySet) return
+
+    const firstReadySection = studySet.sections.find((section) => {
+      if (section.status === 'completed' || section.status === 'ready') return true
+      if (section.status) return false
+      return Boolean(section.content || section.items.length)
+    })
+
+    if (firstReadySection) {
+      router.replace(`/dashboard/study-sets/${id}?mode=${firstReadySection.type}`)
+    }
+  }, [id, router, shouldAutoOpenFirst, studySet])
 
   useEffect(() => {
     setCurrentItemIndex(0)
@@ -515,7 +609,6 @@ export default function StudySetDetailPage({
     }
 
     setStudySet(updatedSet)
-    persistStudySet(updatedSet)
   }, [
     hasAnyInteractiveSubmission,
     performanceStats.familiar,
@@ -558,7 +651,6 @@ export default function StudySetDetailPage({
         updatedAt: new Date().toISOString(),
       }
 
-      persistStudySet(updatedSet)
       return updatedSet
     })
   }
@@ -567,40 +659,15 @@ export default function StudySetDetailPage({
     router.push(`/dashboard/study-sets/${id}?mode=${sectionType}`)
   }
 
-  const handleRetrySection = async (sectionType: StudySetUiSectionType) => {
-    const documentId = generationMeta?.documentId
-    const backendType = uiToBackendGenerationType[sectionType]
-
-    if (!documentId || !backendType) {
-      toast({
-        title: 'Unable to retry',
-        description: 'This study set is missing generation details, so this section cannot be regenerated.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    try {
-      // Re-generate just this section
-      await generateStudySet({
-        documentId,
-        types: [backendType],
-      })
-      ensureStudySetGenerationTracking(documentId)
-      toast({
-        title: 'Regeneration started',
-        description: 'This section is being generated again. It will refresh automatically when ready.',
-      })
-    } catch (error) {
-      toast({
-        title: 'Retry failed',
-        description: getApiClientErrorMessage(error, 'Could not restart generation for this section. Please try again.'),
-        variant: 'destructive',
-      })
-    }
+  const handleRetrySection = async (_sectionType: StudySetUiSectionType) => {
+    toast({
+      title: 'Unable to retry',
+      description: 'Regeneration requires document metadata that is not included in the study set API response.',
+      variant: 'destructive',
+    })
   }
 
-  const backendStudySetId = generationMeta?.studySetId?.trim() || id
+  const backendStudySetId = id
 
   const getResponseTimeMs = () => Math.max(0, Date.now() - questionStartedAtRef.current)
 
@@ -652,7 +719,8 @@ export default function StudySetDetailPage({
             result.explanation ?? (typeof item?.explanation === 'string' ? item.explanation : null),
         },
       }))
-    } catch {
+    } catch (error) {
+      console.error('Error submitting MCQ answer:', error)
       // Local marking already applied above; let the learner know the server didn't record it.
       toast({
         title: 'Answer not saved to your account',
@@ -710,7 +778,8 @@ export default function StudySetDetailPage({
           },
         }))
       }
-    } catch {
+    } catch (error) {
+      console.error('Error submitting fill-in-the-blank answer:', error)
       // Local marking already applied above; let the learner know the server didn't record it.
       toast({
         title: 'Answer not saved to your account',
@@ -734,7 +803,8 @@ export default function StudySetDetailPage({
       flashcardId,
       wasCorrect,
       responseTimeMs,
-    }).catch(() => {
+    }).catch((error) => {
+      console.error('Error submitting flashcard review:', error)
       // Local state already reflects the choice; let the learner know the server didn't record it.
       toast({
         title: 'Review not saved to your account',
@@ -1293,14 +1363,28 @@ export default function StudySetDetailPage({
     )
   }
 
+  if (isLoadingStudySet) {
+    return (
+      <div className="flex h-screen items-center justify-center px-6 text-center">
+        <p className="text-sm text-muted-foreground">Loading study set...</p>
+      </div>
+    )
+  }
+
   if (!studySet) {
     return (
       <div className="flex h-screen flex-col items-center justify-center space-y-4 px-6 text-center">
-        <p className="text-xl font-semibold text-foreground">Study set not found on this device</p>
+        <p className="text-xl font-semibold text-foreground">Couldn&apos;t load study set</p>
         <p className="max-w-md text-sm text-muted-foreground">
-          Study sets are saved in this browser. If you created this set on another device or cleared your
-          browser data, it won&apos;t appear here. You can create it again from your study sets.
+          {studySetError || 'This study set may not exist or may no longer be available.'}
         </p>
+        <button
+          type="button"
+          onClick={() => void loadStudySet()}
+          className="rounded-lg border border-border bg-card px-4 py-2 text-foreground hover:bg-secondary"
+        >
+          Try again
+        </button>
         <button
           onClick={() => router.push('/dashboard/study-sets')}
           className="rounded-lg bg-primary px-4 py-2 text-primary-foreground"
@@ -1355,7 +1439,7 @@ export default function StudySetDetailPage({
                   <StudySetOverview
                     studySetId={backendStudySetId}
                     studySet={studySet}
-                    generationMeta={generationMeta}
+                    generationMeta={null}
                     onOpenSection={handleOpenSection}
                     onRetrySection={handleRetrySection}
                   />

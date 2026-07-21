@@ -1,32 +1,77 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Upload, Link as LinkIcon, Grid2X2, List, Mic } from 'lucide-react'
 import UploadModal from '@/components/study-sets/upload-modal'
 import PasteModal from '@/components/study-sets/paste-modal'
 import StudySetCard from '@/components/study-sets/study-set-card'
-import { getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
+import type { StudySetPreview } from '@/components/study-sets/utils'
+import { fetchStudySetHistory, fetchStudySetProgress } from '@/lib/api/study-sets.service'
+import { getApiClientErrorMessage } from '@/lib/api/client'
 import { getStoredAuthObject } from '@/lib/api/session-storage'
 
 export default function StudySetsPage() {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showPasteModal, setShowPasteModal] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [studySets, setStudySets] = useState<StudySet[]>([])
+  const [studySets, setStudySets] = useState<StudySetPreview[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
   const [firstName, setFirstName] = useState('there')
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setStudySets(getStoredStudySets())
-      const displayName = getStoredAuthObject()?.user_display_name?.trim()
-      if (displayName) setFirstName(displayName.split(/\s+/)[0])
+  const loadStudySets = useCallback(async (signal?: AbortSignal) => {
+    setIsLoading(true)
+    setErrorMessage('')
+
+    try {
+      const historyResponse = await fetchStudySetHistory(signal)
+      const history = Array.isArray(historyResponse.data) ? historyResponse.data : []
+      const progressResults = await Promise.allSettled(
+        history.map((studySet) => fetchStudySetProgress(studySet.id, signal)),
+      )
+
+      if (signal?.aborted) return
+
+      setStudySets(
+        history.map((studySet, index) => {
+          const progressResult = progressResults[index]
+          const summary = progressResult?.status === 'fulfilled' ? progressResult.value.summary : null
+
+          return {
+            id: studySet.id,
+            title: studySet.title,
+            items: studySet.item_count,
+            percentageCompleted: studySet.percentage_completed,
+            stats: {
+              unfamiliar: summary?.unfamiliar ?? 0,
+              learning: summary?.learning ?? 0,
+              familiar: summary?.familiar ?? 0,
+              mastered: summary?.mastered ?? 0,
+            },
+          }
+        }),
+      )
+    } catch (error) {
+      if (signal?.aborted) return
+      console.error('Error fetching study set history:', error)
+      setStudySets([])
+      setErrorMessage(getApiClientErrorMessage(error, 'Failed to load study sets. Please try again.'))
+    } finally {
+      if (!signal?.aborted) setIsLoading(false)
     }
   }, [])
 
-  const refreshFromStorage = () => {
-    if (typeof window === 'undefined') return
-    setStudySets(getStoredStudySets())
-  }
+  useEffect(() => {
+    const abortController = new AbortController()
+    void loadStudySets(abortController.signal)
+
+    const displayName = getStoredAuthObject()?.user_display_name?.trim()
+    if (displayName) setFirstName(displayName.split(/\s+/)[0])
+
+    return () => abortController.abort()
+  }, [loadStudySets])
+
+  const refreshStudySets = () => void loadStudySets()
 
   return (
     <div className="min-h-full w-full bg-background">
@@ -47,7 +92,7 @@ export default function StudySetsPage() {
                 <Upload className="h-7 w-7 text-foreground/80" strokeWidth={2} />
                 <div>
                   <p className="text-lg font-semibold text-foreground">Upload</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Image, file, audio, video</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Image, file (Max-10mb)</p>
                 </div>
               </button>
 
@@ -59,11 +104,11 @@ export default function StudySetsPage() {
                 <LinkIcon className="h-7 w-7 text-foreground/80" strokeWidth={2} />
                 <div>
                   <p className="text-lg font-semibold text-foreground">Paste</p>
-                  <p className="mt-1 text-sm text-muted-foreground">YouTube, website, text</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Upload your text</p>
                 </div>
               </button>
 
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setShowUploadModal(true)}
                 className="group flex min-h-36 flex-col justify-between rounded-[28px] border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
@@ -73,7 +118,7 @@ export default function StudySetsPage() {
                   <p className="text-lg font-semibold text-foreground">Record</p>
                   <p className="mt-1 text-sm text-muted-foreground">Record live lecture</p>
                 </div>
-              </button>
+              </button> */}
           </div>
         </section>
 
@@ -106,7 +151,23 @@ export default function StudySetsPage() {
             </div>
           </div>
 
-          {studySets.length === 0 ? (
+          {isLoading ? (
+            <div className="rounded-3xl border border-border px-6 py-14 text-center">
+              <p className="text-sm text-muted-foreground">Loading study sets...</p>
+            </div>
+          ) : errorMessage ? (
+            <div className="rounded-3xl border border-destructive/30 px-6 py-14 text-center">
+              <h3 className="text-lg font-semibold text-foreground">Couldn&apos;t load study sets</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{errorMessage}</p>
+              <button
+                type="button"
+                onClick={refreshStudySets}
+                className="mt-4 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary"
+              >
+                Try again
+              </button>
+            </div>
+          ) : studySets.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-border px-6 py-14 text-center">
               <h3 className="text-lg font-semibold text-foreground">No study sets yet</h3>
               <p className="mt-1 text-sm text-muted-foreground">Upload or paste content above to create your first one.</p>
@@ -136,7 +197,7 @@ export default function StudySetsPage() {
         <UploadModal
           onClose={() => {
             setShowUploadModal(false)
-            refreshFromStorage()
+            refreshStudySets()
           }}
         />
       )}
@@ -145,7 +206,7 @@ export default function StudySetsPage() {
         <PasteModal
           onClose={() => {
             setShowPasteModal(false)
-            refreshFromStorage()
+            refreshStudySets()
           }}
         />
       )}

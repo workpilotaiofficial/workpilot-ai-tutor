@@ -1,11 +1,14 @@
 'use client'
 
+import { StudySetHistoryItem } from "@/lib/api/study-sets.service"
+
 export type StudySetSection = {
   type: string
   label: string
   items: any[]
   format?: string
   content?: string
+  status?: string
 }
 
 export type StudySetNoteSection = {
@@ -45,7 +48,9 @@ export type StudySet = {
   }
 }
 
-export type StudySetPreview = Pick<StudySet, 'id' | 'title' | 'items' | 'stats'>
+export type StudySetPreview = Pick<StudySet, 'id' | 'title' | 'items' | 'stats'> & {
+  percentageCompleted: number
+}
 
 const STORAGE_KEY = 'Tutora-ai-study-sets'
 
@@ -96,6 +101,88 @@ function generateFallbackId() {
   return Math.random().toString(36).slice(2)
 }
 
+function normalizeSectionType(value: unknown) {
+  const type = String(value ?? 'notes')
+  const typeMap: Record<string, string> = {
+    multiple_choice: 'multipleChoice',
+    fill_in_blanks: 'fillInTheBlanks',
+    written_test: 'writtenTests',
+    written_tests: 'writtenTests',
+    tutor_lesson: 'tutorLesson',
+  }
+
+  return typeMap[type] ?? type
+}
+
+function normalizeInteractiveSectionItems(type: string, items: any[]) {
+  if (type === 'multipleChoice') {
+    return items.map((question) => {
+      const rawOptions = Array.isArray(question?.options) ? question.options : []
+      const optionIds = rawOptions.map((option: any, index: number) => {
+        if (option && typeof option === 'object') {
+          if (typeof option.id === 'string') return option.id
+          if (typeof option.option_id === 'string') return option.option_id
+          if (typeof option.optionId === 'string') return option.optionId
+        }
+        if (Array.isArray(question?.optionIds) && typeof question.optionIds[index] === 'string') {
+          return question.optionIds[index]
+        }
+        if (Array.isArray(question?.option_ids) && typeof question.option_ids[index] === 'string') {
+          return question.option_ids[index]
+        }
+        return ''
+      })
+      const options = rawOptions.map((option: any) => {
+        if (typeof option === 'string') return option
+        return typeof option?.text === 'string' ? option.text : ''
+      })
+      const correctOptionId = question?.correct_option_id ?? question?.correctOptionId
+      const correctOptionIndex = optionIds.indexOf(correctOptionId)
+
+      return {
+        ...question,
+        id: question?.id ?? question?.question_id ?? question?.questionId,
+        question: question?.question ?? question?.question_text ?? question?.questionText,
+        options,
+        optionIds,
+        correctOptionId,
+        answer:
+          question?.answer ??
+          (correctOptionIndex >= 0 ? options[correctOptionIndex] : undefined),
+      }
+    })
+  }
+
+  if (type === 'flashcards') {
+    return items.map((card) => ({
+      ...card,
+      id: card?.id ?? card?.flashcard_id ?? card?.flashcardId,
+      prompt: card?.prompt ?? card?.term ?? card?.question,
+      answer: card?.answer ?? card?.definition ?? card?.response,
+    }))
+  }
+
+  if (type === 'fillInTheBlanks') {
+    return items.map((question) => {
+      const blanks = Array.isArray(question?.blanks) ? question.blanks : []
+      return {
+        ...question,
+        id: question?.id ?? question?.question_id ?? question?.questionId,
+        sentence:
+          question?.sentence ??
+          question?.display_sentence ??
+          question?.displaySentence ??
+          question?.full_sentence ??
+          question?.fullSentence,
+        answer: question?.answer ?? blanks[0]?.answer ?? '',
+        blanks,
+      }
+    })
+  }
+
+  return items
+}
+
 function parseSections(input: any): StudySetSection[] {
   if (!Array.isArray(input)) {
     return defaultSections
@@ -104,8 +191,9 @@ function parseSections(input: any): StudySetSection[] {
   return input
     .map((section) => {
       if (!section || typeof section !== 'object') return null
-      const type = String(section.type ?? section.id ?? 'notes')
-      const items = Array.isArray(section.items) ? section.items : []
+      const type = normalizeSectionType(section.type ?? section.id)
+      const rawItems = Array.isArray(section.items) ? section.items : []
+      const items = normalizeInteractiveSectionItems(type, rawItems)
       const content =
         typeof section.content === 'string' && section.content.trim()
           ? section.content.trim()
@@ -124,6 +212,10 @@ function parseSections(input: any): StudySetSection[] {
               ? 'markdown'
               : undefined,
         content,
+        status:
+          typeof section.status === 'string' && section.status.trim()
+            ? section.status.trim().toLowerCase()
+            : undefined,
       }
     })
     .filter(Boolean) as StudySetSection[]
@@ -550,7 +642,7 @@ export function normalizeStudySetPayload(payload: any, fallbackTitle?: string): 
     payload.title ?? payload.name ?? payload.summary ?? fallbackTitle ?? 'Untitled Study Set'
   const itemSource = payload.items ?? payload.itemCount ?? payload.totalItems ?? 0
   const selections = Array.isArray(payload.selections)
-    ? payload.selections.map((entry: unknown) => String(entry))
+    ? payload.selections.map((entry: unknown) => normalizeSectionType(entry))
     : []
   const title = String(titleSource).trim() || 'Untitled Study Set'
   const summary = String(payload.summary ?? fallbackTitle ?? 'A focused study experience from your material')

@@ -207,7 +207,7 @@ export default function PasteModal({ onClose }: PasteModalProps) {
       setGenerationMeta(nextGenerationMeta)
       ensureStudySetGenerationTracking(uploadedResponse.document.id)
       onClose()
-      router.push(`/dashboard/study-sets/${uploadedResponse.document.id}`)
+      router.push(`/dashboard/study-sets/${response.study_set_id}?autoOpenFirst=1`)
     } catch (error) {
       console.error('Error generating study set:', error)
       setErrorMessage(getApiClientErrorMessage(error, 'Failed to generate study set. Please try again.'))

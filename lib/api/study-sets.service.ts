@@ -254,6 +254,26 @@ export type StudySetProgressResponse = {
   by_type: StudySetProgressByType[]
 }
 
+export type StudySetHistoryItem = {
+  id: string
+  title: string
+  description: string | null
+  item_count: number
+  percentage_completed: number
+  generation_progress_percentage: number
+  items_left: number
+  created_at: string
+}
+
+export type StudySetHistoryResponse = {
+  data: StudySetHistoryItem[]
+}
+
+export type UnifiedStudySetResponse = {
+  studySet: Record<string, unknown>
+  warning: string | null
+}
+
 export type StudySetAnswerMastery = {
   previous_state: string
   new_state: string
@@ -573,9 +593,10 @@ export async function fetchStudySetGenerationBatchStatus(batchId: string) {
   return normalizeBatchStatusResponse(response)
 }
 
-async function fetchStudySetOutput<TResponse>(studySetId: string, endpoint: string) {
+async function fetchStudySetOutput<TResponse>(studySetId: string, endpoint: string, signal?: AbortSignal) {
   return apiClient.request<TResponse>(`/api/v1/study-sets/${studySetId}/${endpoint}`, {
     method: 'GET',
+    signal,
   })
 }
 
@@ -587,16 +608,16 @@ export function fetchStudySetTutorLesson(studySetId: string) {
   return fetchStudySetOutput<StudySetTutorLessonResponse>(studySetId, 'tutor_lesson')
 }
 
-export function fetchStudySetMultipleChoice(studySetId: string) {
-  return fetchStudySetOutput<StudySetMultipleChoiceResponse>(studySetId, 'multiple_choice')
+export function fetchStudySetMultipleChoice(studySetId: string, signal?: AbortSignal) {
+  return fetchStudySetOutput<StudySetMultipleChoiceResponse>(studySetId, 'multiple_choice', signal)
 }
 
-export function fetchStudySetFlashcards(studySetId: string) {
-  return fetchStudySetOutput<StudySetFlashcardsResponse>(studySetId, 'flashcards')
+export function fetchStudySetFlashcards(studySetId: string, signal?: AbortSignal) {
+  return fetchStudySetOutput<StudySetFlashcardsResponse>(studySetId, 'flashcards', signal)
 }
 
-export function fetchStudySetFillInTheBlanks(studySetId: string) {
-  return fetchStudySetOutput<StudySetFillInTheBlanksResponse>(studySetId, 'fill_in_blanks')
+export function fetchStudySetFillInTheBlanks(studySetId: string, signal?: AbortSignal) {
+  return fetchStudySetOutput<StudySetFillInTheBlanksResponse>(studySetId, 'fill_in_blanks', signal)
 }
 
 export function fetchStudySetWrittenTest(studySetId: string) {
@@ -607,9 +628,24 @@ export function fetchStudySetPodcast(studySetId: string) {
   return fetchStudySetOutput<StudySetPodcastResponse>(studySetId, 'podcast')
 }
 
-export function fetchStudySetProgress(studySetId: string) {
+export function fetchStudySetHistory(signal?: AbortSignal) {
+  return apiClient.request<StudySetHistoryResponse>('/api/v1/study-sets/history', {
+    method: 'GET',
+    signal,
+  })
+}
+
+export function fetchUnifiedStudySet(studySetId: string, signal?: AbortSignal) {
+  return apiClient.request<UnifiedStudySetResponse>(`/api/v1/study-sets/${studySetId}`, {
+    method: 'GET',
+    signal,
+  })
+}
+
+export function fetchStudySetProgress(studySetId: string, signal?: AbortSignal) {
   return apiClient.request<StudySetProgressResponse>(`/api/v1/study-sets/${studySetId}/progress`, {
     method: 'GET',
+    signal,
   })
 }
 

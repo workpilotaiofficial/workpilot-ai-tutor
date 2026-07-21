@@ -5,7 +5,7 @@ import type { StudySet } from '@/components/study-sets/utils'
 import { fetchStudySetProgress, type StudySetProgressResponse } from '@/lib/api/study-sets.service'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
-import { AlertCircle, BookOpen, CheckCircle2, ChevronRight, Edit3, FileText, GraduationCap, Headphones, Layers, ListChecks, LoaderCircle, PenSquare, RotateCw } from 'lucide-react'
+import { AlertCircle, BookOpen, ChevronRight, Edit3, FileText, GraduationCap, Headphones, Layers, ListChecks, LoaderCircle, PenSquare, RotateCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 type CardStatus = 'ready' | 'generating' | 'fetching' | 'failed'
@@ -15,10 +15,19 @@ function getCardStatus(
   studySet: StudySet | null,
   generationMeta: StoredStudySetGenerationMeta | null,
 ): CardStatus {
+  const section = studySet?.sections.find((candidate) => candidate.type === sectionType)
+
+  if (section?.status === 'failed') return 'failed'
+  if (
+    section?.status === 'processing' ||
+    section?.status === 'pending' ||
+    section?.status === 'in_progress' ||
+    section?.status === 'generating' ||
+    section?.status === 'queued'
+  ) return 'generating'
+  if (section && (!section.status || section.status === 'completed' || section.status === 'ready')) return 'ready'
+
   if (!generationMeta) {
-    if (studySet?.sections.some((section) => section.type === sectionType)) {
-      return 'ready'
-    }
     return 'generating'
   }
 
@@ -65,14 +74,6 @@ function getSectionDescription(sectionType: StudySetUiSectionType): string {
     fillInTheBlanks: 'Recall from memory',
   }
   return descriptions[sectionType] || ''
-}
-
-function getStepStatus(sectionType: StudySetUiSectionType, studySet: StudySet | null, generationMeta: StoredStudySetGenerationMeta | null) {
-  const status = getCardStatus(sectionType, studySet, generationMeta)
-  if (status === 'ready') return 'completed'
-  if (status === 'failed') return 'failed'
-  // 'generating' and 'fetching' both mean work is happening — show a spinner.
-  return 'in-progress'
 }
 
 function getItemCount(sectionType: StudySetUiSectionType, studySet: StudySet | null): number {
@@ -190,101 +191,6 @@ export function StudySetOverview({
   }
 
   const selections = (studySet.selections || []) as StudySetUiSectionType[]
-  const completedCount = generationMeta
-    ? generationMeta.jobs.filter((j) => j.status === 'completed').length
-    : 0
-  const failedCount = generationMeta
-    ? generationMeta.jobs.filter((j) => j.status === 'failed').length
-    : 0
-
-  // Generation is done when all jobs are in terminal state (completed or failed)
-  const totalJobs = selections.length
-  const doneJobs = completedCount + failedCount
-  const isGenerating = doneJobs < totalJobs
-
-  if (isGenerating) {
-    return (
-      <div className="flex  flex-col items-center justify-center min-h-[60vh] space-y-8">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="relative flex items-center justify-center w-16 h-16">
-            <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" />
-            <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
-              <LoaderCircle className="w-8 h-8 text-primary animate-spin" />
-            </div>
-          </div>
-
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-foreground">Building your study set</h2>
-            <p className="text-muted-foreground mt-2">This usually takes a few seconds.</p>
-          </div>
-        </div>
-
-        <div className="w-full max-w-md">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className={`h-full rounded-full bg-primary transition-all duration-700 ease-out ${doneJobs === 0 ? 'animate-pulse' : ''}`}
-              style={{ width: `${totalJobs > 0 ? Math.max(8, (doneJobs / totalJobs) * 100) : 8}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="w-full max-w-md space-y-3">
-          {selections.map((sectionType) => {
-            const stepStatus = getStepStatus(sectionType, studySet, generationMeta)
-            const label = uiSectionTypeLabels[sectionType] || sectionType
-
-            return (
-              <div key={sectionType} className="flex items-center justify-between gap-3 py-2">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    {stepStatus === 'completed' && (
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    )}
-                    {stepStatus === 'in-progress' && (
-                      <LoaderCircle className="w-5 h-5 text-primary animate-spin" />
-                    )}
-                    {stepStatus === 'failed' && (
-                      <AlertCircle className="w-5 h-5 text-red-600" />
-                    )}
-                  </div>
-                  <p className={stepStatus === 'completed' || stepStatus === 'in-progress' ? 'text-foreground font-medium' : 'text-muted-foreground'}>
-                    {label}
-                  </p>
-                </div>
-
-                {stepStatus === 'failed' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onRetrySection?.(sectionType)
-                    }}
-                    className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Retry"
-                  >
-                    <RotateCw className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="text-center text-sm text-muted-foreground">
-          <p>
-            <span className="font-semibold text-foreground">{completedCount}</span> of{' '}
-            <span className="font-semibold text-foreground">{selections.length}</span> sections ready
-          </p>
-          {failedCount > 0 && (
-            <p className="text-red-600 mt-1">
-              <span className="font-semibold">{failedCount}</span> failed
-            </p>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // Show overview with header and cards when generation is complete
   return (
     <div className="space-y-8">
       {/* Header Card */}
@@ -462,6 +368,7 @@ export function StudySetOverview({
             const itemCount = getItemCount(sectionType, studySet)
             const isReady = status === 'ready'
             const isFailed = status === 'failed'
+            const isGenerating = status === 'generating' || status === 'fetching'
 
             let cardClasses = 'rounded-2xl border p-6 transition-all duration-300 animate-in fade-in-0 zoom-in-95 relative group'
 
@@ -492,6 +399,8 @@ export function StudySetOverview({
                       }`}>
                         {isFailed ? (
                           <AlertCircle className="h-6 w-6" />
+                        ) : isGenerating ? (
+                          <LoaderCircle className="h-6 w-6 animate-spin text-blue-600" />
                         ) : (
                           <Icon className="h-6 w-6" />
                         )}
@@ -500,6 +409,9 @@ export function StudySetOverview({
                       <div className="text-left">
                         <p className={`font-bold text-base transition-colors ${isReady ? 'text-slate-900 group-hover:text-blue-600' : 'text-slate-700'}`}>{label}</p>
                         <p className="text-sm text-slate-600 mt-1">{description}</p>
+                        {isGenerating && (
+                          <p className="mt-2 text-xs font-bold tracking-wide text-blue-600">GENERATING...</p>
+                        )}
                         {itemCount > 0 && (
                           <p className={`text-xs font-bold mt-2 tracking-wide ${isReady ? 'text-blue-600' : 'text-slate-500'}`}>
                             {itemCount} {itemCount === 1 ? 'ITEM' : 'ITEMS'}

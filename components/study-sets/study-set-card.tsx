@@ -5,15 +5,15 @@ import {
   MoreVertical,
 } from 'lucide-react'
 import Link from 'next/link'
-import type { StudySet } from './utils'
+import type { StudySetPreview } from './utils'
 
 interface StudySetCardProps {
-  set: StudySet
+  set: StudySetPreview
   isListView?: boolean
 }
 
 export default function StudySetCard({ set, isListView }: StudySetCardProps) {
-  const masteryProgress = set.items > 0 ? Math.round((set.stats.mastered / set.items) * 100) : 0
+  const completionProgress = Math.min(100, Math.max(0, Math.round(set.percentageCompleted)))
 
   const stats = [
     {
@@ -81,12 +81,12 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
                 strokeWidth="4"
                 strokeLinecap="round"
                 strokeDasharray={2 * Math.PI * 18}
-                strokeDashoffset={2 * Math.PI * 18 - (masteryProgress / 100) * 2 * Math.PI * 18}
+                strokeDashoffset={2 * Math.PI * 18 - (completionProgress / 100) * 2 * Math.PI * 18}
                 className="transition-all duration-700"
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xs font-black text-foreground/60">{masteryProgress}%</span>
+              <span className="text-xs font-black text-foreground/60">{completionProgress}%</span>
             </div>
           </div>
 
@@ -140,7 +140,7 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
         ))}
         <div className="mt-1 flex items-center justify-between px-1 text-xs text-muted-foreground">
           <span>{set.items} items</span>
-          <span>{masteryProgress}% mastered</span>
+          <span>{completionProgress}% completed</span>
         </div>
       </div>
     </Link>

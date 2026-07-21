@@ -265,7 +265,7 @@ export default function UploadModal({ onClose }: UploadModalProps) {
       setGenerationMeta(nextGenerationMeta)
       ensureStudySetGenerationTracking(uploadedResponse.document.id)
       onClose()
-      router.push(`/dashboard/study-sets/${uploadedResponse.document.id}`)
+      router.push(`/dashboard/study-sets/${response.study_set_id}?autoOpenFirst=1`)
     } catch (error) {
       console.error('Error generating study set:', error)
       setErrorMessage(getApiClientErrorMessage(error, 'Failed to generate study set. Please try again.'))
@@ -293,13 +293,13 @@ export default function UploadModal({ onClose }: UploadModalProps) {
 
 
   const handleOpenGeneratedSection = (sectionType: StudySetUiSectionType) => {
-    const documentId = generationMeta?.documentId ?? uploadedResponse?.document.id
-    if (!documentId) {
+    const studySetId = generationMeta?.studySetId
+    if (!studySetId) {
       return
     }
 
     onClose()
-    router.push(`/dashboard/study-sets/${documentId}?mode=${sectionType}`)
+    router.push(`/dashboard/study-sets/${studySetId}?mode=${sectionType}`)
   }
 
   const renderUploadStep = () => (
