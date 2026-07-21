@@ -1,21 +1,25 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Upload, Link as LinkIcon, Grid3x3, List, Plus, Sparkles } from 'lucide-react'
+import { Upload, Link as LinkIcon, Grid2X2, List, Mic } from 'lucide-react'
 import UploadModal from '@/components/study-sets/upload-modal'
 import PasteModal from '@/components/study-sets/paste-modal'
 import StudySetCard from '@/components/study-sets/study-set-card'
 import { getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
+import { getStoredAuthObject } from '@/lib/api/session-storage'
 
 export default function StudySetsPage() {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showPasteModal, setShowPasteModal] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [studySets, setStudySets] = useState<StudySet[]>([])
+  const [firstName, setFirstName] = useState('there')
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setStudySets(getStoredStudySets())
+      const displayName = getStoredAuthObject()?.user_display_name?.trim()
+      if (displayName) setFirstName(displayName.split(/\s+/)[0])
     }
   }, [])
 
@@ -25,92 +29,75 @@ export default function StudySetsPage() {
   }
 
   return (
-    <div className="w-full bg-background min-h-screen">
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 py-8">
-        {/* Hero Section - Always Show */}
-        <div className="mb-10 relative overflow-hidden rounded-3xl bg-linear-to-br from-primary via-primary to-thirdary p-8 sm:p-10">
-          {/* Decorative glow orbs */}
-          <div className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 bg-white/20 rounded-full blur-3xl"></div>
-          <div className="pointer-events-none absolute -bottom-32 -left-20 w-80 h-80 bg-accent/20 rounded-full blur-3xl"></div>
-          {/* Subtle dot grid */}
-          <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:20px_20px]"></div>
+    <div className="min-h-full w-full bg-background">
+      <div className="mx-auto w-full px-6 pb-12 pt-24 sm:px-8 lg:px-10">
+        <section className="mx-auto mb-28 max-w-4xl text-center sm:mb-32">
+          <h1 className="text-balance text-3xl font-semibold tracking-[-0.025em] text-foreground sm:text-[40px] sm:leading-[1.15]">
+            Hey {firstName}, what do you wanna master?
+          </h1>
+          <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+            Upload anything and get interactive notes, flashcards, quizzes, and more
+          </p>
 
-          <div className="relative">
-            <div className="mb-7 max-w-2xl">
-              <div className="mb-4 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 border border-white/25 backdrop-blur-sm">
-                <span className="text-xs font-bold text-white tracking-wide">STUDY SETS</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 leading-tight tracking-tight">
-                What do you wanna master today?
-              </h2>
-              <p className="text-white/80 text-base sm:text-lg max-w-xl leading-relaxed">
-                Upload notes, videos, or links and get interactive flashcards, quizzes &amp; study guides instantly.
-              </p>
-            </div>
-
-            {/* Action cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+          <div className="mx-auto mt-10 grid max-w-[840px] grid-cols-1 gap-3 text-left sm:grid-cols-3">
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="group flex items-center gap-4 p-5 bg-white/95 backdrop-blur-sm rounded-2xl border border-white/40 hover:bg-white hover:shadow-2xl hover:shadow-black/20 transition-all duration-300 hover:-translate-y-1 text-left"
+                className="group flex min-h-36 flex-col justify-between rounded-[28px] border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
               >
-                <div className="shrink-0 p-3.5 rounded-xl bg-linear-to-br from-primary to-thirdary text-white group-hover:scale-110 transition-transform duration-300">
-                  <Upload className="w-6 h-6" />
-                </div>
+                <Upload className="h-7 w-7 text-foreground/80" strokeWidth={2} />
                 <div>
-                  <p className="font-bold text-foreground">Upload File</p>
-                  <p className="text-sm text-muted-foreground">PDF, image, video</p>
+                  <p className="text-lg font-semibold text-foreground">Upload</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Image, file, audio, video</p>
                 </div>
               </button>
 
               <button
                 id="paste-content-btn"
                 onClick={() => setShowPasteModal(true)}
-                className="group flex items-center gap-4 p-5 bg-white/95 backdrop-blur-sm rounded-2xl border border-white/40 hover:bg-white hover:shadow-2xl hover:shadow-black/20 transition-all duration-300 hover:-translate-y-1 text-left"
+                className="group flex min-h-36 flex-col justify-between rounded-[28px] border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
               >
-                <div className="shrink-0 p-3.5 rounded-xl bg-linear-to-br from-primary to-thirdary text-white group-hover:scale-110 transition-transform duration-300">
-                  <LinkIcon className="w-6 h-6" />
-                </div>
+                <LinkIcon className="h-7 w-7 text-foreground/80" strokeWidth={2} />
                 <div>
-                  <p className="font-bold text-foreground">Paste Content</p>
-                  <p className="text-sm text-muted-foreground">Paste your text here.</p>
+                  <p className="text-lg font-semibold text-foreground">Paste</p>
+                  <p className="mt-1 text-sm text-muted-foreground">YouTube, website, text</p>
                 </div>
               </button>
-            </div>
-          </div>
-        </div>
 
-        {/* Content Area */}
-        {studySets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary text-primary">
-              <Sparkles className="h-7 w-7" />
-            </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">No study sets yet</h2>
-            <p className="text-muted-foreground mb-6 max-w-sm text-center">Use the upload or paste button above to create your first study set</p>
-          </div>
-        ) : (
-          <>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-2xl font-bold text-foreground">Your study sets</h3>
-              <p className="text-xs text-muted-foreground mt-1">Saved on this device</p>
-            </div>
-            <div className="flex fit items-center gap-1.5 bg-secondary p-1.5 rounded-lg border border-border">
               <button
+                type="button"
+                onClick={() => setShowUploadModal(true)}
+                className="group flex min-h-36 flex-col justify-between rounded-[28px] border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+              >
+                <Mic className="h-7 w-7 text-foreground/80" strokeWidth={2} />
+                <div>
+                  <p className="text-lg font-semibold text-foreground">Record</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Record live lecture</p>
+                </div>
+              </button>
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="relative pl-5 text-xl font-semibold text-foreground before:absolute before:inset-y-0 before:left-0 before:w-1 before:rounded-full before:bg-foreground sm:text-2xl">
+              All Study Sets
+            </h2>
+            <div className="flex items-center rounded-xl border border-border bg-card p-1">
+              <button
+                aria-label="Grid view"
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-all ${viewMode === 'grid'
-                  ? 'bg-card text-primary shadow-sm'
+                className={`rounded-lg p-2 transition-all ${viewMode === 'grid'
+                  ? 'bg-secondary text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
                   }`}
               >
-                <Grid3x3 className="w-4 h-4" />
+                <Grid2X2 className="h-4 w-4" />
               </button>
               <button
+                aria-label="List view"
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-all ${viewMode === 'list'
-                  ? 'bg-card text-primary shadow-sm'
+                className={`rounded-lg p-2 transition-all ${viewMode === 'list'
+                  ? 'bg-secondary text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
                   }`}
               >
@@ -119,11 +106,16 @@ export default function StudySetsPage() {
             </div>
           </div>
 
-            {/* Study Sets Grid */}
+          {studySets.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-border px-6 py-14 text-center">
+              <h3 className="text-lg font-semibold text-foreground">No study sets yet</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Upload or paste content above to create your first one.</p>
+            </div>
+          ) : (
             <div
               className={
                 viewMode === 'grid'
-                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-max'
+                  ? 'grid auto-rows-max grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3'
                   : 'space-y-4'
               }
             >
@@ -135,8 +127,8 @@ export default function StudySetsPage() {
                 />
               ))}
             </div>
-          </>
-        )}
+          )}
+        </section>
       </div>
 
       {/* Modals */}

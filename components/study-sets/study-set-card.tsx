@@ -1,12 +1,8 @@
 'use client'
 
 import {
-  AlertCircle,
-  BookMarked,
   ChevronRight,
-  Clock3,
   MoreVertical,
-  Trophy
 } from 'lucide-react'
 import Link from 'next/link'
 import type { StudySet } from './utils'
@@ -23,30 +19,26 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
     {
       label: 'Unfamiliar',
       value: set.stats.unfamiliar,
-      icon: AlertCircle,
-      color: 'text-red-600',
-      bg: 'bg-red-100',
+      color: 'text-red-600 dark:text-red-400',
+      bg: 'bg-red-50 dark:bg-red-950/30',
     },
     {
       label: 'Learning',
       value: set.stats.learning,
-      icon: Clock3,
-      color: 'text-orange-600',
-      bg: 'bg-orange-100',
+      color: 'text-orange-600 dark:text-orange-400',
+      bg: 'bg-orange-50 dark:bg-orange-950/30',
     },
     {
       label: 'Familiar',
       value: set.stats.familiar,
-      icon: BookMarked,
-      color: 'text-cyan-600',
-      bg: 'bg-cyan-100',
+      color: 'text-sky-600 dark:text-sky-400',
+      bg: 'bg-sky-50 dark:bg-sky-950/30',
     },
     {
       label: 'Mastered',
       value: set.stats.mastered,
-      icon: Trophy,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-100',
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bg: 'bg-emerald-50 dark:bg-emerald-950/30',
     },
   ]
 
@@ -114,52 +106,41 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
     )
   }
 
-  const ringCircumference = 2 * Math.PI * 18
-
   return (
     <Link
       href={`/dashboard/study-sets/${set.id}`}
-      className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card hover:border-primary/40 shadow-xl hover:shadow-primary/15 transition-all duration-300 hover:-translate-y-1 h-full flex flex-col"
+      className="group flex h-full flex-col overflow-hidden rounded-[30px] border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
     >
-      {/* Branded cover header */}
-      <div className="relative bg-linear-to-br from-primary/10 to-thirdary/10 overflow-hidden p-5">
-        <div className="relative flex items-start justify-between">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/15 border border-primary/25 rounded-full backdrop-blur-sm">
-            <span className="text-[11px] font-bold text-primary tracking-wide">Study Set</span>
-          </div>
-        </div>
-
+      <div className="flex items-center justify-between border-b border-border px-6 py-5">
+        <h3 className="min-w-0 truncate text-lg font-semibold text-foreground group-hover:text-primary">
+          {set.title}
+        </h3>
         <button
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
           }}
-          className="absolute bottom-3 right-3 p-1.5 text-primary/60 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+          aria-label={`More options for ${set.title}`}
+          className="ml-3 shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <MoreVertical className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Content */}
-      <div className="relative p-5 flex flex-col flex-1">
-        <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-4 min-h-10">
-          {set.title}
-        </h3>
-
-        {/* Progress bar */}
-        <div className="mt-auto pt-3 border-t border-border">
-          <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden mb-2">
-            <div
-              className="h-full bg-linear-to-r from-primary to-thirdary transition-all duration-700 rounded-full"
-              style={{ width: `${masteryProgress}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground font-medium">{set.items} items</span>
-            <span className="font-bold text-foreground/70">
-              {masteryProgress === 100 ? '✨ Mastered' : `${100 - masteryProgress}% to go`}
+      <div className="flex flex-1 flex-col gap-2.5 px-5 py-4">
+        {stats.map((stat) => (
+          <div key={stat.label} className="grid grid-cols-[54px_1fr] items-center gap-3">
+            <span className="rounded-xl border border-border bg-background px-3 py-2 text-center text-sm font-semibold text-foreground">
+              {stat.value}
+            </span>
+            <span className={`rounded-xl px-3 py-2 text-sm font-medium ${stat.bg} ${stat.color}`}>
+              {stat.label}
             </span>
           </div>
+        ))}
+        <div className="mt-1 flex items-center justify-between px-1 text-xs text-muted-foreground">
+          <span>{set.items} items</span>
+          <span>{masteryProgress}% mastered</span>
         </div>
       </div>
     </Link>
