@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Upload, FileText, ArrowRight } from 'lucide-react'
+import { Upload, FileText, ArrowUpRight } from 'lucide-react'
 import GraderUploadModal from '@/components/paper-grader/upload-modal'
 import GradingResult from '@/components/paper-grader/grading-result'
 import { formatUTCDate } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import type { GraderResult, GraderResultResponse, GraderSubmitResponse } from '@/lib/api'
 import { subscribeToGraderSubmission } from '@/components/paper-grader/grader-tracker'
 
@@ -108,134 +107,92 @@ export default function PaperGraderPage() {
       {activeSubmission ? (
         <GradingResult result={activeSubmission} onBack={() => setActiveSubmission(null)} />
       ) : (
-        <div className="min-h-screen bg-white dark:bg-background">
-          {/* Hero Section */}
-          <div className="border-b border-border bg-white dark:bg-background/50 backdrop-blur-sm">
-            <div className="max-w-7xl mx-auto px-8 py-12">
-              <div className="space-y-4 mb-8">
-                <h1 className="text-4xl md:text-5xl font-black bg-linear-to-r from-foreground to-primary bg-clip-text text-transparent">
-                  Paper Grader
-                </h1>
-                <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
-                  Upload your essays, assignments, or papers with grading rubrics to get instant AI-powered feedback and detailed assessments.
-                </p>
+        <div className="min-h-full w-full bg-background">
+          <div className="mx-auto w-full px-6 pb-12 pt-24 sm:px-8 lg:px-10">
+            <section className="mx-auto mb-28 max-w-4xl text-center sm:mb-32">
+              <h1 className="text-balance text-3xl font-semibold tracking-[-0.025em] text-foreground sm:text-[40px] sm:leading-[1.15]">
+                Get thoughtful feedback on every paper
+              </h1>
+              <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+                Upload an assignment with its rubric for an instant AI-powered grade and detailed feedback
+              </p>
+
+              <div className="mx-auto mt-10 max-w-[280px] text-left">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(true)}
+                  className="group flex min-h-36 w-full flex-col justify-between rounded-[28px] border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+                >
+                  <Upload className="h-7 w-7 text-foreground/80" strokeWidth={2} />
+                  <div>
+                    <p className="text-lg font-semibold text-foreground">Upload</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Assignment and rubric</p>
+                  </div>
+                </button>
               </div>
+            </section>
 
-              {/* Action Button */}
-              <Button
-                onClick={() => setShowUploadModal(true)}
-                className="btn-primary"
-              >
-                <Upload className="w-5 h-5" />
-                Upload Assignment & Rubric
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="max-w-7xl mx-auto px-8 py-12">
+            <section>
+              <div className="mb-5">
+                <h2 className="relative pl-5 text-xl font-semibold text-foreground before:absolute before:inset-y-0 before:left-0 before:w-1 before:rounded-full before:bg-foreground sm:text-2xl">
+                  Recent Submissions
+                </h2>
+                <p className="mt-1 pl-5 text-xs text-muted-foreground">Saved on this device</p>
+              </div>
             {isLoadingSubmissions ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="text-center">
-                  <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-muted-foreground font-medium">
-                    Loading submissions...
-                  </p>
-                </div>
+              <div className="rounded-3xl border border-border px-6 py-14 text-center">
+                <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+                <p className="text-sm text-muted-foreground">Loading submissions...</p>
               </div>
             ) : submissions.length > 0 ? (
-              <div>
-                <div className="mb-8">
-                  <h2 className="text-2xl font-black text-foreground flex items-center gap-3 mb-6">
-                    <div className="w-1 h-8 bg-linear-to-b from-primary to-thirdary rounded-full"></div>
-                    Recent Submissions
-                  </h2>
-                </div>
-
-                <div className="grid gap-4">
+                <div className="grid auto-rows-max grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {submissions.map((submission) => (
-                    <Button
+                    <button
+                      type="button"
                       key={submission.submission_id}
                       onClick={() => setActiveSubmission(submission)}
-                      className="group p-6 bg-card dark:bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-lg dark:hover:shadow-primary/10 transition-all duration-300 text-left"
+                      className="group flex min-h-48 flex-col rounded-[30px] border border-border bg-card p-6 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
                     >
-                      <div className="flex items-center justify-between gap-6">
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <div className="p-3 bg-secondary dark:bg-secondary rounded-lg shrink-0 group-hover:shadow-md transition-all">
-                            <FileText className="w-6 h-6 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                              {submission.title}
-                            </p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {formatUTCDate(submission.created_at)} •{' '}
-                              {isProcessingStatus(submission.status) ? (
-                                <span className="text-primary font-semibold">
-                                  Processing...
-                                </span>
-                              ) : submission.result?.overall_score !== null &&
-                                submission.result?.overall_score !== undefined ? (
-                                <span className="font-semibold text-foreground/70">
-                                  Score: {submission.result.overall_score}/{submission.result.max_score ?? 100}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">
-                                  Grading completed
-                                </span>
-                              )}
-                            </p>
-                          </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-foreground">
+                          <FileText className="h-5 w-5" />
                         </div>
-
+                        <ArrowUpRight className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                      </div>
+                      <div className="mt-6 flex flex-1 flex-col justify-end">
+                        <p className="truncate text-lg font-semibold text-foreground">{submission.title}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{formatUTCDate(submission.created_at)}</p>
+                        <div className="mt-4 flex items-end justify-between gap-4 border-t border-border pt-4">
+                          <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
+                            {isProcessingStatus(submission.status) ? 'Processing...' : 'Grading completed'}
+                          </span>
                         {submission.result?.overall_score !== null &&
                           submission.result?.overall_score !== undefined && (
-                            <div className="text-right shrink-0">
-                              <p className="text-4xl font-black bg-linear-to-r from-primary to-thirdary bg-clip-text text-transparent">
+                            <div className="shrink-0 text-right">
+                              <p className="text-2xl font-semibold text-foreground">
                                 {submission.result.overall_score}
-                                <span className="text-xl text-muted-foreground">
+                                <span className="text-sm font-normal text-muted-foreground">
                                   /{submission.result.max_score ?? 100}
                                 </span>
                               </p>
-                              <p className="text-sm font-bold text-muted-foreground mt-1">
-                                Grade:{' '}
-                                <span className="text-lg text-foreground">
-                                  {submission.result.overall_grade ?? '-'}
-                                </span>
-                              </p>
+                              <p className="text-xs text-muted-foreground">Grade {submission.result.overall_grade ?? '-'}</p>
                             </div>
                           )}
-
-                        <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                        </div>
                       </div>
-                    </Button>
+                    </button>
                   ))}
                 </div>
-              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-24 px-6">
-                <div className="relative mb-8">
-                  <div className="absolute inset-0 bg-linear-to-br from-primary/20 to-thirdary/20 rounded-3xl blur-2xl"></div>
-                  <div className="relative w-24 h-24 bg-secondary dark:bg-secondary rounded-3xl flex items-center justify-center shadow-lg">
-                    <FileText className="w-12 h-12 text-primary" />
-                  </div>
+              <div className="rounded-3xl border border-dashed border-border px-6 py-14 text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-foreground">
+                  <FileText className="h-7 w-7" />
                 </div>
-                <h2 className="text-3xl font-black text-foreground mb-3 text-center">
-                  No submissions yet
-                </h2>
-                <p className="text-muted-foreground mb-10 max-w-sm text-center leading-relaxed font-medium">
-                  Start by uploading your assignment along with the grading rubric to receive instant feedback and grading.
-                </p>
-                <Button
-                  onClick={() => setShowUploadModal(true)}
-                  className="btn-primary relative overflow-hidden group"
-                >
-                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <span className="relative">Upload Your First Assignment</span>
-                </Button>
+                <h3 className="text-lg font-semibold text-foreground">No submissions yet</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Upload an assignment and rubric above to grade your first paper.</p>
               </div>
             )}
+            </section>
           </div>
 
           {/* Upload Modal */}

@@ -49,10 +49,15 @@ function deriveSemesterDates(semesterWeeksValue: string) {
 interface SyllabusUploadModalProps {
   onClose: () => void
   onSuccess: (result: SyllabusIntelligenceResult) => void
+  initialMode?: 'file' | 'text'
 }
 
-export default function SyllabusUploadModal({ onClose, onSuccess }: SyllabusUploadModalProps) {
-  const [inputMode, setInputMode] = useState<'file' | 'text'>('file')
+export default function SyllabusUploadModal({
+  onClose,
+  onSuccess,
+  initialMode = 'file',
+}: SyllabusUploadModalProps) {
+  const [inputMode, setInputMode] = useState<'file' | 'text'>(initialMode)
   const [files, setFiles] = useState<File[]>([])
   const [text, setText] = useState('')
   const [title, setTitle] = useState('')

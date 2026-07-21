@@ -8,7 +8,7 @@ import {
   type SyllabusIntelligenceResult,
 } from '@/components/syllabus-intelligence/utils'
 import { formatUTCDate } from '@/lib/utils'
-import { ArrowUpRight, FileText, Trash2, Upload } from 'lucide-react'
+import { ArrowUpRight, FileText, Link as LinkIcon, Trash2, Upload } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -18,10 +18,14 @@ export default function SyllabusIntelligenceContent() {
   const resultIdParam = searchParams.get('id')
 
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadMode, setUploadMode] = useState<'file' | 'text'>('file')
   const [results, setResults] = useState<SyllabusIntelligenceResult[]>([])
   const [activeResult, setActiveResult] = useState<SyllabusIntelligenceResult | null>(null)
 
-  const openUploadModal = useCallback(() => setShowUploadModal(true), [])
+  const openUploadModal = useCallback((mode: 'file' | 'text' = 'file') => {
+    setUploadMode(mode)
+    setShowUploadModal(true)
+  }, [])
   const closeUploadModal = useCallback(() => setShowUploadModal(false), [])
 
   const sortedResults = useMemo(
@@ -73,59 +77,59 @@ export default function SyllabusIntelligenceContent() {
   }
 
   return (
-    <div className="w-full bg-linear-to-br from-white via-blue-50/30 to-white min-h-screen">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 py-8">
-        {/* Hero Section */}
-        <div className="mb-10 relative overflow-hidden rounded-3xl bg-linear-to-br from-primary via-thirdary/90 to-primary p-8 sm:p-10">
-          {/* Decorative glow orbs */}
-          <div className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 bg-white/20 rounded-full blur-3xl"></div>
-          <div className="pointer-events-none absolute -bottom-32 -left-20 w-80 h-80 bg-accent/20 rounded-full blur-3xl"></div>
-          {/* Subtle dot grid */}
-          <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:20px_20px]"></div>
+    <div className="min-h-full w-full bg-background">
+      <div className="mx-auto w-full px-6 pb-12 pt-24 sm:px-8 lg:px-10">
+        <section className="mx-auto mb-28 max-w-4xl text-center sm:mb-32">
+          <h1 className="text-balance text-3xl font-semibold tracking-[-0.025em] text-foreground sm:text-[40px] sm:leading-[1.15]">
+            Turn your syllabus into an action plan
+          </h1>
+          <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+            Get AI-powered modules, learning objectives, timelines, and weekly priorities
+          </p>
 
-          <div className="relative">
-            <div className="mb-7 max-w-2xl">
-        
-              <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 leading-tight tracking-tight">
-                Turn your syllabus into an action plan
-              </h2>
-              <p className="text-indigo-100 text-base sm:text-lg max-w-xl leading-relaxed">
-                Upload a syllabus and get AI-powered modules, learning objectives, timeline, and weekly priorities instantly.
-              </p>
-            </div>
-
-            {/* Action button */}
+          <div className="mx-auto mt-10 grid max-w-[560px] grid-cols-1 gap-3 text-left sm:grid-cols-2">
             <button
-              onClick={openUploadModal}
-              className="group flex items-center gap-4 p-5 bg-white/95 backdrop-blur-sm rounded-2xl border border-white/40 hover:bg-white hover:shadow-2xl hover:shadow-black/20 transition-all duration-300 hover:-translate-y-1 text-left max-w-xs"
+              type="button"
+              onClick={() => openUploadModal('file')}
+              className="group flex min-h-36 flex-col justify-between rounded-[28px] border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
             >
-              <div className="shrink-0 p-3.5 rounded-xl bg-linear-to-br from-primary to-thirdary text-white group-hover:scale-110 transition-transform duration-300">
-                <Upload className="w-6 h-6" />
-              </div>
+              <Upload className="h-7 w-7 text-foreground/80" strokeWidth={2} />
               <div>
-                <p className="font-bold text-slate-900">Analyze Syllabus</p>
-                <p className="text-sm text-slate-500">PDF or plain text</p>
+                <p className="text-lg font-semibold text-foreground">Upload</p>
+                <p className="mt-1 text-sm text-muted-foreground">PDF or text file (Max 20MB)</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => openUploadModal('text')}
+              className="group flex min-h-36 flex-col justify-between rounded-[28px] border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+            >
+              <LinkIcon className="h-7 w-7 text-foreground/80" strokeWidth={2} />
+              <div>
+                <p className="text-lg font-semibold text-foreground">Paste</p>
+                <p className="mt-1 text-sm text-muted-foreground">Paste your course outline</p>
               </div>
             </button>
           </div>
-        </div>
+        </section>
 
-        {/* Content Area */}
+        <section>
+          <div className="mb-5">
+            <h2 className="relative pl-5 text-xl font-semibold text-foreground before:absolute before:inset-y-0 before:left-0 before:w-1 before:rounded-full before:bg-foreground sm:text-2xl">
+              Recent Analyses
+            </h2>
+            <p className="mt-1 pl-5 text-xs text-muted-foreground">Saved on this device</p>
+          </div>
         {sortedResults.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary text-primary">
+          <div className="rounded-3xl border border-dashed border-border px-6 py-14 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-foreground">
               <FileText className="h-7 w-7" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">No syllabus analyzed yet</h2>
-            <p className="text-slate-600 mb-6 max-w-sm text-center">Use the upload button above to analyze your first syllabus and generate your semester roadmap</p>
+            <h3 className="text-lg font-semibold text-foreground">No syllabus analyzed yet</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Upload or paste a syllabus above to generate your first roadmap.</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-2xl font-bold text-slate-900">Recent Analyses</h3>
-              <p className="text-xs text-muted-foreground mt-1">Saved on this device</p>
-            </div>
-            <ul className="space-y-3">
+            <ul className="grid auto-rows-max grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {sortedResults.map((result) => (
                 <li key={result.id}>
                   <button
@@ -135,35 +139,35 @@ export default function SyllabusIntelligenceContent() {
                       router.push(`?id=${result.id}`)
                     }}
                     aria-label={`Open analysis for ${result.title}`}
-                    className="w-full rounded-2xl border border-slate-200/80 bg-white hover:border-primary/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-5 text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    className="group h-full w-full rounded-[30px] border border-border bg-card p-6 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
-                          <p className="font-bold text-slate-900 truncate">{result.title}</p>
-                          <ArrowUpRight className="w-4 h-4 text-slate-400 flex-shrink-0 group-hover:text-slate-600 transition-colors" />
+                          <p className="truncate text-lg font-semibold text-foreground">{result.title}</p>
+                          <ArrowUpRight className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 font-medium">
+                          <span className="rounded-full border border-border bg-background px-2.5 py-1 font-medium text-muted-foreground">
                             {result.modules.length} modules
                           </span>
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 font-medium">
+                          <span className="rounded-full border border-border bg-background px-2.5 py-1 font-medium text-muted-foreground">
                             {result.analysis?.overallLearningObjectives.length ?? 0} objectives
                           </span>
                         </div>
-                        <p className="mt-3 line-clamp-2 text-sm text-slate-600">
+                        <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
                           {result.analysis?.courseSummary ?? 'No AI summary available yet.'}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-xs text-slate-500 whitespace-nowrap">
+                        <span className="whitespace-nowrap text-xs text-muted-foreground">
                           {formatUTCDate(result.createdAt)}
                         </span>
                         <button
                           type="button"
                           onClick={(e) => handleDeleteResult(result.id, e)}
                           aria-label={`Delete analysis for ${result.title}`}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-600"
+                          className="rounded-lg p-1.5 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -173,12 +177,12 @@ export default function SyllabusIntelligenceContent() {
                 </li>
               ))}
             </ul>
-          </div>
         )}
+        </section>
       </div>
 
       {showUploadModal && (
-        <SyllabusUploadModal onClose={closeUploadModal} onSuccess={handleResultSuccess} />
+        <SyllabusUploadModal initialMode={uploadMode} onClose={closeUploadModal} onSuccess={handleResultSuccess} />
       )}
     </div>
   )
