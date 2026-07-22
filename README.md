@@ -29,7 +29,8 @@ WorkPilot turns your study material into interactive learning experiences: study
    NEXT_PUBLIC_FIREBASE_APP_ID=...
 
    # Backend API base URL
-   NEXT_PUBLIC_API_BASE_URL=https://your-backend.example.com
+   NEXT_PUBLIC_API_BASE_URL=/backend-api
+   API_UPSTREAM_URL=https://your-backend.example.com
    ```
 
 3. Run the dev server:

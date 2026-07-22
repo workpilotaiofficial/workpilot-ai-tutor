@@ -318,3 +318,39 @@ html.lenis body {
     transform: translateX(0);
   }
 }
+
+@keyframes landing-type {
+  from { max-width: 0; }
+  to { max-width: 22ch; }
+}
+
+@keyframes landing-caret {
+  0%, 45% { border-color: var(--primary); }
+  46%, 100% { border-color: transparent; }
+}
+
+.landing-type-line {
+  display: block;
+  width: fit-content;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid transparent;
+  animation: landing-type 1.15s steps(19, end) forwards,
+    landing-caret 0.7s step-end infinite;
+}
+
+.landing-type-line-one { animation-delay: 0.55s, 0.55s; }
+.landing-type-line-two { animation-delay: 1.8s, 1.8s; }
+
+.landing-editorial {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-type-line {
+    max-width: 22ch;
+    border-right-color: transparent;
+    animation: none !important;
+  }
+}

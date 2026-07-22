@@ -31,20 +31,36 @@ export default function Hero() {
           transition={{ duration: 0.75, ease }}
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5" />
-            One AI workspace for focused learning
+           AI-Powered Learning
           </div>
 
-          <h1 className="mt-7 max-w-3xl text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.055em] text-slate-950 sm:text-6xl lg:text-[4.25rem]">
-            Turn study material into
-            <span className="block text-slate-950">
-              real understanding.
+          <h1 className="mt-7 max-w-3xl text-[2.65rem] font-bold leading-[1.04] tracking-[-0.055em] text-slate-950 sm:text-6xl lg:text-[4.35rem]">
+            <span className="block">Meet your AI tutor.</span>
+            <span className="landing-type-line landing-type-line-one mt-2 text-[0.72em] leading-[1.12] tracking-[-0.025em] sm:mt-3">
+              <span className="landing-editorial italic font-medium">Less memorizing.</span>
+            </span>
+            <span className="landing-type-line landing-type-line-two relative pb-2 text-[0.72em] leading-[1.12] tracking-[-0.025em]">
+              <span className="landing-editorial hero-gradient-text relative z-10 bg-gradient-to-r from-primary via-thirdary to-primary bg-clip-text italic font-medium text-transparent">
+                More understanding.
+              </span>
+              <motion.span
+                aria-hidden="true"
+                initial={{ scaleX: 0, opacity: 0 }}
+                animate={{ scaleX: 1, opacity: 0.7 }}
+                transition={{ duration: 0.8, delay: 3.1, ease }}
+                className="absolute bottom-0 left-1 h-1 w-[52%] origin-left rounded-full bg-gradient-to-r from-primary via-thirdary to-transparent sm:h-1.5"
+              />
             </span>
           </h1>
 
-          <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-            WorkPilot transforms your notes and documents into clear summaries,
-            practice quizzes, flashcards, and feedback—so every study session has a plan.
+          <div className="mt-4 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <span className="h-px w-8 bg-gradient-to-r from-primary to-thirdary" />
+            Learn with direction
+          </div>
+
+          <p className="mt-5 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+            Study smarter with WorkPilot—an AI tutor that helps you understand,
+            not just memorize.
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
