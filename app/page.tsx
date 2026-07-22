@@ -9,9 +9,9 @@ import SmoothScroll from "@/components/smooth-scroll";
 export default function LandingPage() {
   return (
     <SmoothScroll>
-      <main className="min-h-screen bg-background text-foreground">
+      <main className=" bg-background text-foreground">
         <Nav>
-          <div className="relative flex min-h-screen w-full flex-col items-start justify-start">
+          <div className="relative flex  w-full flex-col items-start justify-start">
             <div className=" w-full">
               <Hero />
               <FeaturesSection />

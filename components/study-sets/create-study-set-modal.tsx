@@ -18,7 +18,7 @@ const outputOptions: Array<{ id: OutputType; description: string; icon: any }> =
   { id: 'notes', description: 'Structured note summary.', icon: FileText },
   { id: 'multipleChoice', description: 'Auto-checked MCQ practice.', icon: ListChecks },
   { id: 'flashcards', description: 'Term and definition recall.', icon: Layers },
-  { id: 'podcast', description: 'Audio-style talking points.', icon: Headphones },
+  // { id: 'podcast', description: 'Audio-style talking points.', icon: Headphones },
   { id: 'tutorLesson', description: 'Guided tutor explanation.', icon: GraduationCap },
   { id: 'writtenTests', description: 'Open-ended exam responses.', icon: PenSquare },
   { id: 'fillInTheBlanks', description: 'Context cloze practice.', icon: Edit3 },
