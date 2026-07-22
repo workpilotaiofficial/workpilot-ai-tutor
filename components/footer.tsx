@@ -35,8 +35,8 @@ const socials = [
 
 export default function Footer() {
   return (
-    <footer className="overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 p-4 dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-neutral-950">
+    <footer className="overflow-hidden border-t border-slate-200 bg-slate-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-neutral-950">
         <div className="relative w-full overflow-hidden border-t border-neutral-100 bg-white px-6 pt-16 sm:px-10 dark:border-white/10 dark:bg-neutral-950">
           <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-12 text-sm text-neutral-500 sm:flex-row">
             {/* Brand */}
@@ -80,7 +80,7 @@ export default function Footer() {
             </p>
           </div>
 
-          <p className="select-none bg-linear-to-b from-neutral-100 to-neutral-200/70 bg-clip-text text-center text-5xl font-bold text-transparent md:text-9xl lg:text-[12rem] xl:text-[13rem] dark:from-neutral-900 dark:to-neutral-950">
+          <p className="select-none bg-linear-to-b from-neutral-100 to-slate-100 bg-clip-text text-center text-5xl font-bold tracking-[-.06em] text-transparent md:text-9xl lg:text-[12rem] xl:text-[13rem] dark:from-neutral-900 dark:to-neutral-950">
             WorkPilot
           </p>
         </div>

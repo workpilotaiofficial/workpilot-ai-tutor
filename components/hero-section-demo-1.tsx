@@ -1,223 +1,118 @@
 "use client";
 
-import { FlipWords } from "@/components/ui/flip-words";
-import { ArrowRight, Play } from "lucide-react";
-import type { Variants } from "motion/react";
 import { motion, useMotionTemplate, useMotionValue } from "motion/react";
-import Image from "next/image";
+import { ArrowRight, Check, FileText, MessageSquareText, Sparkles } from "lucide-react";
+import Link from "next/link";
 
-const container: Variants = {
-  hidden: {},
-  show: {
-    transition: { staggerChildren: 0.12, delayChildren: 0.1 },
-  },
-};
-
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 24, filter: "blur(8px)" },
-  show: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
-  },
-};
+const ease = [0.22, 1, 0.36, 1] as const;
 
 export default function Hero() {
-  // Pointer-tracking spotlight that follows the cursor across the hero.
-  const mouseX = useMotionValue(50);
-  const mouseY = useMotionValue(50);
-  const spotlight = useMotionTemplate`radial-gradient(550px circle at ${mouseX}% ${mouseY}%, rgba(91,101,224,0.18), transparent 70%)`;
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    mouseX.set(((e.clientX - rect.left) / rect.width) * 100);
-    mouseY.set(((e.clientY - rect.top) / rect.height) * 100);
-  };
+  const x = useMotionValue(50);
+  const y = useMotionValue(35);
+  const glow = useMotionTemplate`radial-gradient(520px circle at ${x}% ${y}%, rgba(91,101,224,.08), transparent 68%)`;
 
   return (
     <section
-      onMouseMove={handleMouseMove}
-      className="relative overflow-hidden px-4 py-24 sm:px-6 sm:py-28 lg:px-8 lg:py-12"
+      onMouseMove={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        x.set(((event.clientX - bounds.left) / bounds.width) * 100);
+        y.set(((event.clientY - bounds.top) / bounds.height) * 100);
+      }}
+      className="relative overflow-hidden border-b border-stone-200/80 bg-[#fcfaf8] px-4 pb-20 pt-32 sm:px-6 sm:pb-24 sm:pt-40 lg:px-8 lg:pb-28"
     >
-      {/* Animated decorative background */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        {/* Dotted fade pattern shared with the Features hero */}
-        <div className="absolute inset-0 opacity-40 [background-image:radial-gradient(#5B65E0_0.7px,transparent_0.7px)] [background-size:22px_22px] [mask-image:linear-gradient(to_bottom,black,transparent_75%)]" />
+      <motion.div style={{ background: glow }} className="pointer-events-none absolute inset-0" />
+      <div className="pointer-events-none absolute inset-0 landing-grid opacity-70" />
+      <div className="pointer-events-none absolute left-1/2 top-12 h-72 w-[42rem] -translate-x-1/2 rounded-full bg-slate-200/35 blur-[110px]" />
 
-        {/* Cursor spotlight */}
-        <motion.div className="absolute inset-0" style={{ background: spotlight }} />
-
-        {/* Glow orbs */}
-        <div className="hero-animate-blob absolute left-[-6rem] top-16 h-52 w-52 rounded-full bg-thirdary/25 blur-3xl sm:h-64 sm:w-64 xl:left-[-4rem] xl:h-72 xl:w-72" />
-        <div className="hero-animate-blob absolute right-[-3rem] top-10 h-60 w-60 rounded-full bg-primary/25 blur-3xl [animation-delay:-6s] sm:h-72 sm:w-72 xl:right-0 xl:top-16 xl:h-80 xl:w-80" />
-        <div className="hero-animate-spotlight absolute left-1/2 top-[-8rem] h-72 w-[36rem] -translate-x-1/2 rounded-full bg-[conic-gradient(from_180deg_at_50%_50%,rgba(91,101,224,0.18),rgba(81,0,167,0.16),rgba(91,101,224,0.18))] blur-3xl" />
-
-        {/* Floating sharp shapes */}
+      <div className="relative mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1.02fr_.98fr] lg:gap-16">
         <motion.div
-          aria-hidden
-          className="hero-animate-float absolute left-[8%] top-[22%] h-16 w-16 rotate-12 rounded-2xl border border-primary/30 bg-white/40 shadow-[0_18px_40px_rgba(91,101,224,0.18)] backdrop-blur-sm [animation-delay:-2s]"
-        />
-        <motion.div
-          aria-hidden
-          className="hero-animate-float absolute right-[14%] top-[14%] h-10 w-10 rounded-full border border-thirdary/30 bg-thirdary/10 [animation-delay:-4s]"
-        />
-        <motion.div
-          aria-hidden
-          className="hero-animate-float absolute bottom-[18%] left-[18%] h-8 w-8 rotate-45 border border-primary/40 bg-gradient-to-br from-primary/30 to-thirdary/30 [animation-delay:-1s]"
-        />
-      </div>
-
-      <div className="relative mx-auto flex min-h-[calc(100svh-6rem)] w-full max-w-7xl flex-col justify-center gap-14 lg:min-h-[calc(100svh-7rem)] lg:flex-row lg:items-center lg:gap-10 xl:max-w-[82rem] xl:gap-14">
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="flex-1"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.75, ease }}
         >
-          <motion.div
-            variants={fadeUp}
-            className="group inline-flex max-w-full items-center gap-2 rounded-full border border-thirdary/15 bg-white/85 px-3 py-2 text-xs font-medium text-slate-700 shadow-[0_10px_35px_rgba(15,23,42,0.06)] backdrop-blur transition-all duration-300 hover:border-thirdary/40 hover:shadow-[0_14px_45px_rgba(81,0,167,0.18)] sm:px-4 sm:text-sm"
-          >
-            {/* <span className="relative flex h-4 w-4 items-center justify-center">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-thirdary/40" />
-              <Dot className="relative h-2 w-2 text-thirdary" />
-            </span> */}
-            Personalized study workflows for modern students
-          </motion.div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur">
+            <Sparkles className="h-3.5 w-3.5" />
+            One AI workspace for focused learning
+          </div>
 
-          <motion.h1
-            variants={fadeUp}
-            className="mt-6 text-4xl font-semibold leading-[1.08] tracking-[-0.05em] text-slate-950 sm:text-5xl lg:text-5xl xl:text-6xl"
-          >
-            Learn{" "}
-            <span className="hero-gradient-text mr-2 bg-gradient-to-r from-button via-thirdary to-primary bg-clip-text text-transparent sm:mr-3">
-              Smarter
+          <h1 className="mt-7 max-w-3xl text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.055em] text-slate-950 sm:text-6xl lg:text-[4.25rem]">
+            Turn study material into
+            <span className="block text-slate-950">
+              real understanding.
             </span>
-            with
-            <br />
-            your personal{" "}
-            <FlipWords
-              words={["AI Tutor", "Study Buddy", "Exam Coach", "Quiz Maker"]}
-              duration={2500}
-              className="hero-gradient-text bg-gradient-to-r font-extrabold from-primary via-thirdary to-button bg-clip-text !text-transparent"
-            />
-          </motion.h1>
+          </h1>
 
-          <motion.p
-            variants={fadeUp}
-            className="mt-6 max-w-xl text-sm leading-7 text-slate-600 sm:text-base sm:leading-8 lg:text-lg xl:max-w-2xl"
-          >
-            WorkPilot combines smart summaries, guided quizzes, paper feedback, and
-            real-time explanations into one focused workspace built to improve how
-            students actually study.
-          </motion.p>
+          <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+            WorkPilot transforms your notes and documents into clear summaries,
+            practice quizzes, flashcards, and feedback—so every study session has a plan.
+          </p>
 
-          <motion.div variants={fadeUp} className="mt-10">
-            <div className="grid max-w-2xl grid-cols-1 gap-4 rounded-[2rem] border border-slate-200/70 bg-white/80 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center sm:gap-0 sm:p-5">
-              {/* Item 1 */}
-              <div className="flex items-center gap-3 sm:pr-5 xl:pr-6">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eef2ff]">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    className="h-5 w-5 text-[#3b4a8a]"
-                  >
-                    <rect x="7" y="3" width="10" height="18" rx="2" />
-                    <path d="M9.5 7h5M9.5 10h5M9.5 13h3" />
-                  </svg>
-                </div>
-                <div className="leading-tight">
-                  <p className="text-[13px] font-medium text-[#3b4a8a]">Trusted by</p>
-                  <p className="text-[13px] font-semibold text-[#1f2a44]">50k+ Students</p>
-                </div>
-              </div>
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <Link href="/signup" className="landing-primary group">
+              Start learning free
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+            <Link href="/features" className="landing-secondary">
+              Explore the workspace
+            </Link>
+          </div>
 
-              {/* Divider */}
-              <div className="hidden h-10 w-px bg-[#d9def0] sm:block" />
-
-              {/* Item 2 */}
-              <div className="flex items-center gap-3 sm:justify-center sm:px-5 xl:px-6">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eef2ff]">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="h-5 w-5 text-[#3b4a8a]"
-                  >
-                    <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm6.93 9h-2.95a15.7 15.7 0 0 0-1.38-5.02A8.03 8.03 0 0 1 18.93 11ZM12 4.07A13.7 13.7 0 0 1 13.96 11h-3.92A13.7 13.7 0 0 1 12 4.07ZM9.4 5.98A15.7 15.7 0 0 0 8.02 11H5.07A8.03 8.03 0 0 1 9.4 5.98ZM5.07 13h2.95a15.7 15.7 0 0 0 1.38 5.02A8.03 8.03 0 0 1 5.07 13ZM12 19.93A13.7 13.7 0 0 1 10.04 13h3.92A13.7 13.7 0 0 1 12 19.93Zm2.6-1.91A15.7 15.7 0 0 0 15.98 13h2.95a8.03 8.03 0 0 1-4.33 5.02Z" />
-                  </svg>
-                </div>
-                <div className="leading-tight">
-                  <p className="text-[13px] font-semibold text-[#1f2a44]">4.9/5</p>
-                  <p className="text-[13px] font-medium text-[#3b4a8a]">Rating</p>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="hidden h-10 w-px bg-[#d9def0] sm:block" />
-
-              {/* Item 3 */}
-              <div className="flex items-center gap-3 sm:justify-end sm:pl-5 xl:pl-6">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eef2ff]">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="h-5 w-5 text-[#3b4a8a]"
-                  >
-                    <path d="M12 2l2.4 2.2 3.2-.4 1.4 2.9 2.9 1.4-.4 3.2L22 14l-2.2 2.4.4 3.2-2.9 1.4-1.4 2.9-3.2-.4L12 22l-2.4 2.2-3.2.4-1.4-2.9-2.9-1.4.4-3.2L2 14l2.2-2.4-.4-3.2 2.9-1.4 1.4-2.9 3.2.4L12 2Zm-1 14 5-5-1.4-1.4L11 13.2l-1.6-1.6L8 13l3 3Z" />
-                  </svg>
-                </div>
-                <div className="leading-tight">
-                  <p className="text-[13px] font-semibold text-[#1f2a44]">98% Exam</p>
-                  <p className="text-[13px] font-medium text-[#3b4a8a]">Success Rate</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            variants={fadeUp}
-            className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap"
-          >
-            <button className="btn-primary group relative w-full overflow-hidden bg-gradient-to-r from-button to-thirdary py-3 transition-transform duration-300 hover:-translate-y-1 sm:w-auto sm:px-7">
-              <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-              <span className="relative flex items-center gap-2">
-                Start Free
-                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+          <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
+            {["No card required", "Set up in minutes", "Built for every subject"].map((item) => (
+              <span key={item} className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-primary" /> {item}
               </span>
-            </button>
-
-            <button className="inline-flex w-full items-center justify-center gap-3 rounded-full border border-slate-200 bg-white/85 px-4 py-3 text-sm font-semibold text-slate-700 shadow-[0_12px_32px_rgba(15,23,42,0.06)] backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-thirdary/30 hover:bg-slate-50 sm:w-auto sm:pl-3 sm:pr-6">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-thirdary/10 text-thirdary">
-                <Play className="ml-0.5 h-4 w-4 fill-current" />
-              </span>
-              Watch Demo
-            </button>
-          </motion.div>
+            ))}
+          </div>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, scale: 0.92, y: 30 }}
+          initial={{ opacity: 0, scale: 0.96, y: 28 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full flex-1 lg:max-w-[34rem] xl:max-w-[40rem] 2xl:max-w-[46rem]"
+          transition={{ duration: 0.85, delay: 0.15, ease }}
+          className="relative mx-auto w-full max-w-xl"
         >
-          <div className="hero-animate-float relative mx-auto aspect-[29/26] w-full max-w-[24rem] sm:max-w-[28rem] lg:max-w-none">
-            {/* <div className="absolute inset-6 -z-10 rounded-[3rem] bg-gradient-to-tr from-primary/30 via-thirdary/20 to-primary/30 blur-3xl" /> */}
-            <Image
-              src="/demo-1.png"
-              fill
-              priority
-              sizes="(max-width: 600px) 92vw, (max-width: 1023px) 78vw, (max-width: 1279px) 42vw, 46vw"
-              className="object-contain "
-              alt="WorkPilot dashboard preview"
-            />
+          <div className="absolute -inset-8 rounded-[3rem] bg-gradient-to-br from-slate-200/60 via-primary/5 to-transparent blur-2xl" />
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/90 p-3 shadow-[0_35px_90px_-35px_rgba(49,46,129,.42)] backdrop-blur-xl">
+            <div className="rounded-[1.35rem] border border-slate-200/70 bg-slate-50/80 p-4 sm:p-5">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white"><FileText className="h-4 w-4" /></div>
+                  <div><p className="text-sm font-semibold text-slate-900">Biology — Cell Division</p><p className="text-xs text-slate-500">Study workspace</p></div>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">Ready</span>
+              </div>
+
+              <div className="grid gap-3 pt-4 sm:grid-cols-[1.35fr_.65fr]">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500"><Sparkles className="h-3.5 w-3.5 text-violet-500" /> SMART SUMMARY</div>
+                  <h3 className="mt-4 text-lg font-semibold tracking-tight text-slate-900">Mitosis, made memorable</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">A focused explanation with the key stages, definitions, and common exam traps.</p>
+                  <div className="mt-5 space-y-2.5">
+                    {["Interphase prepares the cell", "Chromosomes align at metaphase", "Cytokinesis completes division"].map((line, i) => (
+                      <motion.div key={line} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: .65 + i * .12 }} className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />{line}
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <div className="rounded-2xl bg-slate-900 p-4 text-white">
+                    <p className="text-[11px] font-semibold text-slate-400">PRACTICE</p><p className="mt-2 text-2xl font-semibold">12</p><p className="text-xs text-slate-300">questions ready</p>
+                    <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/20"><motion.div initial={{ width: 0 }} animate={{ width: "76%" }} transition={{ delay: .8, duration: 1, ease }} className="h-full rounded-full bg-white" /></div>
+                  </div>
+                  <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-4">
+                    <MessageSquareText className="h-5 w-5 text-violet-600" />
+                    <p className="mt-3 text-sm font-semibold text-slate-900">Ask your tutor</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Get an explanation grounded in your material.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+          <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-5 -left-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl sm:-left-8">
+            <p className="text-[11px] font-semibold text-slate-400">NEXT REVIEW</p><p className="mt-0.5 text-sm font-semibold text-slate-800">Tomorrow · 10 min</p>
+          </motion.div>
         </motion.div>
       </div>
     </section>

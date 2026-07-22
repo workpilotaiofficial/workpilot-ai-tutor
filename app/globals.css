@@ -169,6 +169,12 @@ html.lenis body {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-md bg-gradient-to-r from-button to-thirdary  px-6 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(12,20,121,0.28)] transition-transform duration-300 hover:-translate-y-1;
   }
+  .landing-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-button px-6 py-3.5 text-sm font-semibold text-white shadow-[0_14px_35px_-14px_rgba(91,101,224,.48)] transition duration-300 hover:-translate-y-0.5 hover:brightness-95;
+  }
+  .landing-secondary {
+    @apply inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/80 px-6 py-3.5 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white;
+  }
 }
 
 @layer utilities {
@@ -189,6 +195,18 @@ html.lenis body {
     -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
   }
   
+}
+
+.landing-grid {
+  background-image: linear-gradient(rgba(91, 101, 224, .035) 1px, transparent 1px), linear-gradient(90deg, rgba(91, 101, 224, .035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+.landing-dark-grid {
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
 }
 
 @keyframes hero-float {
@@ -271,6 +289,12 @@ html.lenis body {
     .hero-grid,
     .hero-gradient-text {
       animation: none !important;
+    }
+    *, *::before, *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
     }
   }
 }

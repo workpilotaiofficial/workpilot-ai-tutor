@@ -89,8 +89,8 @@ export default function Nav({
                 <NavbarButton href="/login" variant="secondary">
                   Login
                 </NavbarButton>
-                <NavbarButton href="/contact" variant="primary">
-                  Book a call
+                <NavbarButton href="/signup" variant="primary">
+                  Start free
                 </NavbarButton>
               </>
             )}
@@ -149,12 +149,12 @@ export default function Nav({
                     Login
                   </NavbarButton>
                   <NavbarButton
-                    href="/contact"
+                    href="/signup"
                     onClick={closeMobileMenu}
                     variant="primary"
                     className="w-full"
                   >
-                    Book a call
+                    Start free
                   </NavbarButton>
                 </>
               )}
