@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, CircleCheck, LoaderCircle, Sparkles, X } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { getApiClientErrorMessage } from '@/lib/api'
@@ -28,6 +28,21 @@ export default function PersonalizedAiOnboardingModal({ onClose }: Personalizati
   const isLastStep = currentStep === learningPreferenceQuestions.length - 1
   const canContinue = useMemo(() => Boolean(selectedValue), [selectedValue])
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSaving) onClose()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isSaving, onClose])
+
   const selectOption = (value: string) => {
     setDraft((current) => ({ ...current, [step.id]: value }))
   }
@@ -54,38 +69,68 @@ export default function PersonalizedAiOnboardingModal({ onClose }: Personalizati
   }
 
   return (
-    <div className="fixed inset-0 z-60 bg-[#03110c]/85 p-0 sm:p-4" onClick={onClose} role="presentation">
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/35 p-0 backdrop-blur-sm sm:p-6 dark:bg-black/65"
+      onClick={() => !isSaving && onClose()}
+      role="presentation"
+    >
       <div
-        className="mx-auto flex h-full w-full max-w-xl flex-col overflow-hidden bg-[#07120e] shadow-2xl sm:h-[min(92vh,760px)] sm:rounded-3xl sm:border sm:border-emerald-950"
+        className="relative flex h-full w-full max-w-3xl flex-col overflow-hidden bg-background shadow-2xl sm:h-auto sm:max-h-[min(90vh,720px)] sm:rounded-[calc(var(--radius)+12px)] sm:border sm:border-border"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Personalized AI onboarding"
+        aria-labelledby="personalization-question"
+        aria-describedby="personalization-description"
       >
-        <div className="px-4 pt-5 sm:px-6">
-          <div className="flex items-center gap-2">
-            {learningPreferenceQuestions.map((item, index) => (
-              <span
-                key={item.id}
-                className={`h-1 flex-1 rounded-full ${index <= currentStep ? 'bg-emerald-400' : 'bg-emerald-950'}`}
-                aria-hidden="true"
-              />
-            ))}
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-xs font-medium tracking-wide text-emerald-400">STEP {currentStep + 1} OF {learningPreferenceQuestions.length}</p>
-            <button type="button" onClick={onClose} className="rounded-lg p-2 text-emerald-100/70 hover:bg-emerald-950 hover:text-emerald-100" aria-label="Close onboarding modal">
-              <X className="h-5 w-5" />
+        <div className="border-b border-border bg-card px-5 pb-4 pt-5 sm:px-8 sm:pb-5 sm:pt-6">
+          <div className="flex items-start justify-between gap-6">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
+                  Personalize your AI
+                </p>
+                <p className="shrink-0 text-xs font-medium text-muted-foreground">
+                  {currentStep + 1} of {learningPreferenceQuestions.length}
+                </p>
+              </div>
+              <div
+                className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary"
+                role="progressbar"
+                aria-label="Personalization progress"
+                aria-valuemin={1}
+                aria-valuemax={learningPreferenceQuestions.length}
+                aria-valuenow={currentStep + 1}
+              >
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
+                  style={{ width: `${((currentStep + 1) / learningPreferenceQuestions.length) * 100}%` }}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSaving}
+              className="-mr-2 -mt-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+              aria-label="Close onboarding modal"
+            >
+              <X className="h-4.5 w-4.5" />
             </button>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5 pt-6 sm:px-6">
-          <p className="text-sm font-bold tracking-wide text-emerald-400">{step.eyebrow}</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-emerald-50 sm:text-4xl">{step.question}</h2>
-          <p className="mt-3 max-w-lg text-base leading-7 text-emerald-100/55">{step.description}</p>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8 sm:py-7">
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{step.eyebrow}</p>
+            <h2 id="personalization-question" className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-[2rem] sm:leading-tight">
+              {step.question}
+            </h2>
+            <p id="personalization-description" className="mt-2 text-sm leading-6 text-muted-foreground sm:text-[15px]">
+              {step.description}
+            </p>
+          </div>
 
-          <div className="mt-8 space-y-3">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {step.options.map((option) => {
               const Icon = option.icon
               const isSelected = option.label === selectedValue
@@ -95,33 +140,32 @@ export default function PersonalizedAiOnboardingModal({ onClose }: Personalizati
                   key={option.label}
                   type="button"
                   onClick={() => selectOption(option.label)}
-                  className={`flex w-full items-center gap-4 rounded-2xl border px-5 py-4 text-left transition-colors ${
+                  className={`group flex min-h-20 w-full items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.99] ${
                     isSelected
-                      ? 'border-emerald-400 bg-emerald-950/80 ring-1 ring-emerald-400'
-                      : 'border-emerald-950 bg-emerald-950/30 hover:border-emerald-800 hover:bg-emerald-950/50'
+                      ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20'
+                      : 'border-border bg-card hover:border-primary/45 hover:bg-primary/5'
                   }`}
                   aria-pressed={isSelected}
                 >
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 ${isSelected ? 'border-emerald-400 bg-emerald-400' : 'border-emerald-200/45'}`}>
-                    {isSelected && <span className="h-2.5 w-2.5 rounded-full bg-[#07120e]" />}
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground group-hover:text-primary'}`}>
+                    <Icon className="h-[18px] w-[18px]" />
                   </span>
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-900/45 text-emerald-400">
-                    <Icon className="h-5 w-5" />
+                  <span className="flex-1 text-sm font-semibold leading-5 text-foreground sm:text-[15px]">{option.label}</span>
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background'}`}>
+                    {isSelected && <CircleCheck className="h-3.5 w-3.5" strokeWidth={2.5} />}
                   </span>
-                  <span className="flex-1 text-base font-semibold text-emerald-50">{option.label}</span>
-                  {isSelected && <CircleCheck className="h-5 w-5 shrink-0 text-emerald-400" />}
                 </button>
               )
             })}
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-emerald-950 px-4 py-4 sm:px-6">
+        <div className="flex items-center justify-between gap-3 border-t border-border bg-card px-5 py-4 sm:px-8">
           <button
             type="button"
             onClick={() => setCurrentStep((current) => Math.max(0, current - 1))}
             disabled={currentStep === 0 || isSaving}
-            className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-emerald-100/70 hover:bg-emerald-950 disabled:cursor-not-allowed disabled:opacity-35"
+            className="inline-flex min-h-10 items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35"
           >
             <ChevronLeft className="h-4 w-4" />
             Back
@@ -132,7 +176,7 @@ export default function PersonalizedAiOnboardingModal({ onClose }: Personalizati
               type="button"
               onClick={() => void handleFinish()}
               disabled={!canContinue || isSaving}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-400 px-5 py-2.5 text-sm font-bold text-[#062116] hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45"
             >
               {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {isSaving ? 'Saving...' : 'Set up my AI'}
@@ -142,7 +186,7 @@ export default function PersonalizedAiOnboardingModal({ onClose }: Personalizati
               type="button"
               onClick={() => setCurrentStep((current) => Math.min(learningPreferenceQuestions.length - 1, current + 1))}
               disabled={!canContinue || isSaving}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-400 px-5 py-2.5 text-sm font-bold text-[#062116] hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45"
             >
               Continue
               <ChevronRight className="h-4 w-4" />

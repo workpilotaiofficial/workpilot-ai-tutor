@@ -52,6 +52,23 @@ export type GraderResultResponse = {
   result: GraderResult | null
 }
 
+export type GraderHistoryItem = {
+  submission_id: string
+  title: string
+  description: string | null
+  status: string
+  max_score: number | null
+  score_percentage: number | null
+  points_lost: number | null
+  created_at: string
+  completed_at: string | null
+  result: GraderResult | null
+}
+
+export type GraderHistoryResponse = {
+  data: GraderHistoryItem[]
+}
+
 type SubmitGraderAssignmentPayload = {
   title: string
   assignmentFile: File
@@ -186,6 +203,36 @@ function normalizeResultResponse(payload: unknown): GraderResultResponse {
   }
 }
 
+function normalizeHistoryItem(payload: unknown): GraderHistoryItem | null {
+  if (!payload || typeof payload !== 'object') return null
+
+  const item = payload as Record<string, unknown>
+  const nestedSubmission = item.submission && typeof item.submission === 'object'
+    ? item.submission as Record<string, unknown>
+    : item
+  const id = nestedSubmission.submission_id ?? nestedSubmission.id
+
+  if (typeof id !== 'string' || !id.trim()) return null
+
+  return {
+    submission_id: id,
+    title: typeof nestedSubmission.title === 'string' ? nestedSubmission.title : 'Untitled Submission',
+    description: typeof nestedSubmission.description === 'string' ? nestedSubmission.description : null,
+    status: typeof nestedSubmission.status === 'string' ? nestedSubmission.status : 'unknown',
+    max_score: typeof nestedSubmission.max_score === 'number' ? nestedSubmission.max_score : null,
+    score_percentage:
+      typeof nestedSubmission.score_percentage === 'number' ? nestedSubmission.score_percentage : null,
+    points_lost: typeof nestedSubmission.points_lost === 'number' ? nestedSubmission.points_lost : null,
+    created_at:
+      typeof nestedSubmission.created_at === 'string'
+        ? nestedSubmission.created_at
+        : new Date().toISOString(),
+    completed_at:
+      typeof nestedSubmission.completed_at === 'string' ? nestedSubmission.completed_at : null,
+    result: normalizeResult(item.result),
+  }
+}
+
 export async function submitGraderAssignment(payload: SubmitGraderAssignmentPayload) {
   const formData = new FormData()
   formData.set('title', payload.title)
@@ -206,4 +253,27 @@ export async function fetchGraderResult(submissionId: string) {
   )
 
   return normalizeResultResponse(response)
+}
+
+export async function fetchGraderHistory(signal?: AbortSignal) {
+  const response = await apiClient.request<unknown>('/api/v1/grader/history', {
+    method: 'GET',
+    signal,
+  })
+
+  const entries = Array.isArray(response)
+    ? response
+    : response && typeof response === 'object' && Array.isArray((response as { data?: unknown }).data)
+      ? (response as { data: unknown[] }).data
+      : null
+
+  if (!entries) {
+    throw new ApiClientError('Grader history fetch failed: invalid response payload.')
+  }
+
+  return {
+    data: entries
+      .map(normalizeHistoryItem)
+      .filter((entry): entry is GraderHistoryItem => entry !== null),
+  } satisfies GraderHistoryResponse
 }

@@ -1,538 +1,401 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  X,
-  Upload,
-  Trash2,
-  CheckCircle,
-  FileText,
-  ListChecks,
-  Layers,
-  Headphones,
-  GraduationCap,
-  PenSquare,
-  Edit3,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
+import { FirebaseError } from 'firebase/app'
+import { sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
+import { Eye, EyeOff, LoaderCircle } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { createFirebaseSession } from '@/lib/api/auth.service'
 import { getApiClientErrorMessage } from '@/lib/api/client'
-import { saveStudySetGenerationMeta, saveStudySetUploadMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
-import { generateStudySet, type StudySetUploadResponse, uploadStudySetPdf } from '@/lib/api/study-sets.service'
-import { ensureStudySetGenerationTracking, subscribeToStudySetGeneration } from './generation-tracker'
-import { type StudySetUiSectionType, uiToBackendGenerationType } from './generation-mapping'
-import { createUploadPlaceholderStudySet } from './upload-placeholder'
-import { persistStudySet } from './utils'
+import { clearAuthBrowserState, getStoredAuthObject, saveAuthObject } from '@/lib/api/session-storage'
+import { auth, googleProvider, isFirebaseConfigured } from '@/lib/firebase'
+import { flattenPermissionKeys, getPortalRouteByPermissions } from '@/lib/rbac/permissions'
 
-type OutputType =
-  | 'notes'
-  | 'multipleChoice'
-  | 'flashcards'
-  | 'podcast'
-  | 'tutorLesson'
-  | 'writtenTests'
-  | 'fillInTheBlanks'
-
-const outputOptions: Array<{
-  id: OutputType
-  label: string
-  description: string
-  icon: LucideIcon
-}> = [
-  {
-    id: 'notes',
-    label: 'Notes',
-    description: 'Organized study notes that capture the main ideas.',
-    icon: FileText,
-  },
-  {
-    id: 'multipleChoice',
-    label: 'Multiple Choice',
-    description: 'Auto-graded MCQs with explanations.',
-    icon: ListChecks,
-  },
-  {
-    id: 'flashcards',
-    label: 'Flashcards',
-    description: 'Front/back cards for rapid recall.',
-    icon: Layers,
-  },
-  {
-    id: 'podcast',
-    label: 'Podcast',
-    description: 'Audio-style talking points for listening practice.',
-    icon: Headphones,
-  },
-  {
-    id: 'tutorLesson',
-    label: 'Tutor Lesson',
-    description: 'Dialogue prompts for AI tutor mode.',
-    icon: GraduationCap,
-  },
-  {
-    id: 'writtenTests',
-    label: 'Written Tests',
-    description: 'Open-ended questions to mimic exams.',
-    icon: PenSquare,
-  },
-  {
-    id: 'fillInTheBlanks',
-    label: 'Fill in the Blanks',
-    description: 'Cloze statements that reinforce context clues.',
-    icon: Edit3,
-  },
-]
-
-const totalSteps = 2
-
-interface UploadModalProps {
-  onClose: () => void
-}
-
-export default function UploadModal({ onClose }: UploadModalProps) {
+export default function LoginPage() {
   const router = useRouter()
-  const [files, setFiles] = useState<File[]>([])
-  const [selectedOutputs, setSelectedOutputs] = useState<OutputType[]>([])
-  const [isUploading, setIsUploading] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [authCheckComplete, setAuthCheckComplete] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
-  const [uploadedResponse, setUploadedResponse] = useState<StudySetUploadResponse | null>(null)
-  const [generationMeta, setGenerationMeta] = useState<StoredStudySetGenerationMeta | null>(null)
-  const [studySetName, setStudySetName] = useState('')
-  const [step, setStep] = useState<1 | 2>(1)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [infoMessage, setInfoMessage] = useState('')
+  const [isEmailSigningIn, setIsEmailSigningIn] = useState(false)
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false)
 
-  const progressPercent = (step / totalSteps) * 100
-  const hasFiles = files.length > 0
-  const hasSelections = selectedOutputs.length > 0
-  const selectedLabels = outputOptions
-    .filter((option) => selectedOutputs.includes(option.id))
-    .map((option) => option.label)
+  const isSubmitting = isEmailSigningIn || isGoogleSigningIn
+  const firebaseUnavailableMessage =
+    isFirebaseConfigured && auth
+      ? ''
+      : 'Firebase login is not configured. Check the public Firebase environment variables.'
 
-  const isAcceptedPdf = (file: File) =>
-    file.size <= 10 * 1024 * 1024 &&
-    (file.type === 'application/pdf' || /\.pdf$/i.test(file.name))
+  useEffect(() => {
+    const storedAuth = getStoredAuthObject()
 
-  const acceptFiles = (candidates: File[]) => {
-    if (candidates.length === 0) return
-
-    const nextPdf = candidates.find((file) => isAcceptedPdf(file))
-
-    if (nextPdf) {
-      setFiles([nextPdf])
-      setUploadedResponse(null)
-      setErrorMessage('')
+    if (!storedAuth?.access_token) {
+      setAuthCheckComplete(true)
       return
     }
 
-    const oversized = candidates.find(
-      (file) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
-    )
-    setErrorMessage(
-      oversized
-        ? 'That PDF is larger than 10MB. Please upload a smaller file.'
-        : 'Only PDF files are supported. Please upload a PDF.'
-    )
-  }
+    router.replace(getPortalRouteByPermissions(storedAuth.user_role, storedAuth.flattened_permission_keys ?? []))
+  }, [router])
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    acceptFiles(Array.from(e.target.files || []))
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    acceptFiles(Array.from(e.dataTransfer.files || []))
-  }
-
-  const handleRemoveFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, idx) => idx !== index))
-    setUploadedResponse(null)
-    setErrorMessage('')
-  }
-
-  const toggleOutput = (id: OutputType) => {
-    setSelectedOutputs((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+  if (!authCheckComplete) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-4 py-6 text-foreground">
+        <LoaderCircle className="h-8 w-8 animate-spin" />
+      </main>
     )
   }
 
-  const uploadAndContinue = async () => {
-    if (!hasFiles) return
+  const createSessionAndRedirect = async (firebaseIdToken: string) => {
+    const session = await createFirebaseSession({
+      firebaseIdToken,
+      deviceName: getDeviceName(),
+      deviceType: 'web',
+    })
 
-    setIsUploading(true)
-    setErrorMessage('')
-    try {
-      const selectedFile = files[0]
-      if (!selectedFile) {
-        throw new Error('Please upload a PDF file first.')
-      }
-
-      const resolvedTitle =
-        studySetName.trim() || selectedFile.name.replace(/\.pdf$/i, '') || 'Untitled Study Set'
-
-      const response = await uploadStudySetPdf({
-        title: resolvedTitle,
-        file: selectedFile,
-      })
-
-      saveStudySetUploadMeta({
-        documentId: response.document.id,
-        embeddingJobId: response.embedding_job_id,
-        title: response.document.title,
-        filename: response.document.filename || selectedFile.name,
-        sourceType: 'pdf',
-        status: response.document.status,
-        createdAt: response.document.createdAt,
-        updatedAt: response.document.updatedAt,
-      })
-      setUploadedResponse(response)
-      setStep(2)
-    } catch (error) {
-      console.error('Error creating study set:', error)
-      setErrorMessage(getApiClientErrorMessage(error, 'Failed to upload study set. Please try again.'))
-    } finally {
-      setIsUploading(false)
-    }
+    saveAuthObject({
+      ...session.auth,
+      user_role: session.user.role,
+      user_display_name: session.user.display_name,
+      user_permissions: session.permissions,
+      flattened_permission_keys: flattenPermissionKeys(session.permissions),
+    })
+    router.replace(getPortalRouteByPermissions(session.user.role, flattenPermissionKeys(session.permissions)))
   }
 
-  const handleGenerate = async () => {
-    if (!hasSelections) return
+  const handleEmailLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
 
-    if (!uploadedResponse) {
-      setErrorMessage('Upload the PDF first before continuing.')
+    if (isSubmitting) {
       return
     }
 
-    setIsGenerating(true)
+    if (!auth || !isFirebaseConfigured) {
+      setErrorMessage(firebaseUnavailableMessage)
+      return
+    }
+
     setErrorMessage('')
+    setInfoMessage('')
+    setIsEmailSigningIn(true)
 
     try {
-      const response = await generateStudySet({
-        documentId: uploadedResponse.document.id,
-        types: selectedOutputs.map((output) => uiToBackendGenerationType[output]),
-      })
-
-      const trackingStartedAt = new Date().toISOString()
-      const nextGenerationMeta = {
-        documentId: uploadedResponse.document.id,
-        studySetId: response.study_set_id,
-        batch: {
-          id: response.batch.id,
-          status: response.batch.status,
-          totalJobs: response.batch.total_jobs,
-          completedJobs: response.batch.completed_jobs,
-          failedJobs: response.batch.failed_jobs,
-          selectedTypes: response.batch.selected_types,
-          estimatedCredits: response.batch.estimated_credits,
-          createdAt: response.batch.created_at,
-        },
-        jobs: response.jobs.map((job) => ({
-          jobId: job.job_id,
-          type: job.type,
-          status: job.status,
-          estimatedCredits: job.estimated_credits,
-        })),
-        websocket: {
-          url: response.websocket.url,
-          token: response.websocket.token,
-          expiresIn: response.websocket.expires_in,
-        },
-        connectionStatus: 'idle' as const,
-        startedAt: trackingStartedAt,
-        lastEventAt: trackingStartedAt,
-        fetchedOutputs: {},
-      }
-
-      saveStudySetGenerationMeta(nextGenerationMeta)
-
-      const selectedFile = files[0]
-      const resolvedTitle =
-        studySetName.trim() ||
-        uploadedResponse.document.title ||
-        selectedFile?.name.replace(/\.pdf$/i, '') ||
-        'Untitled Study Set'
-
-      const normalizedSet = createUploadPlaceholderStudySet({
-        documentId: uploadedResponse.document.id,
-        title: resolvedTitle,
-        selections: selectedOutputs,
-        sourceType: 'pdf',
-        createdAt: uploadedResponse.document.createdAt,
-        updatedAt: uploadedResponse.document.updatedAt,
-      })
-
-      persistStudySet(normalizedSet)
-      setGenerationMeta(nextGenerationMeta)
-      ensureStudySetGenerationTracking(uploadedResponse.document.id)
-      onClose()
-      router.push(`/dashboard/study-sets/${response.study_set_id}?autoOpenFirst=1`)
+      const credential = await signInWithEmailAndPassword(auth, email.trim(), password)
+      const firebaseIdToken = await credential.user.getIdToken()
+      await createSessionAndRedirect(firebaseIdToken)
     } catch (error) {
-      console.error('Error generating study set:', error)
-      setErrorMessage(getApiClientErrorMessage(error, 'Failed to generate study set. Please try again.'))
+      setErrorMessage(getFirebaseAuthErrorMessage(error))
     } finally {
-      setIsGenerating(false)
+      setIsEmailSigningIn(false)
     }
   }
 
-  const handlePrimaryAction = () => {
-    if (step === 1) {
-      void uploadAndContinue()
+  const handlePasswordReset = async () => {
+    if (isSubmitting) {
       return
     }
 
-    void handleGenerate()
-  }
-
-  const handleSecondaryAction = () => {
-    if (step === 2) {
-      setStep(1)
-      return
-    }
-    onClose()
-  }
-
-
-  const handleOpenGeneratedSection = (sectionType: StudySetUiSectionType) => {
-    const studySetId = generationMeta?.studySetId
-    if (!studySetId) {
+    if (!auth || !isFirebaseConfigured) {
+      setErrorMessage(firebaseUnavailableMessage)
       return
     }
 
-    onClose()
-    router.push(`/dashboard/study-sets/${studySetId}?mode=${sectionType}`)
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      setInfoMessage('')
+      setErrorMessage('Enter your email above first, then tap "Forgot password?" to get a reset link.')
+      return
+    }
+
+    setErrorMessage('')
+    try {
+      await sendPasswordResetEmail(auth, trimmedEmail)
+      setInfoMessage(`If an account exists for ${trimmedEmail}, a password reset link has been sent.`)
+    } catch (error) {
+      setInfoMessage('')
+      setErrorMessage(getFirebaseAuthErrorMessage(error))
+    }
   }
 
-  const renderUploadStep = () => (
-    <div className="space-y-6">
-      <p className="text-muted-foreground">
-        Upload your materials. We'll auto-convert PDFs, docs, text into study-ready text.
-      </p>
+  const handleGoogleLogin = async () => {
+    if (isSubmitting) {
+      return
+    }
 
-      <div
-        onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
-        onClick={() => fileInputRef.current?.click()}
-        className="border-2 border-dashed border-border rounded-2xl p-8 text-center cursor-pointer hover:border-primary/60 transition-colors bg-secondary/30"
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          onChange={handleFileSelect}
-          accept=".pdf,application/pdf"
-          className="hidden"
-        />
-        <Upload className="w-12 h-12 text-primary mx-auto mb-3" />
-        <p className="font-semibold text-foreground mb-1">
-          Click to upload or drag and drop (max 10 files, 10MB each)
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Supported: PDF, Word, images
-        </p>
-      </div>
+    if (!auth || !isFirebaseConfigured) {
+      setErrorMessage(firebaseUnavailableMessage)
+      return
+    }
 
-      {files.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-semibold text-foreground">
-            Uploaded Files ({files.length})
-          </p>
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-            {files.map((file, idx) => (
-              <div
-                key={`${file.name}-${idx}`}
-                className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    handleRemoveFile(idx)
-                  }}
-                  className="p-1 hover:bg-background rounded transition-colors flex-shrink-0"
-                >
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+    setErrorMessage('')
+    setInfoMessage('')
+    setIsGoogleSigningIn(true)
 
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-2">
-          Study Set Name (optional)
-        </label>
-        <input
-          type="text"
-          value={studySetName}
-          onChange={(e) => {
-            setStudySetName(e.target.value)
-            setUploadedResponse(null)
-            setErrorMessage('')
-          }}
-          placeholder="e.g., Biology Chapter 3"
-          className="w-full px-3 py-2 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
-      </div>
-    </div>
-  )
-
-  const renderSelectionStep = () => (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-border bg-background/60 p-4 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-foreground">Uploaded files</p>
-          <p className="text-xs text-muted-foreground">{files.length} file{files.length > 1 ? 's' : ''} ready</p>
-        </div>
-        <button
-          onClick={() => setStep(1)}
-          className="text-xs text-primary font-medium hover:underline"
-        >
-          Edit uploads
-        </button>
-      </div>
-
-      <div>
-        <p className="text-lg font-semibold text-foreground mb-2">What would you like to include?</p>
-        
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {outputOptions.map((option) => {
-          const Icon = option.icon
-          const isSelected = selectedOutputs.includes(option.id)
-          return (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => toggleOutput(option.id)}
-              className={`flex items-start gap-4 rounded-2xl border p-4 text-left transition-all ${
-                isSelected
-                  ? 'border-primary bg-primary/5 shadow-sm'
-                  : 'border-border hover:border-primary/40 hover:bg-secondary/30'
-              }`}
-            >
-              <span
-                className={`p-3 rounded-xl ${
-                  isSelected ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground/80'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-              </span>
-              <div className="space-y-1">
-                <p className="font-semibold text-foreground">{option.label}</p>
-                <p className="text-xs text-muted-foreground">{option.description}</p>
-              </div>
-            </button>
-          )
-        })}
-      </div>
-
-      <div className="rounded-2xl border border-border bg-secondary/30 p-4">
-        <p className="text-sm font-semibold text-foreground">
-          Selected ({selectedOutputs.length})
-        </p>
-        {selectedOutputs.length > 0 ? (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {selectedLabels.map((label) => (
-              <span
-                key={label}
-                className="px-3 py-1 rounded-full bg-background border border-border text-xs text-foreground"
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground mt-2">
-            Pick at least one method to continue.
-          </p>
-        )}
-        <p className="text-xs text-muted-foreground mt-3">
-          You can adjust or regenerate any section later from the Study Set dashboard.
-        </p>
-      </div>
-    </div>
-  )
+    try {
+      googleProvider.setCustomParameters({ prompt: 'select_account' })
+      const credential = await signInWithPopup(auth, googleProvider)
+      const firebaseIdToken = await credential.user.getIdToken()
+      await createSessionAndRedirect(firebaseIdToken)
+    } catch (error) {
+      await signOut(auth).catch(() => null)
+      clearAuthBrowserState()
+      setErrorMessage(getFirebaseAuthErrorMessage(error))
+    } finally {
+      setIsGoogleSigningIn(false)
+    }
+  }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-2xl max-w-3xl w-full max-h-screen overflow-y-auto shadow-2xl">
-        <div className="flex items-start justify-between p-6 border-b border-border gap-4">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
-              Step {step} of {totalSteps}
-            </p>
-            <h2 className="text-2xl font-bold text-foreground">
-              {step === 1
-                ? 'Please upload your file'
-                : 'Choose your study experiences'}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {step === 1
-                ? 'We will turn your files into insane study material.'
-                : 'Select formats like flashcards, notes, MCQs, and more before generating.'}
-            </p>
-            <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
+    <main className="relative h-[100svh] overflow-hidden bg-background p-3 text-foreground sm:p-4 lg:p-6">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `
+            radial-gradient(circle at 8% 4%, color-mix(in srgb, var(--accent) 15%, transparent) 0%, transparent 32%),
+            radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--thirdary) 16%, transparent) 0%, transparent 30%),
+            linear-gradient(180deg, color-mix(in srgb, var(--background) 94%, white) 0%, color-mix(in srgb, var(--primary) 7%, white) 100%)
+          `,
+        }}
+      />
+
+      <div className="relative mx-auto flex h-full w-full max-w-7xl items-center justify-center">
+        <section className="grid h-full max-h-[780px] w-full overflow-hidden rounded-[26px] border border-white/70 bg-white/75 shadow-[0_24px_80px_rgba(60,86,134,0.14)] backdrop-blur-xl sm:rounded-[30px] lg:h-[min(760px,calc(100svh-3rem))] lg:grid-cols-[1.06fr_0.94fr]">
+          <div className="hidden min-h-0 p-4 lg:block xl:p-5">
+            <div
+              className="relative flex h-full min-h-0 items-end justify-center overflow-hidden rounded-[24px] px-6"
+              style={{
+                background:
+                  'linear-gradient(155deg, color-mix(in srgb, var(--thirdary) 40%, white) 0%, color-mix(in srgb, var(--button) 46%, white) 52%, color-mix(in srgb, var(--primary) 24%, white) 100%)',
+              }}
+            >
+              <div className="absolute inset-x-14 bottom-10 h-12 rounded-full bg-white/20 blur-3xl" />
+              <div className="absolute -left-10 top-16 h-36 w-36 rounded-full bg-white/16 blur-3xl" />
+              <div className="absolute -right-12 bottom-20 h-48 w-48 rounded-full bg-white/18 blur-3xl" />
+
+              <Image
+                src="/charecter.png"
+                alt="Student illustration"
+                width={620}
+                height={620}
+                priority
+                className="relative z-10 max-h-[88%] w-auto max-w-full object-contain object-bottom drop-shadow-[0_28px_46px_rgba(42,56,120,0.2)]"
               />
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
-        <div className="p-6">
-          {step === 1 ? renderUploadStep() : renderSelectionStep()}
-        </div>
+          <div className="relative flex min-h-0 items-center justify-center p-5 sm:p-7 lg:p-8 xl:p-10 [@media(max-height:700px)]:p-5">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-10 bottom-6 h-24 rounded-full blur-3xl"
+              style={{
+                background:
+                  'radial-gradient(circle, color-mix(in srgb, var(--thirdary) 11%, white) 0%, transparent 72%)',
+              }}
+            />
 
-        {errorMessage ? (
-          <div className="px-6 pb-1">
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {errorMessage}
+            <div className="relative z-10 flex w-full max-w-[420px] flex-col">
+              <Link href="/" className="mb-7 inline-flex w-fit items-center [@media(max-height:700px)]:mb-4">
+                <Image
+                  src="/logo.png"
+                  alt="WorkPilot"
+                  width={124}
+                  height={36}
+                  className="h-auto w-[108px] sm:w-[118px]"
+                />
+              </Link>
+
+              <div className="mb-7 text-center [@media(max-height:700px)]:mb-4">
+                <h1 className="text-[2rem] font-semibold tracking-[-0.045em] text-slate-900 sm:text-[2.25rem] [@media(max-height:700px)]:text-[1.8rem]">
+                  Hello Again!
+                </h1>
+                <p className="mt-2 text-sm leading-5 text-slate-500 sm:text-[15px]">
+                  Welcome back you&apos;ve been missed!
+                </p>
+              </div>
+
+              <form className="space-y-4 [@media(max-height:700px)]:space-y-3" onSubmit={handleEmailLogin}>
+                <div className="space-y-3">
+                  <label htmlFor="email" className="sr-only">
+                    Email
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="Enter your email"
+                    autoComplete="email"
+                    disabled={isSubmitting}
+                    className="h-[52px] rounded-2xl border-white bg-white/90 px-5 text-sm text-slate-700 shadow-[0_12px_32px_rgba(53,81,143,0.08)] placeholder:text-slate-400 focus-visible:ring-[3px] [@media(max-height:700px)]:h-12"
+                  />
+
+                  <div className="relative">
+                    <label htmlFor="password" className="sr-only">
+                      Password
+                    </label>
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Password"
+                      autoComplete="current-password"
+                      disabled={isSubmitting}
+                      className="h-[52px] rounded-2xl border-white bg-white/90 px-5 pr-14 text-sm text-slate-700 shadow-[0_12px_32px_rgba(53,81,143,0.08)] placeholder:text-slate-400 focus-visible:ring-[3px] [@media(max-height:700px)]:h-12"
+                    />
+                    <button
+                      type="button"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowPassword((value) => !value)}
+                      disabled={isSubmitting}
+                      className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handlePasswordReset}
+                    disabled={isSubmitting || Boolean(firebaseUnavailableMessage)}
+                    className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+
+                {infoMessage && (
+                  <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700">
+                    {infoMessage}
+                  </p>
+                )}
+
+                {(errorMessage || firebaseUnavailableMessage) && (
+                  <p className="rounded-xl border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm text-red-600">
+                    {errorMessage || firebaseUnavailableMessage}
+                  </p>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || !email.trim() || !password || Boolean(firebaseUnavailableMessage)}
+                  className="h-[52px] w-full rounded-2xl text-base font-semibold text-white shadow-[0_18px_40px_rgba(39,61,133,0.2)] transition-transform duration-300 hover:-translate-y-0.5 [@media(max-height:700px)]:h-12"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, color-mix(in srgb, var(--button) 82%, white) 0%, color-mix(in srgb, var(--thirdary) 72%, white) 100%)',
+                    color: '#ffffff',
+                  }}
+                >
+                  {isEmailSigningIn ? (
+                    <>
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      Signing In...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </Button>
+              </form>
+
+              <div className="mt-7 [@media(max-height:700px)]:mt-4">
+                <div className="flex items-center gap-3 text-sm text-slate-400">
+                  <span className="h-px flex-1 bg-slate-200" />
+                  <span>Or continue with</span>
+                  <span className="h-px flex-1 bg-slate-200" />
+                </div>
+
+                <div className="mt-4 flex items-center justify-center">
+                  <SocialIconButton
+                    label="Continue with Google"
+                    onClick={handleGoogleLogin}
+                    disabled={isSubmitting || Boolean(firebaseUnavailableMessage)}
+                  >
+                    <Image
+                      src="/google.png"
+                      alt="Google"
+                      width={22}
+                      height={22}
+                      className="h-[22px] w-[22px]"
+                    />
+                  </SocialIconButton>
+                </div>
+              </div>
             </div>
           </div>
-        ) : null}
-
-        <div className="flex gap-3 p-6 border-t border-border">
-          <button
-            onClick={handleSecondaryAction}
-            className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors font-medium"
-          >
-            {step === 2 ? 'Back' : 'Cancel'}
-          </button>
-          <button
-            onClick={handlePrimaryAction}
-            disabled={
-              step === 1
-                ? !hasFiles || isUploading
-                : !hasSelections || isGenerating
-            }
-            className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity font-medium"
-          >
-            {step === 1
-              ? isUploading
-                ? 'Uploading...'
-                : 'Next'
-              : isGenerating
-                ? 'Generating...'
-                : 'Generate'}
-          </button>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   )
+}
+
+function SocialIconButton({
+  children,
+  label,
+  onClick,
+  disabled = false,
+}: {
+  children: ReactNode
+  label: string
+  onClick?: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white bg-white/90 shadow-[0_14px_30px_rgba(53,81,143,0.08)] transition-transform duration-300 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55"
+    >
+      {children}
+    </button>
+  )
+}
+
+function getDeviceName() {
+  if (typeof window === 'undefined') {
+    return 'web'
+  }
+
+  const platform = window.navigator.platform?.trim()
+  const language = window.navigator.language?.trim()
+
+  return [platform, language].filter(Boolean).join(' - ') || 'web'
+}
+
+function getFirebaseAuthErrorMessage(error: unknown) {
+  const apiErrorMessage = getApiClientErrorMessage(error, '')
+  if (apiErrorMessage) {
+    return apiErrorMessage
+  }
+
+  if (error instanceof FirebaseError) {
+    const errorMap: Record<string, string> = {
+      'auth/invalid-credential': 'Invalid email or password.',
+      'auth/invalid-email': 'Enter a valid email address.',
+      'auth/missing-password': 'Password is required.',
+      'auth/user-not-found': 'No account was found with this email.',
+      'auth/wrong-password': 'Invalid email or password.',
+      'auth/too-many-requests': 'Too many attempts. Try again in a few minutes.',
+      'auth/popup-closed-by-user': 'Google sign-in was cancelled before completion.',
+      'auth/popup-blocked': 'Popup was blocked. Allow popups and try again.',
+      'auth/cancelled-popup-request': 'Another sign-in popup is already open.',
+      'auth/account-exists-with-different-credential':
+        'This email is already linked with a different sign-in method.',
+      'auth/network-request-failed': 'Network error. Check your connection and try again.',
+    }
+
+    return errorMap[error.code] ?? 'Login failed. Please try again.'
+  }
+
+  return 'Login failed. Please try again.'
 }

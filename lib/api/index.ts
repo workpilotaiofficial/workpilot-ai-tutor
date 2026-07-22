@@ -62,13 +62,18 @@ export {
   uploadStudySetPdf,
   uploadStudySetText,
 } from '@/lib/api/study-sets.service'
-export { fetchSyllabusById, uploadSyllabusPdf, uploadSyllabusText } from '@/lib/api/syllabus.service'
+export {
+  fetchSyllabusById,
+  fetchSyllabusHistory,
+  uploadSyllabusPdf,
+  uploadSyllabusText,
+} from '@/lib/api/syllabus.service'
 export {
   PERSONALIZATION_INSTRUCTIONS_MAX_LENGTH,
   fetchPersonalization,
   updatePersonalization,
 } from '@/lib/api/user-settings.service'
-export { fetchGraderResult, submitGraderAssignment } from '@/lib/api/paper-grader.service'
+export { fetchGraderHistory, fetchGraderResult, submitGraderAssignment } from '@/lib/api/paper-grader.service'
 export {
   clearAuthBrowserState,
   clearStoredAuthObject,
@@ -79,7 +84,11 @@ export {
   replaceStoredAuthObject,
   saveAuthObject,
 } from '@/lib/api/session-storage'
-export type { FirebaseSessionResponse, SessionAuth, UserRole } from '@/lib/api/auth.service'
+export type {
+  FirebaseSessionResponse,
+  SessionAuth,
+  UserRole,
+} from '@/lib/api/auth.service'
 export type { AdminPlan } from '@/lib/api/admin-plans.service'
 export type {
   AdminPermission,
@@ -142,6 +151,8 @@ export type {
 } from '@/lib/api/study-sets.service'
 export type {
   GraderCriterion,
+  GraderHistoryItem,
+  GraderHistoryResponse,
   GraderResult,
   GraderResultResponse,
   GraderResultSubmission,
@@ -161,6 +172,7 @@ export type {
   SyllabusDetailPriorityTopic,
   SyllabusDetailResponse,
   SyllabusDetailTimelineItem,
+  SyllabusHistoryResponse,
   SyllabusSocketSnapshotEvent,
   SyllabusSocketSnapshotPayload,
   SyllabusUploadResponse,

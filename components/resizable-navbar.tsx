@@ -29,7 +29,7 @@ const navItems = [
   },
   {
     name: "Contact",
-    link: "#contact",
+    link: "/contact",
   },
 ];
 
@@ -89,7 +89,7 @@ export default function Nav({
                 <NavbarButton href="/login" variant="secondary">
                   Login
                 </NavbarButton>
-                <NavbarButton href="#contact" variant="primary">
+                <NavbarButton href="/contact" variant="primary">
                   Book a call
                 </NavbarButton>
               </>
@@ -149,7 +149,7 @@ export default function Nav({
                     Login
                   </NavbarButton>
                   <NavbarButton
-                    href="#contact"
+                    href="/contact"
                     onClick={closeMobileMenu}
                     variant="primary"
                     className="w-full"

@@ -9,23 +9,20 @@ import {
 type FooterLink = { name: string; href: string };
 
 const pages: FooterLink[] = [
-  { name: "All Products", href: "#" },
-  { name: "Studio", href: "#" },
-  { name: "Clients", href: "#" },
-  { name: "Pricing", href: "#pricing" },
-  { name: "Blog", href: "#" },
+  { name: "Features", href: "/#features" },
+  { name: "Pricing", href: "/#pricing" },
+  { name: "Contact Us", href: "/contact" },
 ];
 
 const legal: FooterLink[] = [
-  { name: "Privacy Policy", href: "#" },
-  { name: "Terms of Service", href: "#" },
-  { name: "Cookie Policy", href: "#" },
+  { name: "Privacy Policy", href: "/privacy-policy" },
+  { name: "Terms of Service", href: "/terms-of-service" },
+  { name: "Refund Policy", href: "/refund-policy" },
 ];
 
 const register: FooterLink[] = [
-  { name: "Sign Up", href: "/signup" },
   { name: "Login", href: "/login" },
-  { name: "Forgot Password", href: "#" },
+  { name: "Get Support", href: "/contact" },
 ];
 
 const socials = [
@@ -51,7 +48,7 @@ export default function Footer() {
                 <span className="text-lg font-semibold">WorkPilot</span>
               </a>
               <p className="mt-4 leading-relaxed text-neutral-500 dark:text-neutral-400">
-                Your AI-powered workspace for getting more done, faster.
+                AI-powered study tools for turning your learning materials into notes, quizzes, flashcards, and actionable feedback.
               </p>
 
               <div className="mt-6 flex items-center gap-3">
@@ -72,7 +69,7 @@ export default function Footer() {
             <div className="grid grid-cols-2 items-start gap-10 sm:gap-16 lg:grid-cols-3">
               <FooterColumn title="Pages" items={pages} />
               <FooterColumn title="Legal" items={legal} />
-              <FooterColumn title="Register" items={register} />
+              <FooterColumn title="Account" items={register} />
             </div>
           </div>
 

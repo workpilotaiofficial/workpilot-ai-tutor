@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { BarChart3, LoaderCircle, RefreshCcw, RotateCcw, X } from 'lucide-react'
 import BillingSettings from '@/components/settings/billing-settings'
 import PersonalizedAiSettings from '@/components/settings/personalized-ai-settings'
+import ProfileSettings from '@/components/settings/profile-settings'
 import { Button } from '@/components/ui/button'
 import {
   fetchCreditBalance,
@@ -32,7 +33,7 @@ import {
 export type SettingsTab = 'account' | 'profile' | 'usage' | 'billing' | 'personalizedAi' | 'customizeTheme'
 
 const menuItems: Array<{ id: SettingsTab; label: string }> = [
-  { id: 'account', label: 'Account' },
+  // { id: 'account', label: 'Account' },
   { id: 'profile', label: 'Profile' },
   { id: 'usage', label: 'Usage' },
   { id: 'billing', label: 'Billing' },
@@ -217,6 +218,8 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi' }
                 onSave={saveLearningPreferences}
                 onStatusChange={setStatus}
               />
+            ) : activeTab === 'profile' ? (
+              <ProfileSettings />
             ) : activeTab === 'usage' ? (
               <div className="space-y-5">
                 <div className="flex items-start justify-between gap-4">

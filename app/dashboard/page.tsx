@@ -1,273 +1,352 @@
 'use client'
 
-import { getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
-import { ArrowRight, BookOpen, ClipboardCheck } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { getStoredAuthObject } from '@/lib/api/session-storage'
+import {
+  BookOpen,
+  Brain,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  CircleAlert,
+  Clock3,
+  Flame,
+  GraduationCap,
+  Lightbulb,
+  Play,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Trophy,
+} from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+
+const progressData = [
+  { day: 'Mon', score: 58, minutes: 32 },
+  { day: 'Tue', score: 63, minutes: 48 },
+  { day: 'Wed', score: 61, minutes: 26 },
+  { day: 'Thu', score: 70, minutes: 54 },
+  { day: 'Fri', score: 73, minutes: 42 },
+  { day: 'Sat', score: 78, minutes: 67 },
+  { day: 'Sun', score: 82, minutes: 51 },
+]
+
+const masteryData = [
+  { name: 'Mastered', value: 46, color: '#5B65E0' },
+  { name: 'Learning', value: 34, color: '#9FCB98' },
+  { name: 'Needs work', value: 20, color: '#F5B85A' },
+]
+
+const subjects = [
+  { name: 'Biology', detail: 'Cell & Genetics', score: 86, change: '+8%', color: '#5B65E0' },
+  { name: 'Mathematics', detail: 'Calculus', score: 72, change: '+3%', color: '#9FCB98' },
+  { name: 'Chemistry', detail: 'Organic chemistry', score: 58, change: '-2%', color: '#F5B85A' },
+]
+
+const week = [
+  { day: 'M', done: true },
+  { day: 'T', done: true },
+  { day: 'W', done: true },
+  { day: 'T', done: true },
+  { day: 'F', done: true },
+  { day: 'S', done: false, today: true },
+  { day: 'S', done: false },
+]
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  icon: typeof Target
+  label: string
+  value: string
+  detail: string
+  tone: string
+}) {
+  return (
+    <article className="group rounded-2xl border border-border/80 bg-card p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/[0.04]">
+      <div className="flex items-start justify-between">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>
+          <Icon className="h-[19px] w-[19px]" />
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+          <TrendingUp className="h-3 w-3" /> {detail}
+        </span>
+      </div>
+      <p className="mt-5 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
+      <p className="mt-1 text-xs font-medium text-muted-foreground">{label}</p>
+    </article>
+  )
+}
 
 export default function DashboardIndexPage() {
-  const [studySets, setStudySets] = useState<StudySet[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
+  const [firstName, setFirstName] = useState('Student')
+  const [now, setNow] = useState<Date | null>(null)
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setStudySets(getStoredStudySets())
-      setIsLoading(false)
-    }
+    const displayName = getStoredAuthObject()?.user_display_name?.trim()
+    if (displayName) setFirstName(displayName.split(/\s+/)[0])
+
+    const updateClock = () => setNow(new Date())
+    updateClock()
+    const clockInterval = window.setInterval(updateClock, 1000)
+
+    return () => window.clearInterval(clockInterval)
   }, [])
 
-  const recentStudySets = studySets.slice(0, 3)
+  const currentDate = now
+    ? new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(now)
+    : 'Today'
+  const hourRotation = now ? ((now.getHours() % 12) + now.getMinutes() / 60) * 30 : 0
+  const minuteRotation = now ? (now.getMinutes() + now.getSeconds() / 60) * 6 : 0
+  const secondRotation = now ? now.getSeconds() * 6 : 0
 
   return (
-    <section className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-purple-50/30 p-4 md:p-8">
-      {/* Decorative background elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-purple-200/20 rounded-full blur-3xl"></div>
-      </div>
-
-      <div className="max-w-7xl mx-auto relative z-10">
-        {/* Welcome Hero */}
-        <div className="mb-16">
-          {/* <div className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-linear-to-r from-blue-50 to-purple-50 border border-blue-200/60 shadow-sm mb-6">
-            <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
-            <span className="text-sm font-semibold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Welcome back!</span>
-          </div> */}
-          <div className="space-y-4">
-            <h1 className="text-2xl md:text-5xl font-black bg-linear-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent leading-tight tracking-tight">
-              Let's continue learning
-            </h1>
-            <p className="text-lg text-slate-600 max-w-3xl leading-relaxed font-medium">
-              Master new topics with AI-powered study materials, personalized quizzes, and interactive flashcards.
-            </p>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
-          {/* Study Sets Stats */}
-          <div className="group relative overflow-hidden p-6 bg-linear-to-br from-blue-50 to-white rounded-2xl border border-blue-200/30 hover:border-blue-300/50 transition-all duration-300 shadow-xl">
-            <div className="absolute -right-8 -top-8 w-24 h-24 bg-blue-100/40 rounded-full blur-2xl group-hover:bg-blue-100/60 transition-all"></div>
-            <div className="relative z-10 flex items-end justify-between">
-              <div className="flex-1">
-                <p className="text-xs text-slate-500 font-semibold mb-2">Study Sets</p>
-                <div className="mb-2">
-                  <h3 className="text-4xl font-black text-blue-600">{studySets.length}</h3>
-                </div>
-                <span className="inline-block px-3 py-1 text-xs font-bold text-emerald-700 bg-emerald-100/70 rounded-full">+12%</span>
-              </div>
-              <div className="p-4 bg-linear-to-br from-blue-100 to-blue-50 rounded-xl group-hover:shadow-lg transition-all">
-                <BookOpen className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-
-          {/* Learning Streak */}
-          <div className="group relative overflow-hidden p-6 bg-linear-to-br from-purple-50 to-white rounded-2xl border border-purple-200/30 hover:border-purple-300/50 transition-all duration-300 shadow-xl">
-            <div className="absolute -right-8 -top-8 w-24 h-24 bg-purple-100/40 rounded-full blur-2xl group-hover:bg-purple-100/60 transition-all"></div>
-            <div className="relative z-10 flex items-end justify-between">
-              <div className="flex-1">
-                <p className="text-xs text-slate-500 font-semibold mb-2">Ready to Generate</p>
-                <div className="mb-2">
-                  <h3 className="text-4xl font-black text-purple-600">{studySets.length > 0 ? '∞' : '0'}</h3>
-                </div>
-                <span className="inline-block px-3 py-1 text-xs font-bold text-emerald-700 bg-emerald-100/70 rounded-full">Unlimited</span>
-              </div>
-             
-            </div>
-          </div>
-
-          {/* Features */}
-          <div className="group relative overflow-hidden p-6 bg-linear-to-br from-cyan-50 to-white rounded-2xl border border-cyan-200/30 hover:border-cyan-300/50 transition-all duration-300 shadow-xl">
-            <div className="absolute -right-8 -top-8 w-24 h-24 bg-cyan-100/40 rounded-full blur-2xl group-hover:bg-cyan-100/60 transition-all"></div>
-            <div className="relative z-10 flex items-end justify-between">
-              <div className="flex-1">
-                <p className="text-xs text-slate-500 font-semibold mb-2">Tools Available</p>
-                <div className="mb-2">
-                  <h3 className="text-4xl font-black text-cyan-600">5+</h3>
-                </div>
-                <span className="inline-block px-3 py-1 text-xs font-bold text-emerald-700 bg-emerald-100/70 rounded-full">Active</span>
-              </div>
-              <div className="p-4 bg-linear-to-br from-cyan-100 to-cyan-50 rounded-xl group-hover:shadow-lg transition-all">
-                <ClipboardCheck className="w-6 h-6 text-cyan-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions with Enhanced Animations & Effects */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
-            <div className="w-1 h-8 bg-linear-to-b from-blue-600 to-purple-600 rounded-full"></div>
-            Quick Actions
-          </h2>
-
-          <style>{`
-            @keyframes float-up {
-              0%, 100% { transform: translateY(0px); }
-              50% { transform: translateY(-6px); }
-            }
-            @keyframes gradient-shimmer {
-              0% { background-position: -1000px 0; }
-              100% { background-position: 1000px 0; }
-            }
-            @keyframes pulse-border {
-              0%, 100% { border-color: rgba(59, 130, 246, 0.3); }
-              50% { border-color: rgba(147, 51, 234, 0.5); }
-            }
-            .action-button {
-              position: relative;
-              overflow: hidden;
-              transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-              background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            }
-            .action-button::before {
-              content: '';
-              position: absolute;
-              top: 0;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-              opacity: 0;
-              transition: opacity 0.4s;
-            }
-            .action-button:hover {
-              transform: translateY(-4px);
-              box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2), 0 0 0 1px rgba(59, 130, 246, 0.15);
-              border-color: rgba(59, 130, 246, 0.6);
-              background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
-            }
-            .action-button:hover::before {
-              opacity: 1;
-              animation: gradient-shimmer 0.6s;
-            }
-            .action-icon {
-              transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-              animation: float-up 3s ease-in-out infinite;
-            }
-            .action-button:hover .action-icon {
-              transform: scale(1.1) rotate(5deg);
-              animation: none;
-              filter: brightness(1.2);
-            }
-            .action-arrow {
-              transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            .action-button:hover .action-arrow {
-              transform: translateX(6px);
-              color: inherit;
-            }
-          `}</style>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button
-              onClick={() => router.push('/dashboard/study-sets')}
-              className="action-button group p-5 bg-linear-to-br from-blue-100 to-blue-50 rounded-xl border border-blue-200/50 text-left"
-            >
-              <div className="flex items-start gap-4 relative z-10">
-                <div className="p-2.5 bg-blue-50 rounded-lg shrink-0">
-                  <BookOpen className="action-icon w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-sm text-slate-900 mb-1">Create Study Sets</h3>
-                  <p className="text-xs text-slate-600 line-clamp-2">Upload files or paste content to generate study materials</p>
-                </div>
-                <ArrowRight className="action-arrow w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0 mt-0.5" />
-              </div>
-            </button>
-
-            <button
-              onClick={() => router.push('/dashboard/syllabus-intelligence')}
-              className="action-button group p-5 bg-linear-to-br from-purple-100 to-purple-50 rounded-xl border border-purple-200/50 text-left"
-            >
-              <div className="flex items-start gap-4 relative z-10">
-           
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-sm text-slate-900 mb-1">Syllabus Intelligence</h3>
-                  <p className="text-xs text-slate-600 line-clamp-2">Analyze and generate insights from your syllabus</p>
-                </div>
-                <ArrowRight className="action-arrow w-4 h-4 text-slate-400 group-hover:text-purple-600 shrink-0 mt-0.5" />
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Recent Study Sets */}
-        {recentStudySets.length > 0 && (
+    <div className="min-h-full bg-[#fbfbfd] text-foreground dark:bg-background">
+      <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-7 lg:px-9 lg:py-9">
+        <header className="mb-7 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                <div className="w-1 h-8 bg-linear-to-b from-blue-600 to-cyan-600 rounded-full"></div>
-                Recent Study Sets
-              </h2>
-              <button
-                onClick={() => router.push('/dashboard/study-sets')}
-                className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-all duration-300 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-blue-50"
-              >
-                View all <ArrowRight className="w-4 h-4" />
-              </button>
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-primary">
+               Your learning overview
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recentStudySets.map((set) => (
-                <button
-                  key={set.id}
-                  onClick={() => router.push(`/dashboard/study-sets/${encodeURIComponent(set.id)}`)}
-                  className="group relative p-7 bg-white rounded-xl border border-slate-200 hover:border-blue-300/60 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-100/30 text-left overflow-hidden"
-                >
-                  <div className="absolute -top-20 -right-20 w-40 h-40 bg-linear-to-br from-blue-100 to-transparent opacity-0 group-hover:opacity-40 transition-opacity duration-500 rounded-full blur-2xl"></div>
-                  <div className="relative">
-                    <div className="flex items-start justify-between mb-4">
-                      <span className="px-3 py-1.5 bg-linear-to-r from-blue-50/80 to-purple-50/80 text-slate-700 text-xs font-bold rounded-lg border border-blue-100/40">
-                        {set.sections.length} section{set.sections.length !== 1 ? 's' : ''}
-                      </span>
-                      <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-all duration-300 group-hover:translate-x-1" />
+            <h1 className="text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">
+              Good morning, {firstName} <span aria-hidden></span>
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-medium text-muted-foreground shadow-sm">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            <span>{currentDate}</span>
+          </div>
+        </header>
+
+        <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard icon={Target} label="Overall mastery" value="74%" detail="6% this week" tone="bg-indigo-50 text-primary dark:bg-primary/10" />
+          <StatCard icon={Clock3} label="Learning time" value="5h 20m" detail="42m more" tone="bg-sky-50 text-sky-600 dark:bg-sky-500/10" />
+          <StatCard icon={Flame} label="Day study streak" value="12 days" detail="Best: 18" tone="bg-orange-50 text-orange-600 dark:bg-orange-500/10" />
+          <StatCard icon={Trophy} label="Quiz accuracy" value="81%" detail="4% this week" tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10" />
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,.75fr)]">
+          <div className="space-y-6">
+            <article className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-sm">
+              <div className="flex flex-col justify-between gap-4 border-b border-border/70 px-5 py-5 sm:flex-row sm:items-center sm:px-6">
+                <div>
+                  <h2 className="text-base font-semibold">Learning progress</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Your mastery score over the last 7 days</p>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-semibold">82%</span>
+                  <span className="text-xs font-semibold text-emerald-600">+12% this week</span>
+                </div>
+              </div>
+              <div className="h-[270px] px-2 pb-4 pt-5 sm:px-5">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={progressData} margin={{ top: 10, right: 12, left: -24, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.28} />
+                        <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.01} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 5" />
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} dy={10} />
+                    <YAxis domain={[40, 100]} axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} tickFormatter={(value) => `${value}%`} />
+                    <Tooltip
+                      cursor={{ stroke: 'var(--border)', strokeDasharray: '4 4' }}
+                      contentStyle={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', fontSize: 12 }}
+                      formatter={(value) => [`${value}%`, 'Mastery']}
+                    />
+                    <Area type="monotone" dataKey="score" stroke="var(--primary)" strokeWidth={3} fill="url(#scoreFill)" activeDot={{ r: 5, fill: 'var(--primary)', stroke: 'var(--card)', strokeWidth: 3 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </article>
+
+            <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold">Subject performance</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">See what&apos;s strong and what needs attention</p>
+                </div>
+                <button className="text-xs font-semibold text-primary hover:underline">View report</button>
+              </div>
+              <div className="space-y-5">
+                {subjects.map((subject) => (
+                  <div key={subject.name} className="grid items-center gap-3 sm:grid-cols-[155px_1fr_78px]">
+                    <div>
+                      <p className="text-sm font-semibold">{subject.name}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{subject.detail}</p>
                     </div>
-                    <h3 className="font-bold text-lg text-slate-900 mb-2 line-clamp-2 group-hover:text-blue-700 transition-colors">{set.title}</h3>
-                    <p className="text-sm text-slate-600 line-clamp-2 mb-5 leading-relaxed">{set.summary || 'No description'}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {set.sections.slice(0, 2).map((section) => (
-                        <span key={section.type} className="px-3 py-1.5 bg-linear-to-r from-blue-50 to-blue-50/50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100/40">
-                          {section.label}
-                        </span>
-                      ))}
-                      {set.sections.length > 2 && (
-                        <span className="px-3 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-100/60">
-                          +{set.sections.length - 2} more
-                        </span>
-                      )}
+                    <div className="h-2.5 overflow-hidden rounded-full bg-secondary">
+                      <div className="h-full rounded-full" style={{ width: `${subject.score}%`, backgroundColor: subject.color }} />
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end sm:gap-2">
+                      <span className="text-sm font-semibold">{subject.score}%</span>
+                      <span className={`text-[11px] font-semibold ${subject.change.startsWith('-') ? 'text-orange-600' : 'text-emerald-600'}`}>{subject.change}</span>
                     </div>
                   </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {studySets.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-32 px-6">
-            <div className="relative mb-8">
-              <div className="absolute inset-0 bg-linear-to-br from-blue-200/30 to-purple-200/30 rounded-3xl blur-2xl"></div>
-              <div className="relative w-20 h-20 bg-linear-to-br from-blue-100/80 to-purple-50/40 rounded-3xl flex items-center justify-center shadow-lg">
-                <BookOpen className="w-10 h-10 text-blue-600" />
+                ))}
               </div>
-            </div>
-            <h2 className="text-3xl font-black text-slate-900 mb-3 text-center">No study sets yet</h2>
-            <p className="text-slate-600 mb-10 max-w-sm text-center leading-relaxed font-medium">
-              Create your first study set to start generating interactive flashcards, quizzes, and study guides.
-            </p>
-            <button
-              onClick={() => router.push('/dashboard/study-sets')}
-              className="group px-8 py-4 bg-linear-to-r from-blue-600 to-purple-600 text-white font-bold rounded-2xl hover:shadow-2xl hover:shadow-blue-200/50 transition-all duration-300 hover:-translate-y-1 hover:scale-105 relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <span className="relative">Create Your First Study Set</span>
-            </button>
+            </article>
+
+            <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold">Continue learning</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Pick up right where you left off</p>
+                </div>
+                <Link href="/dashboard/study-sets" className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">All sets <ChevronRight className="h-3.5 w-3.5" /></Link>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Link href="/dashboard/study-sets" className="group flex items-center gap-4 rounded-2xl border border-border bg-background p-4 transition hover:border-primary/30 hover:shadow-sm">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-primary dark:bg-primary/10"><Brain className="h-5 w-5" /></div>
+                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Human Anatomy</p><p className="mt-1 text-xs text-muted-foreground">32 of 48 concepts</p><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"><div className="h-full w-2/3 rounded-full bg-primary" /></div></div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition group-hover:scale-105"><Play className="ml-0.5 h-3.5 w-3.5 fill-current" /></div>
+                </Link>
+                <Link href="/dashboard/study-sets" className="group flex items-center gap-4 rounded-2xl border border-border bg-background p-4 transition hover:border-primary/30 hover:shadow-sm">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"><BookOpen className="h-5 w-5" /></div>
+                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Calculus II</p><p className="mt-1 text-xs text-muted-foreground">18 of 36 concepts</p><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"><div className="h-full w-1/2 rounded-full bg-emerald-500" /></div></div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border transition group-hover:border-primary group-hover:text-primary"><Play className="ml-0.5 h-3.5 w-3.5 fill-current" /></div>
+                </Link>
+              </div>
+            </article>
           </div>
-        )}
+
+          <aside className="space-y-6">
+            <article
+              aria-label={now ? `Current time ${now.toLocaleTimeString()}` : 'Current time'}
+              className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold">Study clock</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Stay on track with your day</p>
+                </div>
+                <div className="rounded-xl bg-primary/10 px-3 py-2 text-right text-primary">
+                  <p className="text-sm font-semibold tabular-nums">
+                    {now ? now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                  </p>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider opacity-70">Local time</p>
+                </div>
+              </div>
+
+              <div className="relative mx-auto h-[200px] w-[200px] rounded-full bg-gradient-to-br from-primary/20 via-transparent to-sky-400/20 p-[5px] shadow-[0_14px_35px_rgba(91,101,224,0.16)]">
+                <svg viewBox="0 0 200 200" className="h-full w-full rounded-full" role="img" aria-hidden="true">
+                  <defs>
+                    <radialGradient id="watchFace" cx="35%" cy="25%" r="85%">
+                      <stop offset="0%" stopColor="var(--card)" />
+                      <stop offset="100%" stopColor="var(--secondary)" />
+                    </radialGradient>
+                    <filter id="handShadow" x="-30%" y="-30%" width="160%" height="160%">
+                      <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.18" />
+                    </filter>
+                  </defs>
+
+                  <circle cx="100" cy="100" r="94" fill="url(#watchFace)" stroke="var(--border)" strokeWidth="1" />
+                  <circle cx="100" cy="100" r="87" fill="none" stroke="var(--border)" strokeWidth="0.6" opacity="0.65" />
+
+                  {[...Array(60)].map((_, index) => {
+                    const isHour = index % 5 === 0
+                    return (
+                      <line
+                        key={index}
+                        x1="100"
+                        y1={isHour ? 17 : 19}
+                        x2="100"
+                        y2={isHour ? 24 : 22}
+                        stroke={isHour ? 'var(--primary)' : 'var(--muted-foreground)'}
+                        strokeWidth={isHour ? 2 : 0.75}
+                        strokeLinecap="round"
+                        opacity={isHour ? 0.8 : 0.3}
+                        transform={`rotate(${index * 6} 100 100)`}
+                      />
+                    )
+                  })}
+
+                  <g fill="var(--foreground)" fontSize="11" fontWeight="650" textAnchor="middle" dominantBaseline="middle">
+                    <text x="100" y="34">12</text>
+                    <text x="166" y="101">3</text>
+                    <text x="100" y="167">6</text>
+                    <text x="34" y="101">9</text>
+                  </g>
+
+                  <g filter="url(#handShadow)" transform={`rotate(${hourRotation} 100 100)`}>
+                    <line x1="100" y1="105" x2="100" y2="62" stroke="var(--foreground)" strokeWidth="5.5" strokeLinecap="round" />
+                  </g>
+                  <g filter="url(#handShadow)" transform={`rotate(${minuteRotation} 100 100)`}>
+                    <line x1="100" y1="106" x2="100" y2="48" stroke="var(--primary)" strokeWidth="3.5" strokeLinecap="round" />
+                  </g>
+                  <g transform={`rotate(${secondRotation} 100 100)`}>
+                    <line x1="100" y1="113" x2="100" y2="42" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" />
+                  </g>
+                  <circle cx="100" cy="100" r="7" fill="var(--card)" stroke="var(--primary)" strokeWidth="3" />
+                  <circle cx="100" cy="100" r="2" fill="#f59e0b" />
+
+                  <g>
+                    <rect x="76" y="128" width="48" height="19" rx="9.5" fill="var(--primary)" opacity="0.1" />
+                    <text x="100" y="138" fill="var(--primary)" fontSize="8.5" fontWeight="700" textAnchor="middle" dominantBaseline="middle" letterSpacing="0.7">
+                      {now ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(now).toUpperCase() : 'TODAY'}
+                    </text>
+                  </g>
+                </svg>
+              </div>
+            </article>
+
+            <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div><h2 className="text-base font-semibold">Weekly goal</h2><p className="mt-1 text-xs text-muted-foreground">5 of 7 active days</p></div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-50 text-orange-600 dark:bg-orange-500/10"><Flame className="h-5 w-5 fill-current" /></div>
+              </div>
+              <div className="mt-5 grid grid-cols-7 gap-2">
+                {week.map((item, index) => <div key={`${item.day}-${index}`} className="text-center"><div className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${item.done ? 'bg-primary text-primary-foreground' : item.today ? 'border-2 border-primary text-primary' : 'bg-secondary text-muted-foreground'}`}>{item.done ? <Check className="h-4 w-4" /> : item.day}</div><p className="mt-2 text-[10px] text-muted-foreground">{item.day}</p></div>)}
+              </div>
+              <div className="mt-5 rounded-xl bg-secondary/70 px-3 py-2.5 text-center text-xs text-muted-foreground"><strong className="text-foreground">2 more days</strong> to complete this week&apos;s goal</div>
+            </article>
+
+            <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm">
+              <div className="mb-2 flex items-center justify-between"><div><h2 className="text-base font-semibold">Knowledge mastery</h2><p className="mt-1 text-xs text-muted-foreground">126 total concepts</p></div><GraduationCap className="h-5 w-5 text-primary" /></div>
+              <div className="relative mx-auto h-[170px] max-w-[260px]">
+                <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={masteryData} dataKey="value" innerRadius={57} outerRadius={75} paddingAngle={3} cornerRadius={5}>{masteryData.map((item) => <Cell key={item.name} fill={item.color} />)}</Pie><Tooltip contentStyle={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', fontSize: 12 }} formatter={(value) => [`${value}%`]} /></PieChart></ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-semibold">74%</span><span className="text-[10px] text-muted-foreground">mastered</span></div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">{masteryData.map((item) => <div key={item.name} className="text-center"><div className="mx-auto mb-1.5 h-2 w-2 rounded-full" style={{ background: item.color }} /><p className="text-sm font-semibold">{item.value}%</p><p className="text-[10px] text-muted-foreground">{item.name}</p></div>)}</div>
+            </article>
+
+            <article className="rounded-3xl border border-amber-200 bg-amber-50/70 p-5 dark:border-amber-500/20 dark:bg-amber-500/5">
+              <div className="flex gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"><Lightbulb className="h-4 w-4" /></div><div><h3 className="text-sm font-semibold">AI study insight</h3><p className="mt-1.5 text-xs leading-5 text-muted-foreground">You retain <strong className="text-foreground">18% more</strong> when studying before 8 PM. Try scheduling Chemistry at 7:00 PM today.</p></div></div>
+              <button className="mt-4 flex w-full items-center justify-between border-t border-amber-200/70 pt-3 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:text-amber-400">Add to my plan <ChevronRight className="h-4 w-4" /></button>
+            </article>
+
+            <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm">
+              <h2 className="text-base font-semibold">Upcoming</h2>
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-500/10"><span className="text-[8px] font-bold">MAY</span><span className="text-sm font-bold leading-none">28</span></div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">Chemistry mock test</p><p className="mt-0.5 text-[10px] text-muted-foreground">2 days left</p></div><CircleAlert className="h-4 w-4 text-rose-500" /></div>
+                <div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg bg-indigo-50 text-primary dark:bg-primary/10"><span className="text-[8px] font-bold">JUN</span><span className="text-sm font-bold leading-none">02</span></div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">Biology assignment</p><p className="mt-0.5 text-[10px] text-muted-foreground">7 days left</p></div></div>
+              </div>
+            </article>
+          </aside>
+        </section>
       </div>
-    </section>
+    </div>
   )
 }

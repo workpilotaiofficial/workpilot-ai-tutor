@@ -109,6 +109,10 @@ export type SyllabusDetailResponse = {
   coursework: SyllabusDetailCourseworkItem[]
 }
 
+export type SyllabusHistoryResponse = {
+  data: unknown[]
+}
+
 type UploadSyllabusTextPayload = {
   title: string
   text: string
@@ -260,4 +264,21 @@ export async function uploadSyllabusPdf(payload: UploadSyllabusPdfPayload) {
 export async function fetchSyllabusById(id: string) {
   const response = await apiClient.request<SyllabusDetailResponse>(`/api/v1/syllabus/${encodeURIComponent(id)}`)
   return normalizeSyllabusDetailResponse(response)
+}
+
+export async function fetchSyllabusHistory(signal?: AbortSignal) {
+  const response = await apiClient.request<unknown>('/api/v1/syllabus/history', {
+    method: 'GET',
+    signal,
+  })
+
+  if (Array.isArray(response)) {
+    return { data: response } satisfies SyllabusHistoryResponse
+  }
+
+  if (response && typeof response === 'object' && Array.isArray((response as { data?: unknown }).data)) {
+    return { data: (response as { data: unknown[] }).data } satisfies SyllabusHistoryResponse
+  }
+
+  throw new ApiClientError('Syllabus history fetch failed: invalid response payload.')
 }
