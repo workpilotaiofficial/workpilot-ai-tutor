@@ -155,54 +155,74 @@ export default function StudySetsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [studySets, setStudySets] = useState<StudySetPreview[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [loadMoreError, setLoadMoreError] = useState('')
   const [firstName, setFirstName] = useState('there')
+
+  const createStudySetPreviews = useCallback(async (
+    history: Awaited<ReturnType<typeof fetchStudySetHistory>>['data'],
+    signal?: AbortSignal,
+  ) => {
+    const progressResults = await Promise.allSettled(
+      history.map((studySet) =>
+        fetchStudySetProgress(studySet.id, signal),
+      ),
+    )
+
+    return history.map((studySet, index) => {
+      const progressResult = progressResults[index]
+      const summary =
+        progressResult?.status === 'fulfilled'
+          ? progressResult.value.summary
+          : null
+
+      return {
+        id: studySet.id,
+        title: studySet.title,
+        items: studySet.item_count,
+        percentageCompleted: studySet.percentage_completed,
+        stats: {
+          unfamiliar: summary?.unfamiliar ?? 0,
+          learning: summary?.learning ?? 0,
+          familiar: summary?.familiar ?? 0,
+          mastered: summary?.mastered ?? 0,
+        },
+      }
+    })
+  }, [])
 
   const loadStudySets = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true)
     setErrorMessage('')
+    setLoadMoreError('')
 
     try {
-      const historyResponse = await fetchStudySetHistory(signal)
+      const historyResponse = await fetchStudySetHistory({ limit: 20 }, signal)
       const history = Array.isArray(historyResponse.data)
         ? historyResponse.data
         : []
 
-      const progressResults = await Promise.allSettled(
-        history.map((studySet) =>
-          fetchStudySetProgress(studySet.id, signal),
-        ),
-      )
+      const previews = await createStudySetPreviews(history, signal)
 
       if (signal?.aborted) return
 
-      setStudySets(
-        history.map((studySet, index) => {
-          const progressResult = progressResults[index]
-          const summary =
-            progressResult?.status === 'fulfilled'
-              ? progressResult.value.summary
-              : null
-
-          return {
-            id: studySet.id,
-            title: studySet.title,
-            items: studySet.item_count,
-            percentageCompleted: studySet.percentage_completed,
-            stats: {
-              unfamiliar: summary?.unfamiliar ?? 0,
-              learning: summary?.learning ?? 0,
-              familiar: summary?.familiar ?? 0,
-              mastered: summary?.mastered ?? 0,
-            },
-          }
-        }),
+      setStudySets(previews)
+      setNextCursor(
+        historyResponse.pagination?.next_cursor ??
+        historyResponse.next_cursor ??
+        null,
       )
+      setHasMore(Boolean(historyResponse.pagination?.has_more))
     } catch (error) {
       if (signal?.aborted) return
 
       console.error('Error fetching study set history:', error)
       setStudySets([])
+      setNextCursor(null)
+      setHasMore(false)
       setErrorMessage(
         getApiClientErrorMessage(
           error,
@@ -214,7 +234,49 @@ export default function StudySetsPage() {
         setIsLoading(false)
       }
     }
-  }, [])
+  }, [createStudySetPreviews])
+
+  const loadMoreStudySets = async () => {
+    if (!nextCursor || isLoadingMore) return
+
+    setIsLoadingMore(true)
+    setLoadMoreError('')
+
+    try {
+      const historyResponse = await fetchStudySetHistory({
+        cursor: nextCursor,
+        limit: 20,
+      })
+      const history = Array.isArray(historyResponse.data)
+        ? historyResponse.data
+        : []
+      const previews = await createStudySetPreviews(history)
+
+      setStudySets((current) => {
+        const existingIds = new Set(current.map((studySet) => studySet.id))
+        return [
+          ...current,
+          ...previews.filter((studySet) => !existingIds.has(studySet.id)),
+        ]
+      })
+      setNextCursor(
+        historyResponse.pagination?.next_cursor ??
+        historyResponse.next_cursor ??
+        null,
+      )
+      setHasMore(Boolean(historyResponse.pagination?.has_more))
+    } catch (error) {
+      console.error('Error fetching more study set history:', error)
+      setLoadMoreError(
+        getApiClientErrorMessage(
+          error,
+          'Failed to load more study sets. Please try again.',
+        ),
+      )
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -505,36 +567,62 @@ export default function StudySetsPage() {
               ) : (
                 <motion.div
                   key={viewMode}
-                  className={
-                    viewMode === 'grid'
-                      ? 'grid auto-rows-max grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3'
-                      : 'space-y-4'
-                  }
                   variants={cardsContainerVariants}
                   initial="hidden"
                   animate="visible"
                   exit="exit"
                   layout
                 >
-                  {studySets.map((set) => (
-                    <motion.div
-                      key={set.id}
-                      variants={cardVariants}
-                      layout
-                      transition={{
-                        layout: {
-                          type: 'spring',
-                          stiffness: 280,
-                          damping: 28,
-                        },
-                      }}
-                    >
-                      <StudySetCard
-                        set={set}
-                        isListView={viewMode === 'list'}
-                      />
-                    </motion.div>
-                  ))}
+                  <div
+                    className={
+                      viewMode === 'grid'
+                        ? 'grid auto-rows-max grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3'
+                        : 'space-y-4'
+                    }
+                  >
+                    {studySets.map((set) => (
+                      <motion.div
+                        key={set.id}
+                        variants={cardVariants}
+                        layout
+                        transition={{
+                          layout: {
+                            type: 'spring',
+                            stiffness: 280,
+                            damping: 28,
+                          },
+                        }}
+                      >
+                        <StudySetCard
+                          set={set}
+                          isListView={viewMode === 'list'}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {hasMore && nextCursor && (
+                    <div className="mt-8 text-center">
+                      {loadMoreError && (
+                        <p className="mb-3 text-sm text-destructive">
+                          {loadMoreError}
+                        </p>
+                      )}
+
+                      <div className="flex justify-center">
+                        <motion.button
+                          type="button"
+                          onClick={() => void loadMoreStudySets()}
+                          disabled={isLoadingMore}
+                          className="rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                          whileHover={isLoadingMore ? undefined : { scale: 1.03 }}
+                          whileTap={isLoadingMore ? undefined : { scale: 0.97 }}
+                        >
+                          {isLoadingMore ? 'Loading...' : 'Load more'}
+                        </motion.button>
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

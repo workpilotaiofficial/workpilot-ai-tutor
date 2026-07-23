@@ -74,6 +74,7 @@ export {
   updatePersonalization,
 } from '@/lib/api/user-settings.service'
 export { fetchGraderHistory, fetchGraderResult, submitGraderAssignment } from '@/lib/api/paper-grader.service'
+export { fetchDashboard } from '@/lib/api/dashboard.service'
 export {
   clearAuthBrowserState,
   clearStoredAuthObject,
@@ -124,6 +125,13 @@ export type {
   SubscriptionPlan,
 } from '@/lib/api/billing.service'
 export type { StoredAuthObject } from '@/lib/api/session-storage'
+export type {
+  DashboardGrading,
+  DashboardResponse,
+  DashboardStats,
+  DashboardStudySet,
+  DashboardSyllabus,
+} from '@/lib/api/dashboard.service'
 export type { StoredStudySetGenerationJob, StoredStudySetGenerationMeta, StoredStudySetUploadMeta } from '@/lib/api/study-sets.storage'
 export type {
   BatchCompletedEvent,

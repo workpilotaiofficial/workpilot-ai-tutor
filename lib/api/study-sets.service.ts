@@ -267,6 +267,18 @@ export type StudySetHistoryItem = {
 
 export type StudySetHistoryResponse = {
   data: StudySetHistoryItem[]
+  count: number
+  pagination: {
+    next_cursor: string | null
+    has_more: boolean
+    limit: number
+  }
+  next_cursor: string | null
+}
+
+export type FetchStudySetHistoryParams = {
+  cursor?: string | null
+  limit?: number
 }
 
 export type UnifiedStudySetResponse = {
@@ -628,11 +640,29 @@ export function fetchStudySetPodcast(studySetId: string) {
   return fetchStudySetOutput<StudySetPodcastResponse>(studySetId, 'podcast')
 }
 
-export function fetchStudySetHistory(signal?: AbortSignal) {
-  return apiClient.request<StudySetHistoryResponse>('/api/v1/study-sets/history', {
-    method: 'GET',
-    signal,
-  })
+export function fetchStudySetHistory(
+  params: FetchStudySetHistoryParams = {},
+  signal?: AbortSignal,
+) {
+  const searchParams = new URLSearchParams()
+
+  if (params.cursor) {
+    searchParams.set('cursor', params.cursor)
+  }
+
+  if (typeof params.limit === 'number') {
+    searchParams.set('limit', String(params.limit))
+  }
+
+  const query = searchParams.toString()
+
+  return apiClient.request<StudySetHistoryResponse>(
+    `/api/v1/study-sets/history${query ? `?${query}` : ''}`,
+    {
+      method: 'GET',
+      signal,
+    },
+  )
 }
 
 export function fetchUnifiedStudySet(studySetId: string, signal?: AbortSignal) {

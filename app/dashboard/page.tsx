@@ -2,21 +2,22 @@
 
 import { getStoredAuthObject } from '@/lib/api/session-storage'
 import {
-  BookOpen,
+  fetchDashboard,
+  type DashboardResponse,
+} from '@/lib/api/dashboard.service'
+import {
   Brain,
   CalendarDays,
   Check,
   ChevronRight,
   CircleAlert,
-  Clock3,
   Flame,
   GraduationCap,
   Lightbulb,
-  Play,
-  Sparkles,
   Target,
-  TrendingUp,
-  Trophy,
+  FileCheck2,
+  FileText,
+  WalletCards,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -75,7 +76,7 @@ function StatCard({
   icon: typeof Target
   label: string
   value: string
-  detail: string
+  detail?: string
   tone: string
 }) {
   return (
@@ -84,9 +85,11 @@ function StatCard({
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>
           <Icon className="h-[19px] w-[19px]" />
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-          <TrendingUp className="h-3 w-3" /> {detail}
-        </span>
+        {detail ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+            {detail}
+          </span>
+        ) : null}
       </div>
       <p className="mt-5 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
       <p className="mt-1 text-xs font-medium text-muted-foreground">{label}</p>
@@ -97,6 +100,8 @@ function StatCard({
 export default function DashboardIndexPage() {
   const [firstName, setFirstName] = useState('Student')
   const [now, setNow] = useState<Date | null>(null)
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
+  const [dashboardError, setDashboardError] = useState<string | null>(null)
 
   useEffect(() => {
     const displayName = getStoredAuthObject()?.user_display_name?.trim()
@@ -105,8 +110,23 @@ export default function DashboardIndexPage() {
     const updateClock = () => setNow(new Date())
     updateClock()
     const clockInterval = window.setInterval(updateClock, 1000)
+    const abortController = new AbortController()
+    let isActive = true
 
-    return () => window.clearInterval(clockInterval)
+    fetchDashboard(abortController.signal)
+      .then((response) => {
+        if (isActive) setDashboard(response)
+      })
+      .catch((error: unknown) => {
+        if (!isActive || (error instanceof DOMException && error.name === 'AbortError')) return
+        setDashboardError(error instanceof Error ? error.message : 'Unable to load dashboard data.')
+      })
+
+    return () => {
+      isActive = false
+      window.clearInterval(clockInterval)
+      abortController.abort()
+    }
   }, [])
 
   const currentDate = now
@@ -140,11 +160,17 @@ export default function DashboardIndexPage() {
         </header>
 
         <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard icon={Target} label="Overall mastery" value="74%" detail="6% this week" tone="bg-indigo-50 text-primary dark:bg-primary/10" />
-          <StatCard icon={Clock3} label="Learning time" value="5h 20m" detail="42m more" tone="bg-sky-50 text-sky-600 dark:bg-sky-500/10" />
-          <StatCard icon={Flame} label="Day study streak" value="12 days" detail="Best: 18" tone="bg-orange-50 text-orange-600 dark:bg-orange-500/10" />
-          <StatCard icon={Trophy} label="Quiz accuracy" value="81%" detail="4% this week" tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10" />
+          <StatCard icon={Brain} label="Study sets" value={dashboard ? String(dashboard.stats.study_sets_count) : '—'} tone="bg-indigo-50 text-primary dark:bg-primary/10" />
+          <StatCard icon={FileText} label="Syllabi" value={dashboard ? String(dashboard.stats.syllabi_count) : '—'} tone="bg-sky-50 text-sky-600 dark:bg-sky-500/10" />
+          <StatCard icon={FileCheck2} label="Gradings" value={dashboard ? String(dashboard.stats.grading_count) : '—'} tone="bg-orange-50 text-orange-600 dark:bg-orange-500/10" />
+          <StatCard icon={WalletCards} label="Credits available" value={dashboard ? String(dashboard.stats.credits_available) : '—'} detail={dashboard?.stats.plan_name || dashboard?.stats.plan} tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10" />
         </section>
+
+        {dashboardError ? (
+          <div className="mb-6 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            {dashboardError}
+          </div>
+        ) : null}
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,.75fr)]">
           <div className="space-y-6">
@@ -212,22 +238,72 @@ export default function DashboardIndexPage() {
             <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
               <div className="mb-5 flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-semibold">Continue learning</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Pick up right where you left off</p>
+                  <h2 className="text-base font-semibold">Recent activity</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Your latest study sets, syllabi, and gradings</p>
                 </div>
-                <Link href="/dashboard/study-sets" className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">All sets <ChevronRight className="h-3.5 w-3.5" /></Link>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Link href="/dashboard/study-sets" className="group flex items-center gap-4 rounded-2xl border border-border bg-background p-4 transition hover:border-primary/30 hover:shadow-sm">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-primary dark:bg-primary/10"><Brain className="h-5 w-5" /></div>
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Human Anatomy</p><p className="mt-1 text-xs text-muted-foreground">32 of 48 concepts</p><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"><div className="h-full w-2/3 rounded-full bg-primary" /></div></div>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition group-hover:scale-105"><Play className="ml-0.5 h-3.5 w-3.5 fill-current" /></div>
-                </Link>
-                <Link href="/dashboard/study-sets" className="group flex items-center gap-4 rounded-2xl border border-border bg-background p-4 transition hover:border-primary/30 hover:shadow-sm">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"><BookOpen className="h-5 w-5" /></div>
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Calculus II</p><p className="mt-1 text-xs text-muted-foreground">18 of 36 concepts</p><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"><div className="h-full w-1/2 rounded-full bg-emerald-500" /></div></div>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border transition group-hover:border-primary group-hover:text-primary"><Play className="ml-0.5 h-3.5 w-3.5 fill-current" /></div>
-                </Link>
+              <div className="grid gap-4 lg:grid-cols-3">
+                {[
+                  {
+                    label: 'Study sets',
+                    href: '/dashboard/study-sets',
+                    icon: Brain,
+                    items: dashboard?.recent_study_sets.map((item) => ({
+                      id: item.id,
+                      title: item.title,
+                      meta: `${item.item_count} items · ${item.percentage_completed}% complete`,
+                      href: `/dashboard/study-sets/${item.id}`,
+                    })) ?? [],
+                  },
+                  {
+                    label: 'Syllabi',
+                    href: '/dashboard/syllabus-intelligence',
+                    icon: FileText,
+                    items: dashboard?.recent_syllabi.map((item) => ({
+                      id: item.id,
+                      title: item.title,
+                      meta: `${item.module_count} modules · ${item.percentage_completed}% complete`,
+                      href: '/dashboard/syllabus-intelligence',
+                    })) ?? [],
+                  },
+                  {
+                    label: 'Gradings',
+                    href: '/dashboard/paper-grader',
+                    icon: FileCheck2,
+                    items: dashboard?.recent_grading.map((item) => ({
+                      id: item.id,
+                      title: item.title,
+                      meta: `${item.score_percentage}% · Max score ${item.max_score}`,
+                      href: '/dashboard/paper-grader',
+                    })) ?? [],
+                  },
+                ].map((group) => (
+                  <div key={group.label} className="rounded-2xl border border-border bg-background p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <group.icon className="h-4 w-4 text-primary" />
+                        {group.label}
+                      </div>
+                      <Link href={group.href} className="text-muted-foreground hover:text-primary" aria-label={`View all ${group.label}`}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                    <div className="space-y-2">
+                      {!dashboard ? (
+                        <p className="py-3 text-xs text-muted-foreground">Loading…</p>
+                      ) : group.items.length === 0 ? (
+                        <p className="py-3 text-xs text-muted-foreground">No recent {group.label.toLowerCase()}.</p>
+                      ) : (
+                        group.items.map((item) => (
+                          <Link key={item.id} href={item.href} className="block rounded-xl p-2 transition hover:bg-secondary">
+                            <p className="truncate text-xs font-semibold">{item.title}</p>
+                            <p className="mt-1 truncate text-[10px] text-muted-foreground">{item.meta}</p>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </article>
           </div>
