@@ -86,7 +86,7 @@ function StatCard({
         ) : null}
       </div>
       <p className="mt-5 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
-      <p className="mt-1 text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-medium text-muted-foreground">{label}</p>
     </article>
   )
 }
@@ -192,7 +192,7 @@ export default function DashboardIndexPage() {
 
         <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard icon={Brain} label="Study sets" value={dashboard ? String(dashboard.stats.study_sets_count) : '—'} tone="bg-indigo-50 text-primary dark:bg-primary/10" />
-          <StatCard icon={FileText} label="Syllabi" value={dashboard ? String(dashboard.stats.syllabi_count) : '—'} tone="bg-sky-50 text-sky-600 dark:bg-sky-500/10" />
+          <StatCard icon={FileText} label="Syllabus" value={dashboard ? String(dashboard.stats.syllabi_count) : '—'} tone="bg-sky-50 text-sky-600 dark:bg-sky-500/10" />
           <StatCard icon={FileCheck2} label="Gradings" value={dashboard ? String(dashboard.stats.grading_count) : '—'} tone="bg-orange-50 text-orange-600 dark:bg-orange-500/10" />
           <StatCard icon={WalletCards} label="Credits available" value={dashboard ? String(dashboard.stats.credits_available) : '—'} detail={dashboard?.stats.plan_name || dashboard?.stats.plan} tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10" />
         </section>
@@ -257,34 +257,6 @@ export default function DashboardIndexPage() {
                 )}
               </div>
             </article>
-
-            <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold">Subject performance</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">See what&apos;s strong and what needs attention</p>
-                </div>
-                <button className="text-xs font-semibold text-primary hover:underline">View report</button>
-              </div>
-              <div className="space-y-5">
-                {subjects.map((subject) => (
-                  <div key={subject.name} className="grid items-center gap-3 sm:grid-cols-[155px_1fr_78px]">
-                    <div>
-                      <p className="text-sm font-semibold">{subject.name}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{subject.detail}</p>
-                    </div>
-                    <div className="h-2.5 overflow-hidden rounded-full bg-secondary">
-                      <div className="h-full rounded-full" style={{ width: `${subject.score}%`, backgroundColor: subject.color }} />
-                    </div>
-                    <div className="flex items-center justify-between sm:justify-end sm:gap-2">
-                      <span className="text-sm font-semibold">{subject.score}%</span>
-                      <span className={`text-[11px] font-semibold ${subject.change.startsWith('-') ? 'text-orange-600' : 'text-emerald-600'}`}>{subject.change}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </article>
-
             <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
               <div className="mb-5 flex items-center justify-between">
                 <div>
@@ -356,6 +328,34 @@ export default function DashboardIndexPage() {
                 ))}
               </div>
             </article>
+            <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold">Subject performance</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">See what&apos;s strong and what needs attention</p>
+                </div>
+                <button className="text-xs font-semibold text-primary hover:underline">View report</button>
+              </div>
+              <div className="space-y-5">
+                {subjects.map((subject) => (
+                  <div key={subject.name} className="grid items-center gap-3 sm:grid-cols-[155px_1fr_78px]">
+                    <div>
+                      <p className="text-sm font-semibold">{subject.name}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{subject.detail}</p>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-secondary">
+                      <div className="h-full rounded-full" style={{ width: `${subject.score}%`, backgroundColor: subject.color }} />
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end sm:gap-2">
+                      <span className="text-sm font-semibold">{subject.score}%</span>
+                      <span className={`text-[11px] font-semibold ${subject.change.startsWith('-') ? 'text-orange-600' : 'text-emerald-600'}`}>{subject.change}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+        
           </div>
 
           <aside className="space-y-6">
@@ -458,7 +458,7 @@ export default function DashboardIndexPage() {
               <div className="grid grid-cols-3 gap-2">{masteryData.map((item) => <div key={item.name} className="text-center"><div className="mx-auto mb-1.5 h-2 w-2 rounded-full" style={{ background: item.color }} /><p className="text-sm font-semibold">{item.value}%</p><p className="text-[10px] text-muted-foreground">{item.name}</p></div>)}</div>
             </article>
 
-            <article className="rounded-3xl border border-amber-200 bg-amber-50/70 p-5 dark:border-amber-500/20 dark:bg-amber-500/5">
+            {/* <article className="rounded-3xl border border-amber-200 bg-amber-50/70 p-5 dark:border-amber-500/20 dark:bg-amber-500/5">
               <div className="flex gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"><Lightbulb className="h-4 w-4" /></div><div><h3 className="text-sm font-semibold">AI study insight</h3><p className="mt-1.5 text-xs leading-5 text-muted-foreground">You retain <strong className="text-foreground">18% more</strong> when studying before 8 PM. Try scheduling Chemistry at 7:00 PM today.</p></div></div>
               <button className="mt-4 flex w-full items-center justify-between border-t border-amber-200/70 pt-3 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:text-amber-400">Add to my plan <ChevronRight className="h-4 w-4" /></button>
             </article>
@@ -469,7 +469,7 @@ export default function DashboardIndexPage() {
                 <div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-500/10"><span className="text-[8px] font-bold">MAY</span><span className="text-sm font-bold leading-none">28</span></div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">Chemistry mock test</p><p className="mt-0.5 text-[10px] text-muted-foreground">2 days left</p></div><CircleAlert className="h-4 w-4 text-rose-500" /></div>
                 <div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg bg-indigo-50 text-primary dark:bg-primary/10"><span className="text-[8px] font-bold">JUN</span><span className="text-sm font-bold leading-none">02</span></div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">Biology assignment</p><p className="mt-0.5 text-[10px] text-muted-foreground">7 days left</p></div></div>
               </div>
-            </article>
+            </article> */}
           </aside>
         </section>
       </div>
