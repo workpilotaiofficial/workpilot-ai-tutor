@@ -74,7 +74,7 @@ function DashboardLayoutContent({
   const [creditLimitDetails, setCreditLimitDetails] =
     useState<CreditLimitReachedEventDetail | null>(null)
   const [showCreditUpgradeModal, setShowCreditUpgradeModal] =
-    useState(true)
+    useState(false)
   const handleLogout = async () => {
     if (isLoggingOut) {
       return
