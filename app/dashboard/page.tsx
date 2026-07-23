@@ -6,6 +6,10 @@ import {
   type DashboardResponse,
 } from '@/lib/api/dashboard.service'
 import {
+  fetchStudySetHistory,
+  type StudySetHistoryItem,
+} from '@/lib/api/study-sets.service'
+import {
   Brain,
   CalendarDays,
   Check,
@@ -20,7 +24,7 @@ import {
   WalletCards,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -33,16 +37,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-
-const progressData = [
-  { day: 'Mon', score: 58, minutes: 32 },
-  { day: 'Tue', score: 63, minutes: 48 },
-  { day: 'Wed', score: 61, minutes: 26 },
-  { day: 'Thu', score: 70, minutes: 54 },
-  { day: 'Fri', score: 73, minutes: 42 },
-  { day: 'Sat', score: 78, minutes: 67 },
-  { day: 'Sun', score: 82, minutes: 51 },
-]
 
 const masteryData = [
   { name: 'Mastered', value: 46, color: '#5B65E0' },
@@ -102,6 +96,9 @@ export default function DashboardIndexPage() {
   const [now, setNow] = useState<Date | null>(null)
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
   const [dashboardError, setDashboardError] = useState<string | null>(null)
+  const [studySetHistory, setStudySetHistory] = useState<StudySetHistoryItem[]>([])
+  const [progressLoading, setProgressLoading] = useState(true)
+  const [progressError, setProgressError] = useState<string | null>(null)
 
   useEffect(() => {
     const displayName = getStoredAuthObject()?.user_display_name?.trim()
@@ -122,6 +119,20 @@ export default function DashboardIndexPage() {
         setDashboardError(error instanceof Error ? error.message : 'Unable to load dashboard data.')
       })
 
+    fetchStudySetHistory({ limit: 7 }, abortController.signal)
+      .then((response) => {
+        if (!isActive) return
+        setStudySetHistory(response.data)
+        setProgressError(null)
+      })
+      .catch((error: unknown) => {
+        if (!isActive || (error instanceof DOMException && error.name === 'AbortError')) return
+        setProgressError(error instanceof Error ? error.message : 'Unable to load learning progress.')
+      })
+      .finally(() => {
+        if (isActive) setProgressLoading(false)
+      })
+
     return () => {
       isActive = false
       window.clearInterval(clockInterval)
@@ -140,6 +151,26 @@ export default function DashboardIndexPage() {
   const hourRotation = now ? ((now.getHours() % 12) + now.getMinutes() / 60) * 30 : 0
   const minuteRotation = now ? (now.getMinutes() + now.getSeconds() / 60) * 6 : 0
   const secondRotation = now ? now.getSeconds() * 6 : 0
+  const progressData = useMemo(
+    () =>
+      [...studySetHistory]
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .slice(-7)
+        .map((studySet) => ({
+          id: studySet.id,
+          title: studySet.title,
+          day: new Intl.DateTimeFormat('en-US', {
+            month: 'short',
+            day: 'numeric',
+          }).format(new Date(studySet.created_at)),
+          score: Math.min(100, Math.max(0, studySet.percentage_completed)),
+        })),
+    [studySetHistory],
+  )
+  const latestProgress = progressData.at(-1)?.score ?? 0
+  const progressChange = progressData.length > 1
+    ? latestProgress - progressData[0].score
+    : 0
 
   return (
     <div className="min-h-full bg-[#fbfbfd] text-foreground dark:bg-background">
@@ -178,15 +209,32 @@ export default function DashboardIndexPage() {
               <div className="flex flex-col justify-between gap-4 border-b border-border/70 px-5 py-5 sm:flex-row sm:items-center sm:px-6">
                 <div>
                   <h2 className="text-base font-semibold">Learning progress</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Your mastery score over the last 7 days</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Completion across your latest 7 study sets</p>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold">82%</span>
-                  <span className="text-xs font-semibold text-emerald-600">+12% this week</span>
+                  <span className="text-2xl font-semibold">{progressLoading ? '—' : `${latestProgress}%`}</span>
+                  {progressData.length > 1 ? (
+                    <span className={`text-xs font-semibold ${progressChange >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
+                      {progressChange > 0 ? '+' : ''}{progressChange}% across these sets
+                    </span>
+                  ) : null}
                 </div>
               </div>
               <div className="h-[270px] px-2 pb-4 pt-5 sm:px-5">
-                <ResponsiveContainer width="100%" height="100%">
+                {progressLoading ? (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    Loading learning progress...
+                  </div>
+                ) : progressError ? (
+                  <div className="flex h-full items-center justify-center px-4 text-center text-sm text-destructive">
+                    Couldn&apos;t load learning progress.
+                  </div>
+                ) : progressData.length === 0 ? (
+                  <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                    No study set progress yet. Complete a study set to see it here.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={progressData} margin={{ top: 10, right: 12, left: -24, bottom: 0 }}>
                     <defs>
                       <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
@@ -196,15 +244,17 @@ export default function DashboardIndexPage() {
                     </defs>
                     <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 5" />
                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} dy={10} />
-                    <YAxis domain={[40, 100]} axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} tickFormatter={(value) => `${value}%`} />
+                    <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} tickFormatter={(value) => `${value}%`} />
                     <Tooltip
                       cursor={{ stroke: 'var(--border)', strokeDasharray: '4 4' }}
                       contentStyle={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', fontSize: 12 }}
-                      formatter={(value) => [`${value}%`, 'Mastery']}
+                      formatter={(value) => [`${value}%`, 'Completed']}
+                      labelFormatter={(_, payload) => payload[0]?.payload?.title ?? ''}
                     />
                     <Area type="monotone" dataKey="score" stroke="var(--primary)" strokeWidth={3} fill="url(#scoreFill)" activeDot={{ r: 5, fill: 'var(--primary)', stroke: 'var(--card)', strokeWidth: 3 }} />
                   </AreaChart>
-                </ResponsiveContainer>
+                  </ResponsiveContainer>
+                )}
               </div>
             </article>
 
