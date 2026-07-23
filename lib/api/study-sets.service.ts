@@ -149,6 +149,31 @@ export type StudySetNotesResponse = {
   }
 }
 
+export type StudySetNotesStreamMetadata = {
+  study_set_id: string
+  notes_id: string
+  generation_status: string
+}
+
+export type StudySetNotesStreamDelta = {
+  rich_text_content?: Record<string, unknown> | null
+  markdown_content?: string | null
+}
+
+export type StudySetNotesStreamDone = {
+  updated_at: string
+}
+
+export type StudySetNotesStreamEvent =
+  | { type: 'metadata'; data: StudySetNotesStreamMetadata }
+  | { type: 'delta'; data: StudySetNotesStreamDelta }
+  | { type: 'done'; data: StudySetNotesStreamDone }
+
+export type StreamStudySetNotesOptions = {
+  signal?: AbortSignal
+  onEvent: (event: StudySetNotesStreamEvent) => void
+}
+
 export type StudySetTutorLessonResponse = {
   study_set_id: string
   tutor_lesson: Record<string, unknown>
@@ -616,6 +641,162 @@ async function fetchStudySetOutput<TResponse>(studySetId: string, endpoint: stri
 
 export function fetchStudySetNotes(studySetId: string) {
   return fetchStudySetOutput<StudySetNotesResponse>(studySetId, 'notes')
+}
+
+function parseNotesStreamEvent(eventBlock: string): StudySetNotesStreamEvent | null {
+  let eventName = ''
+  const dataLines: string[] = []
+
+  for (const line of eventBlock.split(/\r?\n/)) {
+    if (!line || line.startsWith(':')) continue
+
+    const separatorIndex = line.indexOf(':')
+    const field = separatorIndex >= 0 ? line.slice(0, separatorIndex) : line
+    const rawValue = separatorIndex >= 0 ? line.slice(separatorIndex + 1) : ''
+    const value = rawValue.startsWith(' ') ? rawValue.slice(1) : rawValue
+
+    if (field === 'event') {
+      eventName = value.trim()
+    } else if (field === 'data') {
+      dataLines.push(value)
+    }
+  }
+
+  if (!dataLines.length) return null
+
+  let data: unknown
+  try {
+    data = JSON.parse(dataLines.join('\n'))
+  } catch {
+    return null
+  }
+
+  if (!data || typeof data !== 'object') return null
+
+  if (eventName === 'metadata') {
+    const metadata = data as Partial<StudySetNotesStreamMetadata>
+    if (
+      typeof metadata.study_set_id !== 'string' ||
+      typeof metadata.notes_id !== 'string' ||
+      typeof metadata.generation_status !== 'string'
+    ) {
+      return null
+    }
+
+    return {
+      type: 'metadata',
+      data: {
+        study_set_id: metadata.study_set_id,
+        notes_id: metadata.notes_id,
+        generation_status: metadata.generation_status,
+      },
+    }
+  }
+
+  if (eventName === 'delta') {
+    const delta = data as Partial<StudySetNotesStreamDelta>
+    const markdownContent =
+      typeof delta.markdown_content === 'string' || delta.markdown_content === null
+        ? delta.markdown_content
+        : undefined
+    const richTextContent =
+      delta.rich_text_content === null ||
+      (typeof delta.rich_text_content === 'object' && !Array.isArray(delta.rich_text_content))
+        ? delta.rich_text_content
+        : undefined
+
+    if (typeof markdownContent === 'undefined' && typeof richTextContent === 'undefined') {
+      return null
+    }
+
+    return {
+      type: 'delta',
+      data: {
+        markdown_content: markdownContent,
+        rich_text_content: richTextContent,
+      },
+    }
+  }
+
+  if (eventName === 'done') {
+    const done = data as Partial<StudySetNotesStreamDone>
+    if (typeof done.updated_at !== 'string') return null
+
+    return {
+      type: 'done',
+      data: {
+        updated_at: done.updated_at,
+      },
+    }
+  }
+
+  return null
+}
+
+export async function streamStudySetNotes(
+  studySetId: string,
+  options: StreamStudySetNotesOptions,
+) {
+  const response = await apiClient.requestStream(
+    `/api/v1/study-sets/${encodeURIComponent(studySetId)}/notes/stream`,
+    {
+      signal: options.signal,
+      headers: {
+        accept: 'text/event-stream',
+      },
+    },
+  )
+  const reader = response.body?.getReader()
+
+  if (!reader) {
+    throw new ApiClientError('Notes stream did not include a readable response body.')
+  }
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let completed = false
+
+  const consumeEventBlock = (eventBlock: string) => {
+    const parsedEvent = parseNotesStreamEvent(eventBlock)
+    if (!parsedEvent) return
+
+    options.onEvent(parsedEvent)
+    if (parsedEvent.type === 'done') {
+      completed = true
+    }
+  }
+
+  try {
+    while (!completed) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+
+      let boundary = buffer.match(/\r?\n\r?\n/)
+      while (boundary?.index !== undefined) {
+        const eventBlock = buffer.slice(0, boundary.index)
+        buffer = buffer.slice(boundary.index + boundary[0].length)
+        consumeEventBlock(eventBlock)
+        if (completed) break
+        boundary = buffer.match(/\r?\n\r?\n/)
+      }
+    }
+
+    buffer += decoder.decode()
+    if (!completed && buffer.trim()) {
+      consumeEventBlock(buffer)
+    }
+  } finally {
+    if (completed) {
+      await reader.cancel().catch(() => undefined)
+    }
+    reader.releaseLock()
+  }
+
+  if (!completed) {
+    throw new ApiClientError('Notes stream ended before generation completed.')
+  }
 }
 
 export function fetchStudySetTutorLesson(studySetId: string) {

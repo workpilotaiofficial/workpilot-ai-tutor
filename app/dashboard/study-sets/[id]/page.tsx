@@ -2,13 +2,15 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, LoaderCircle, RefreshCw } from 'lucide-react'
 import { normalizeStudySetResponse, type StudySet } from '@/components/study-sets/utils'
 import {
   fetchStudySetFillInTheBlanks,
   fetchStudySetFlashcards,
   fetchStudySetMultipleChoice,
+  fetchStudySetNotes,
   fetchUnifiedStudySet,
+  streamStudySetNotes,
   submitStudySetFillBlankAnswer,
   submitStudySetFlashcardReview,
   submitStudySetMcqAnswer,
@@ -36,6 +38,57 @@ function formatUpdatedAt(value?: string) {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+function applyNotesMarkdown(
+  studySet: StudySet,
+  markdown: string,
+  updatedAt?: string,
+): StudySet {
+  const nextNotesSection: StudySet['sections'][number] = {
+    type: 'notes',
+    label: 'Notes',
+    items: [],
+    format: 'markdown',
+    content: markdown,
+  }
+  const notesSectionIndex = studySet.sections.findIndex((section) => section.type === 'notes')
+  const sections = [...studySet.sections]
+
+  if (notesSectionIndex >= 0) {
+    sections[notesSectionIndex] = {
+      ...sections[notesSectionIndex],
+      ...nextNotesSection,
+    }
+  } else {
+    sections.unshift(nextNotesSection)
+  }
+
+  return {
+    ...studySet,
+    selections: studySet.selections.includes('notes')
+      ? studySet.selections
+      : ['notes', ...studySet.selections],
+    sections,
+    notesMarkdown: markdown,
+    notesHtml: undefined,
+    updatedAt: updatedAt ?? studySet.updatedAt,
+  }
+}
+
+function reconcileNotesStreamAttempt(baseline: string, attempt: string) {
+  if (!baseline) return attempt
+  if (!attempt || baseline.startsWith(attempt)) return baseline
+  if (attempt.startsWith(baseline)) return attempt
+
+  const maximumOverlap = Math.min(baseline.length, attempt.length, 8192)
+  for (let overlap = maximumOverlap; overlap > 0; overlap -= 1) {
+    if (baseline.endsWith(attempt.slice(0, overlap))) {
+      return baseline + attempt.slice(overlap)
+    }
+  }
+
+  return baseline + attempt
 }
 
 function normalizeAnswerValue(value: unknown) {
@@ -304,8 +357,29 @@ export default function StudySetDetailPage({
   >({})
   const activeModeFromQuery = searchParams.get('mode')
   const shouldAutoOpenFirst = searchParams.get('autoOpenFirst') === '1'
+  const shouldStreamNotes = searchParams.get('streamNotes') === '1'
+  const [notesStreamStatus, setNotesStreamStatus] = useState<
+    'idle' | 'connecting' | 'streaming' | 'completed' | 'error'
+  >('idle')
+  const [notesStreamError, setNotesStreamError] = useState('')
+  const [notesStreamAttempt, setNotesStreamAttempt] = useState(0)
+  const streamedNotesMarkdownRef = useRef('')
+  const retryBaselineMarkdownRef = useRef('')
+  const notesStreamOwnsContentRef = useRef(false)
+  const completedStreamMarkdownRef = useRef<string | null>(null)
 
-  const loadStudySet = useCallback(async (signal?: AbortSignal, showLoading = true) => {
+  const updateStreamedNotes = useCallback((markdown: string, updatedAt?: string) => {
+    setStudySet((current) => {
+      if (!current) return current
+      return applyNotesMarkdown(current, markdown, updatedAt)
+    })
+  }, [])
+
+  const loadStudySet = useCallback(async (
+    signal?: AbortSignal,
+    showLoading = true,
+    preservedNotesMarkdown?: string,
+  ) => {
     if (!id) return
     if (showLoading) setIsLoadingStudySet(true)
     setStudySetError('')
@@ -315,7 +389,33 @@ export default function StudySetDetailPage({
       const normalized = normalizeStudySetResponse(response.studySet)
       if (!normalized) throw new Error('The study set response is invalid.')
       const hydrated = await hydrateInteractiveSectionIds(normalized, signal)
-      if (!signal?.aborted) setStudySet(hydrated)
+      if (!signal?.aborted) {
+        setStudySet((current) => {
+          const protectedMarkdown =
+            typeof preservedNotesMarkdown === 'string'
+              ? preservedNotesMarkdown
+              : notesStreamOwnsContentRef.current
+                ? streamedNotesMarkdownRef.current
+                : completedStreamMarkdownRef.current
+
+          if (typeof protectedMarkdown === 'string') {
+            return applyNotesMarkdown(hydrated, protectedMarkdown)
+          }
+
+          if (current?.notesHtml) {
+            return {
+              ...applyNotesMarkdown(
+                hydrated,
+                current.notesMarkdown ?? '',
+                current.updatedAt,
+              ),
+              notesHtml: current.notesHtml,
+            }
+          }
+
+          return hydrated
+        })
+      }
     } catch (error) {
       if (signal?.aborted) return
       console.error('Error fetching study set:', error)
@@ -333,7 +433,87 @@ export default function StudySetDetailPage({
   }, [loadStudySet])
 
   useEffect(() => {
+    if (!shouldStreamNotes || !id) return
+
+    const abortController = new AbortController()
+    notesStreamOwnsContentRef.current = true
+    completedStreamMarkdownRef.current = null
+    const streamBaseline =
+      notesStreamAttempt > 0 ? retryBaselineMarkdownRef.current : ''
+    let attemptMarkdown = ''
+    streamedNotesMarkdownRef.current = streamBaseline
+    setNotesStreamStatus('connecting')
+    setNotesStreamError('')
+    if (notesStreamAttempt === 0) {
+      updateStreamedNotes('')
+    }
+
+    void (async () => {
+      let streamUpdatedAt: string | undefined
+
+      try {
+        await streamStudySetNotes(id, {
+          signal: abortController.signal,
+          onEvent: (event) => {
+            if (event.type === 'metadata') {
+              setNotesStreamStatus('streaming')
+              return
+            }
+
+            if (event.type === 'delta') {
+              setNotesStreamStatus('streaming')
+              if (typeof event.data.markdown_content !== 'string') return
+
+              attemptMarkdown += event.data.markdown_content
+              streamedNotesMarkdownRef.current = reconcileNotesStreamAttempt(
+                streamBaseline,
+                attemptMarkdown,
+              )
+              updateStreamedNotes(streamedNotesMarkdownRef.current)
+              return
+            }
+
+            streamUpdatedAt = event.data.updated_at
+            updateStreamedNotes(streamedNotesMarkdownRef.current, streamUpdatedAt)
+          },
+        })
+
+        const finalMarkdown = streamedNotesMarkdownRef.current
+        completedStreamMarkdownRef.current = finalMarkdown
+        await loadStudySet(undefined, false, finalMarkdown)
+        updateStreamedNotes(finalMarkdown, streamUpdatedAt)
+        notesStreamOwnsContentRef.current = false
+        setNotesStreamStatus('completed')
+        setNotesStreamError('')
+        router.replace(`/dashboard/study-sets/${id}?mode=notes`)
+      } catch (error) {
+        if (abortController.signal.aborted) return
+
+        setNotesStreamStatus('error')
+        setNotesStreamError(
+          getApiClientErrorMessage(
+            error,
+            'The notes stream was interrupted before generation completed.',
+          ),
+        )
+      }
+    })()
+
+    return () => {
+      abortController.abort()
+    }
+  }, [
+    id,
+    loadStudySet,
+    notesStreamAttempt,
+    router,
+    shouldStreamNotes,
+    updateStreamedNotes,
+  ])
+
+  useEffect(() => {
     const generatingStatuses = new Set(['processing', 'pending', 'in_progress', 'generating', 'queued'])
+    if (shouldStreamNotes) return
     if (!studySet?.sections.some((section) => section.status && generatingStatuses.has(section.status))) return
     const abortController = new AbortController()
     const timeoutId = window.setTimeout(() => {
@@ -344,7 +524,7 @@ export default function StudySetDetailPage({
       window.clearTimeout(timeoutId)
       abortController.abort()
     }
-  }, [loadStudySet, studySet])
+  }, [loadStudySet, shouldStreamNotes, studySet])
 
   useEffect(() => {
     if (!studySet) {
@@ -357,13 +537,14 @@ export default function StudySetDetailPage({
       Boolean(requestedType) && studySet.sections.some((section) => section.type === requestedType)
 
     const nextSectionType =
+      (shouldStreamNotes ? 'notes' : null) ??
       (hasRequestedSection ? requestedType : null) ??
       studySet.sections.find((section) => section.type === 'notes')?.type ??
       studySet.sections[0]?.type ??
       null
 
     setActiveSectionType((current) => (current === nextSectionType ? current : nextSectionType))
-  }, [activeModeFromQuery, studySet])
+  }, [activeModeFromQuery, shouldStreamNotes, studySet])
 
   useEffect(() => {
     if (!shouldAutoOpenFirst || !studySet) return
@@ -641,6 +822,7 @@ export default function StudySetDetailPage({
   }
 
   const handleNotesChange = (html: string) => {
+    completedStreamMarkdownRef.current = null
     setStudySet((current) => {
       if (!current) return current
       if ((current.notesHtml ?? '') === html) return current
@@ -653,6 +835,51 @@ export default function StudySetDetailPage({
 
       return updatedSet
     })
+  }
+
+  const handleRetryNotesStream = async () => {
+    setNotesStreamStatus('connecting')
+    setNotesStreamError('')
+
+    try {
+      const response = await fetchStudySetNotes(id)
+      const serverMarkdown =
+        typeof response.notes?.markdown_content === 'string'
+          ? response.notes.markdown_content
+          : ''
+      const updatedAt =
+        typeof response.notes?.updated_at === 'string'
+          ? response.notes.updated_at
+          : undefined
+      const retryBaseline =
+        serverMarkdown || streamedNotesMarkdownRef.current
+
+      if (retryBaseline) {
+        updateStreamedNotes(retryBaseline, updatedAt)
+      }
+
+      if (response.notes?.generation_status?.toLowerCase() === 'completed') {
+        streamedNotesMarkdownRef.current = serverMarkdown
+        completedStreamMarkdownRef.current = serverMarkdown
+        await loadStudySet(undefined, false, serverMarkdown)
+        updateStreamedNotes(serverMarkdown, updatedAt)
+        notesStreamOwnsContentRef.current = false
+        setNotesStreamStatus('completed')
+        router.replace(`/dashboard/study-sets/${id}?mode=notes`)
+        return
+      }
+
+      retryBaselineMarkdownRef.current = retryBaseline
+      setNotesStreamAttempt((current) => current + 1)
+    } catch (error) {
+      setNotesStreamStatus('error')
+      setNotesStreamError(
+        getApiClientErrorMessage(
+          error,
+          'Could not reconnect to notes generation. Please try again.',
+        ),
+      )
+    }
   }
 
   const handleOpenSection = (sectionType: string) => {
@@ -1298,13 +1525,43 @@ export default function StudySetDetailPage({
   )
 
   const renderNotesWorkspace = () => {
+    const isNotesStreamLocked =
+      shouldStreamNotes && notesStreamStatus !== 'completed'
+
     return (
       <div className="flex h-full flex-col overflow-hidden  bg-[#fcfbf8] shadow-sm">
+        {(notesStreamStatus === 'connecting' || notesStreamStatus === 'streaming') && (
+          <div className="flex items-center gap-3 border-b border-[#e4e7ed] bg-[#f7f8ff] px-5 py-3 text-sm text-[#384167]">
+            <LoaderCircle className="h-4 w-4 animate-spin text-primary" />
+            <div>
+              <p className="font-semibold">Generating notes…</p>
+              <p className="text-xs text-[#68708f]">Content will appear here as soon as it is ready.</p>
+            </div>
+          </div>
+        )}
+        {notesStreamStatus === 'error' && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-900">
+            <div>
+              <p className="font-semibold">Notes generation was interrupted</p>
+              <p className="text-xs text-red-700">{notesStreamError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleRetryNotesStream()}
+              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-800 transition-colors hover:bg-red-100"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry stream
+            </button>
+          </div>
+        )}
         <div className="flex flex-col gap-4 h-[calc(100vh-70px)] overflow-y-scroll  ">
           <NotesEditor
             value={studySet?.notesHtml}
             notesMarkdown={studySet?.notesMarkdown}
             onChange={handleNotesChange}
+            editable={!isNotesStreamLocked}
+            isStreaming={isNotesStreamLocked}
           />
         </div>
       </div>
@@ -1312,7 +1569,10 @@ export default function StudySetDetailPage({
   }
 
   const renderActiveContent = () => {
-    if (activeSection?.type === 'notes') {
+    if (
+      activeSection?.type === 'notes' ||
+      (shouldStreamNotes && activeSectionType === 'notes')
+    ) {
       return renderNotesWorkspace()
     }
 

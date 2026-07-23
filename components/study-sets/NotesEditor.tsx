@@ -43,6 +43,7 @@ export type RichNotesEditorRef = {
 
 type RichNotesEditorProps = {
     notesMarkdown?: string
+    isStreaming?: boolean
 
     /**
      * Controlled HTML value
@@ -156,6 +157,7 @@ export const NotesEditor = forwardRef<
 >(function NotesEditor(
     {
         notesMarkdown,
+        isStreaming = false,
         value,
         defaultValue,
         onChange,
@@ -177,7 +179,10 @@ export const NotesEditor = forwardRef<
         return ''
     }, [notesMarkdown])
 
-    const initialContent = value ?? defaultValue ?? generatedHtml
+    const initialContent = isStreaming
+        ? generatedHtml
+        : value ?? defaultValue ?? generatedHtml
+    const isEditorEditable = editable && !isStreaming
 
     const editor = useEditor({
         extensions: [
@@ -200,7 +205,7 @@ export const NotesEditor = forwardRef<
             }),
         ],
         content: initialContent,
-        editable,
+        editable: isEditorEditable,
         immediatelyRender: false,
         editorProps: {
             attributes: {
@@ -261,19 +266,28 @@ export const NotesEditor = forwardRef<
 
     useEffect(() => {
         if (!editor) return
-        editor.setEditable(editable)
-    }, [editor, editable])
+        editor.setEditable(isEditorEditable)
+    }, [editor, isEditorEditable])
 
     useEffect(() => {
-        if (!editor || value === undefined) return
+        if (!editor || isStreaming || value === undefined) return
         const current = editor.getHTML()
         if (value !== current) {
             editor.commands.setContent(value, { emitUpdate: false })
         }
-    }, [editor, value])
+    }, [editor, isStreaming, value])
 
     useEffect(() => {
-        if (!editor || value !== undefined) return
+        if (!editor || (!isStreaming && value !== undefined)) return
+
+        if (isStreaming) {
+            const current = editor.getHTML()
+            if (current !== generatedHtml) {
+                editor.commands.setContent(generatedHtml, { emitUpdate: false })
+            }
+            return
+        }
+
         if (!defaultValue && !generatedHtml) return
 
         const current = editor.getHTML()
@@ -281,7 +295,7 @@ export const NotesEditor = forwardRef<
         if (next && current !== next) {
             editor.commands.setContent(next, { emitUpdate: false })
         }
-    }, [editor, defaultValue, generatedHtml, value])
+    }, [editor, defaultValue, generatedHtml, isStreaming, value])
 
     useEffect(() => {
         if (!editor || !onReady) return
@@ -330,7 +344,7 @@ export const NotesEditor = forwardRef<
 
     return (
         <div className={`rich-notes-editor-root min-h-full bg-[#fbfcfe]  max-w-[1000px] ${className}`}>
-            {showToolbar && (
+            {showToolbar && !isStreaming && (
                 <div className="sticky top-0 z-20 border-b border-[#e4e7ed] bg-white/95 px-3 py-3 shadow-[0_8px_30px_rgba(22,30,50,0.06)] backdrop-blur-xl sm:px-6">
                     <div className="mx-auto flex max-w-[1120px] items-center gap-1 overflow-x-auto rounded-xl border border-[#dfe3ea] bg-white p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <ToolbarButton label="Undo" disabled={!editor.can().chain().focus().undo().run()} onClick={() => editor.chain().focus().undo().run()}>
@@ -375,7 +389,7 @@ export const NotesEditor = forwardRef<
                 </div>
             )}
 
-            {showBubbleMenu && editable && (
+            {showBubbleMenu && isEditorEditable && (
                 <BubbleMenu editor={editor}>
                     <div className="flex items-center gap-0.5 rounded-xl border border-[#dfe3ea] bg-white p-1 shadow-xl">
                         <ToolbarButton label="Bold" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}><Bold className="h-4 w-4" /></ToolbarButton>

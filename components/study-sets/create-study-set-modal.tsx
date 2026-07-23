@@ -153,7 +153,10 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
       )
       ensureStudySetGenerationTracking(uploadedResponse.document.id)
       onClose()
-      router.push(`/dashboard/study-sets/${response.study_set_id}?autoOpenFirst=1`)
+      const targetQuery = selectedOutputs.includes('notes')
+        ? 'mode=notes&streamNotes=1'
+        : 'autoOpenFirst=1'
+      router.push(`/dashboard/study-sets/${response.study_set_id}?${targetQuery}`)
     } catch (error) {
       setErrorMessage(getApiClientErrorMessage(error, 'Failed to start generation.'))
     } finally {

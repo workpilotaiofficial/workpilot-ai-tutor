@@ -29,6 +29,12 @@ type ApiRequestOptions = {
   timeoutMs?: number
 }
 
+type ApiStreamRequestOptions = {
+  headers?: HeadersInit
+  signal?: AbortSignal
+  retryOnUnauthorized?: boolean
+}
+
 type ApiClientConfig = {
   baseUrl?: string
   timeoutMs?: number
@@ -548,6 +554,87 @@ export class ApiClient {
       }
 
       debugLog(`Network request failed for ${path}`, error)
+
+      throw new ApiClientError(
+        'Network error. Please check your connection and try again.',
+        0,
+        null,
+      )
+    }
+  }
+
+  async requestStream(path: string, options: ApiStreamRequestOptions = {}) {
+    const {
+      headers,
+      signal,
+      retryOnUnauthorized = true,
+    } = options
+    const accessToken = await this.ensureValidAccessToken()
+
+    if (!accessToken) {
+      throw this.createSessionExpiredError()
+    }
+
+    const requestHeaders = new Headers(headers)
+    requestHeaders.set('authorization', `Bearer ${accessToken}`)
+    if (!requestHeaders.has('accept')) {
+      requestHeaders.set('accept', 'text/event-stream')
+    }
+
+    const executeStreamFetch = () =>
+      fetch(this.createRequestUrl(path), {
+        method: 'GET',
+        headers: requestHeaders,
+        signal,
+        cache: 'no-store',
+      })
+
+    try {
+      let response = await executeStreamFetch()
+
+      if (response.status === 401 && retryOnUnauthorized) {
+        const refreshedAuth = await this.refreshStoredSession()
+
+        if (!refreshedAuth?.access_token) {
+          throw this.createSessionExpiredError()
+        }
+
+        requestHeaders.set('authorization', `Bearer ${refreshedAuth.access_token}`)
+        response = await executeStreamFetch()
+
+        if (response.status === 401) {
+          const responseText = await response.text()
+          const responseData = parseResponsePayload(responseText)
+          await this.handleAuthFailure()
+          throw this.createSessionExpiredError(responseData)
+        }
+      }
+
+      if (!response.ok) {
+        const responseText = await response.text()
+        const responseData = parseResponsePayload(responseText)
+        const message =
+          extractErrorMessage(responseData) ??
+          getFallbackMessageForStatus(response.status)
+
+        throw new ApiClientError(message, response.status, responseData)
+      }
+
+      return response
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error
+      }
+
+      if (
+        error instanceof DOMException &&
+        error.name === 'AbortError' &&
+        signal?.aborted
+      ) {
+        throw error
+      }
+
+      debugLog(`Streaming request failed for ${path}`, error)
 
       throw new ApiClientError(
         'Network error. Please check your connection and try again.',
