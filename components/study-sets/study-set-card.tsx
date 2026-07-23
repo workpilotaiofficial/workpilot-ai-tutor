@@ -1,19 +1,105 @@
 'use client'
 
+import { useState } from 'react'
 import {
   ChevronRight,
+  Loader2,
   MoreVertical,
+  Trash2,
 } from 'lucide-react'
 import Link from 'next/link'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import type { StudySetPreview } from './utils'
 
 interface StudySetCardProps {
   set: StudySetPreview
   isListView?: boolean
+  onDelete?: (studySetId: string) => Promise<void>
 }
 
-export default function StudySetCard({ set, isListView }: StudySetCardProps) {
+export default function StudySetCard({ set, isListView, onDelete }: StudySetCardProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const completionProgress = Math.min(100, Math.max(0, Math.round(set.percentageCompleted)))
+
+  const handleDelete = async () => {
+    if (!onDelete || isDeleting) return
+
+    setIsDeleting(true)
+    try {
+      await onDelete(set.id)
+      setShowDeleteDialog(false)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const optionsMenu = (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            aria-label={`More options for ${set.title}`}
+            className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => setShowDeleteDialog(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete study set?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{set.title}” and its generated study materials will be permanently deleted.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={isDeleting}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50"
+            >
+              {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
 
   const stats = [
     {
@@ -90,15 +176,7 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
             </div>
           </div>
 
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-            }}
-            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
+          {optionsMenu}
 
           <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
         </div>
@@ -115,16 +193,7 @@ export default function StudySetCard({ set, isListView }: StudySetCardProps) {
         <h3 className="min-w-0 truncate text-lg font-semibold text-foreground group-hover:text-primary">
           {set.title}
         </h3>
-        <button
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-          }}
-          aria-label={`More options for ${set.title}`}
-          className="ml-3 shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-        >
-          <MoreVertical className="w-4 h-4" />
-        </button>
+        <div className="ml-3">{optionsMenu}</div>
       </div>
 
       <div className="flex flex-1 flex-col gap-2.5 px-5 py-4">

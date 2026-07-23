@@ -672,6 +672,12 @@ export function fetchUnifiedStudySet(studySetId: string, signal?: AbortSignal) {
   })
 }
 
+export function deleteStudySet(studySetId: string) {
+  return apiClient.request<unknown>(`/api/v1/study-sets/${encodeURIComponent(studySetId)}`, {
+    method: 'DELETE',
+  })
+}
+
 export function fetchStudySetProgress(studySetId: string, signal?: AbortSignal) {
   return apiClient.request<StudySetProgressResponse>(`/api/v1/study-sets/${studySetId}/progress`, {
     method: 'GET',

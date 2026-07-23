@@ -8,11 +8,13 @@ import {
   type Variants,
 } from 'framer-motion'
 import { Upload, Link as LinkIcon, Grid2X2, List } from 'lucide-react'
+import { toast } from 'sonner'
 import UploadModal from '@/components/study-sets/upload-modal'
 import PasteModal from '@/components/study-sets/paste-modal'
 import StudySetCard from '@/components/study-sets/study-set-card'
 import type { StudySetPreview } from '@/components/study-sets/utils'
 import {
+  deleteStudySet,
   fetchStudySetHistory,
   fetchStudySetProgress,
 } from '@/lib/api/study-sets.service'
@@ -295,6 +297,21 @@ export default function StudySetsPage() {
 
   const refreshStudySets = () => {
     void loadStudySets()
+  }
+
+  const handleDeleteStudySet = async (studySetId: string) => {
+    try {
+      await deleteStudySet(studySetId)
+      setStudySets((current) => current.filter((studySet) => studySet.id !== studySetId))
+      toast.success('Study set deleted')
+    } catch (error) {
+      const message = getApiClientErrorMessage(
+        error,
+        'Failed to delete the study set. Please try again.',
+      )
+      toast.error(message)
+      throw error
+    }
   }
 
   return (
@@ -596,6 +613,7 @@ export default function StudySetsPage() {
                         <StudySetCard
                           set={set}
                           isListView={viewMode === 'list'}
+                          onDelete={handleDeleteStudySet}
                         />
                       </motion.div>
                     ))}

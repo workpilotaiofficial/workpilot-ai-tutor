@@ -46,6 +46,7 @@ export {
   updateStudySetGenerationMeta,
 } from '@/lib/api/study-sets.storage'
 export {
+  deleteStudySet,
   fetchCompletedStudySetOutput,
   fetchStudySetFlashcards,
   fetchStudySetFillInTheBlanks,
