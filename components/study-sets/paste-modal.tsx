@@ -4,81 +4,19 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   X,
-  FileText,
-  ListChecks,
-  Layers,
-  Headphones,
-  GraduationCap,
-  PenSquare,
-  Edit3,
 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 import { getApiClientErrorMessage } from '@/lib/api/client'
-import { saveStudySetGenerationMeta, saveStudySetUploadMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
+import { saveStudySetUploadMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
 import { generateStudySet, type StudySetUploadResponse, uploadStudySetText } from '@/lib/api/study-sets.service'
-import { ensureStudySetGenerationTracking } from './generation-tracker'
-import { uiToBackendGenerationType } from './generation-mapping'
+import { startStudySetGenerationTracking } from './generation-tracker'
+import { type StudySetUiSectionType, uiToBackendGenerationType } from './generation-mapping'
+import { studySetFormatOptions } from './format-catalog'
 import { createUploadPlaceholderStudySet } from './upload-placeholder'
 import { persistStudySet } from './utils'
 
-type OutputType =
-  | 'notes'
-  | 'multipleChoice'
-  | 'flashcards'
-  | 'podcast'
-  | 'tutorLesson'
-  | 'writtenTests'
-  | 'fillInTheBlanks'
+type OutputType = StudySetUiSectionType
 
-const outputOptions: Array<{
-  id: OutputType
-  label: string
-  description: string
-  icon: LucideIcon
-}> = [
-  {
-    id: 'notes',
-    label: 'Notes',
-    description: 'Organized study notes that capture the main ideas.',
-    icon: FileText,
-  },
-  {
-    id: 'multipleChoice',
-    label: 'Multiple Choice',
-    description: 'Auto-graded MCQs with explanations.',
-    icon: ListChecks,
-  },
-  {
-    id: 'flashcards',
-    label: 'Flashcards',
-    description: 'Front/back cards for rapid recall.',
-    icon: Layers,
-  },
-  // {
-  //   id: 'podcast',
-  //   label: 'Podcast',
-  //   description: 'Audio-style talking points for listening practice.',
-  //   icon: Headphones,
-  // },
-  {
-    id: 'tutorLesson',
-    label: 'Tutor Lesson',
-    description: 'Dialogue prompts for AI tutor mode.',
-    icon: GraduationCap,
-  },
-  {
-    id: 'writtenTests',
-    label: 'Written Tests',
-    description: 'Open-ended questions to mimic exams.',
-    icon: PenSquare,
-  },
-  {
-    id: 'fillInTheBlanks',
-    label: 'Fill in the Blanks',
-    description: 'Cloze statements that reinforce context clues.',
-    icon: Edit3,
-  },
-]
+const outputOptions = studySetFormatOptions
 
 const totalSteps = 2
 
@@ -191,8 +129,6 @@ export default function PasteModal({ onClose }: PasteModalProps) {
         fetchedOutputs: {},
       }
 
-      saveStudySetGenerationMeta(nextGenerationMeta)
-
       const normalizedSet = createUploadPlaceholderStudySet({
         documentId: uploadedResponse.document.id,
         title: uploadedResponse.document.title || studySetName.trim() || 'Untitled Study Set',
@@ -204,8 +140,8 @@ export default function PasteModal({ onClose }: PasteModalProps) {
       })
 
       persistStudySet(normalizedSet)
+      startStudySetGenerationTracking(nextGenerationMeta)
       setGenerationMeta(nextGenerationMeta)
-      ensureStudySetGenerationTracking(uploadedResponse.document.id)
       onClose()
       router.push(`/dashboard/study-sets/${response.study_set_id}?autoOpenFirst=1`)
     } catch (error) {

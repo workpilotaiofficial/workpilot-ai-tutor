@@ -9,11 +9,24 @@ import {
   fetchStudySetFlashcards,
   fetchStudySetMultipleChoice,
   fetchUnifiedStudySet,
+  generateStudySet,
   submitStudySetFillBlankAnswer,
   submitStudySetFlashcardReview,
   submitStudySetMcqAnswer,
 } from '@/lib/api/study-sets.service'
-import type { StudySetUiSectionType } from '@/components/study-sets/generation-mapping'
+import {
+  type StudySetUiSectionType,
+  toUiSectionType,
+  uiToBackendGenerationType,
+} from '@/components/study-sets/generation-mapping'
+import {
+  getStudySetGenerationMetaByStudySetId,
+  type StoredStudySetGenerationMeta,
+} from '@/lib/api/study-sets.storage'
+import {
+  startStudySetGenerationTracking,
+  subscribeToStudySetGeneration,
+} from '@/components/study-sets/generation-tracker'
 import { getApiClientErrorMessage } from '@/lib/api/client'
 import { toast } from '@/hooks/use-toast'
 import { NotesEditor } from '@/components/study-sets/NotesEditor'
@@ -286,6 +299,7 @@ export default function StudySetDetailPage({
   const { id } = use(params)
 
   const [studySet, setStudySet] = useState<StudySet | null>(null)
+  const [generationMeta, setGenerationMeta] = useState<StoredStudySetGenerationMeta | null>(null)
   const [isLoadingStudySet, setIsLoadingStudySet] = useState(true)
   const [studySetError, setStudySetError] = useState('')
   const [activeSectionType, setActiveSectionType] = useState<string | null>(null)
@@ -304,6 +318,25 @@ export default function StudySetDetailPage({
   >({})
   const activeModeFromQuery = searchParams.get('mode')
   const shouldAutoOpenFirst = searchParams.get('autoOpenFirst') === '1'
+
+  const missingGeneratedSectionSignature = useMemo(() => {
+    if (!generationMeta || !studySet) return ''
+
+    return generationMeta.jobs
+      .filter((job) => job.status !== 'failed')
+      .map((job) => toUiSectionType(job.type))
+      .filter((type): type is StudySetUiSectionType => Boolean(type))
+      .filter(
+        (type) =>
+          !studySet.sections.some((section) => {
+            if (section.type !== type) return false
+            const status = section.status?.toLowerCase()
+            return !status || status === 'completed' || status === 'ready'
+          }),
+      )
+      .sort()
+      .join('|')
+  }, [generationMeta, studySet])
 
   const loadStudySet = useCallback(async (signal?: AbortSignal, showLoading = true) => {
     if (!id) return
@@ -331,6 +364,33 @@ export default function StudySetDetailPage({
     void loadStudySet(abortController.signal)
     return () => abortController.abort()
   }, [loadStudySet])
+
+  useEffect(() => {
+    setGenerationMeta(getStudySetGenerationMetaByStudySetId(id))
+  }, [id])
+
+  useEffect(() => {
+    if (!generationMeta?.documentId) return
+
+    return subscribeToStudySetGeneration(generationMeta.documentId, setGenerationMeta)
+  }, [generationMeta?.documentId])
+
+  useEffect(() => {
+    if (!missingGeneratedSectionSignature) return
+
+    let refreshCount = 0
+    const refresh = () => {
+      refreshCount += 1
+      void loadStudySet(undefined, false)
+      if (refreshCount >= 15) {
+        window.clearInterval(intervalId)
+      }
+    }
+    const intervalId = window.setInterval(refresh, 2000)
+    refresh()
+
+    return () => window.clearInterval(intervalId)
+  }, [loadStudySet, missingGeneratedSectionSignature])
 
   useEffect(() => {
     const generatingStatuses = new Set(['processing', 'pending', 'in_progress', 'generating', 'queued'])
@@ -659,12 +719,96 @@ export default function StudySetDetailPage({
     router.push(`/dashboard/study-sets/${id}?mode=${sectionType}`)
   }
 
-  const handleRetrySection = async (_sectionType: StudySetUiSectionType) => {
-    toast({
-      title: 'Unable to retry',
-      description: 'Regeneration requires document metadata that is not included in the study set API response.',
-      variant: 'destructive',
+  const handleGenerateMore = async (requestedTypes: StudySetUiSectionType[]) => {
+    if (!studySet || !generationMeta?.documentId) {
+      throw new Error(
+        'Generate more is unavailable because this study set source is not stored on this device.',
+      )
+    }
+
+    const hasActiveJob = generationMeta.jobs.some(
+      (job) => job.status !== 'completed' && job.status !== 'failed',
+    )
+    if (hasActiveJob) {
+      throw new Error('Wait for the current generation batch to finish before starting another.')
+    }
+
+    const generatedTypes = new Set(
+      studySet.sections
+        .filter((section) => {
+          const status = section.status?.toLowerCase()
+          return !status || status === 'completed' || status === 'ready'
+        })
+        .map((section) => section.type),
+    )
+    const nextTypes = Array.from(
+      new Set(requestedTypes.filter((type) => !generatedTypes.has(type))),
+    )
+
+    if (!nextTypes.length) {
+      throw new Error('The selected study formats have already been generated.')
+    }
+
+    const response = await generateStudySet({
+      documentId: generationMeta.documentId,
+      types: nextTypes.map((type) => uiToBackendGenerationType[type]),
     })
+
+    if (response.study_set_id !== id) {
+      throw new Error(
+        'The generated content could not be attached to this study set. Please try again later.',
+      )
+    }
+
+    const startedAt = new Date().toISOString()
+    const nextMeta: StoredStudySetGenerationMeta = {
+      documentId: generationMeta.documentId,
+      studySetId: response.study_set_id,
+      batch: {
+        id: response.batch.id,
+        status: response.batch.status,
+        totalJobs: response.batch.total_jobs,
+        completedJobs: response.batch.completed_jobs,
+        failedJobs: response.batch.failed_jobs,
+        selectedTypes: response.batch.selected_types,
+        estimatedCredits: response.batch.estimated_credits,
+        createdAt: response.batch.created_at,
+      },
+      jobs: response.jobs.map((job) => ({
+        jobId: job.job_id,
+        type: job.type,
+        status: job.status,
+        estimatedCredits: job.estimated_credits,
+      })),
+      websocket: {
+        url: response.websocket.url,
+        token: response.websocket.token,
+        expiresIn: response.websocket.expires_in,
+      },
+      connectionStatus: 'idle',
+      startedAt,
+      lastEventAt: startedAt,
+      fetchedOutputs: {},
+    }
+
+    setGenerationMeta(nextMeta)
+    startStudySetGenerationTracking(nextMeta)
+    toast({
+      title: 'Generation started',
+      description: `${nextTypes.length} new study ${nextTypes.length === 1 ? 'format is' : 'formats are'} being generated.`,
+    })
+  }
+
+  const handleRetrySection = async (sectionType: StudySetUiSectionType) => {
+    try {
+      await handleGenerateMore([sectionType])
+    } catch (error) {
+      toast({
+        title: 'Could not retry generation',
+        description: getApiClientErrorMessage(error, 'Please try again.'),
+        variant: 'destructive',
+      })
+    }
   }
 
   const backendStudySetId = id
@@ -1439,9 +1583,10 @@ export default function StudySetDetailPage({
                   <StudySetOverview
                     studySetId={backendStudySetId}
                     studySet={studySet}
-                    generationMeta={null}
+                    generationMeta={generationMeta}
                     onOpenSection={handleOpenSection}
                     onRetrySection={handleRetrySection}
+                    onGenerateMore={handleGenerateMore}
                   />
                 </div>
               ) : (

@@ -2,27 +2,20 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Edit3, FileText, GraduationCap, Headphones, Layers, ListChecks, PenSquare, Upload, X } from 'lucide-react'
+import { Upload, X } from 'lucide-react'
 import { getApiClientErrorMessage } from '@/lib/api/client'
-import { saveStudySetGenerationMeta, saveStudySetUploadMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
+import { saveStudySetUploadMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
 import { generateStudySet, type StudySetUploadResponse, uploadStudySetPdf, uploadStudySetText } from '@/lib/api/study-sets.service'
-import { ensureStudySetGenerationTracking } from './generation-tracker'
+import { startStudySetGenerationTracking } from './generation-tracker'
 import { type StudySetUiSectionType, uiToBackendGenerationType, uiSectionTypeLabels } from './generation-mapping'
+import { studySetFormatOptions } from './format-catalog'
 import { createUploadPlaceholderStudySet } from './upload-placeholder'
 import { persistStudySet } from './utils'
 
 type SourceType = 'pdf' | 'text'
 type OutputType = StudySetUiSectionType
 
-const outputOptions: Array<{ id: OutputType; description: string; icon: any }> = [
-  { id: 'notes', description: 'Structured note summary.', icon: FileText },
-  { id: 'multipleChoice', description: 'Auto-checked MCQ practice.', icon: ListChecks },
-  { id: 'flashcards', description: 'Term and definition recall.', icon: Layers },
-  // { id: 'podcast', description: 'Audio-style talking points.', icon: Headphones },
-  { id: 'tutorLesson', description: 'Guided tutor explanation.', icon: GraduationCap },
-  { id: 'writtenTests', description: 'Open-ended exam responses.', icon: PenSquare },
-  { id: 'fillInTheBlanks', description: 'Context cloze practice.', icon: Edit3 },
-]
+const outputOptions = studySetFormatOptions
 
 const presets: Array<{ id: string; label: string; outputs: OutputType[] }> = [
   { id: 'quick', label: 'Quick Review', outputs: ['notes', 'flashcards'] },
@@ -139,7 +132,6 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
         lastEventAt: startedAt,
         fetchedOutputs: {},
       }
-      saveStudySetGenerationMeta(nextMeta)
       persistStudySet(
         createUploadPlaceholderStudySet({
           documentId: uploadedResponse.document.id,
@@ -151,7 +143,7 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
           updatedAt: uploadedResponse.document.updatedAt,
         }),
       )
-      ensureStudySetGenerationTracking(uploadedResponse.document.id)
+      startStudySetGenerationTracking(nextMeta)
       onClose()
       router.push(`/dashboard/study-sets/${response.study_set_id}?autoOpenFirst=1`)
     } catch (error) {

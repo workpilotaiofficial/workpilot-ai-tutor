@@ -106,6 +106,34 @@ class StudySetGenerationTracker {
     this.meta = meta
   }
 
+  replaceMeta(meta: StoredStudySetGenerationMeta) {
+    this.stopTransport()
+    this.meta = meta
+    this.hasStarted = false
+    saveStudySetGenerationMeta(meta)
+    this.emit()
+    this.ensureStarted()
+  }
+
+  private stopTransport() {
+    if (this.socket) {
+      this.socket.onopen = null
+      this.socket.onmessage = null
+      this.socket.onerror = null
+      this.socket.onclose = null
+      this.socket.close()
+      this.socket = null
+    }
+
+    if (this.pollTimer) {
+      clearTimeout(this.pollTimer)
+      this.pollTimer = null
+    }
+
+    this.pollStartedAt = null
+    this.inflightFetches.clear()
+  }
+
   subscribe(listener: GenerationListener) {
     this.listeners.add(listener)
     listener(this.meta)
@@ -630,6 +658,21 @@ class StudySetGenerationTracker {
 }
 
 const trackerRegistry = new Map<string, StudySetGenerationTracker>()
+
+export function startStudySetGenerationTracking(meta: StoredStudySetGenerationMeta) {
+  const existingTracker = trackerRegistry.get(meta.documentId)
+
+  if (existingTracker) {
+    existingTracker.replaceMeta(meta)
+    return existingTracker
+  }
+
+  saveStudySetGenerationMeta(meta)
+  const tracker = new StudySetGenerationTracker(meta)
+  trackerRegistry.set(meta.documentId, tracker)
+  tracker.ensureStarted()
+  return tracker
+}
 
 export function ensureStudySetGenerationTracking(documentId: string) {
   const existingTracker = trackerRegistry.get(documentId)

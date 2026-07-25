@@ -5,7 +5,9 @@ import type { StudySet } from '@/components/study-sets/utils'
 import { fetchStudySetProgress, type StudySetProgressResponse } from '@/lib/api/study-sets.service'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
-import { AlertCircle, BookOpen, ChevronRight, Edit3, FileText, GraduationCap, Headphones, Layers, ListChecks, LoaderCircle, PenSquare, RotateCw } from 'lucide-react'
+import { GenerateMoreModal } from '@/components/study-sets/generate-more-modal'
+import { studySetFormatOptionMap, studySetFormatOptions } from '@/components/study-sets/format-catalog'
+import { AlertCircle, BookOpen, CheckCircle2, ChevronRight, Headphones, LoaderCircle, Plus, RotateCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 type CardStatus = 'ready' | 'generating' | 'fetching' | 'failed'
@@ -40,7 +42,7 @@ function getCardStatus(
 
   if (job.status === 'completed') {
     const fetchedOutput = generationMeta.fetchedOutputs[job.jobId]
-    if (fetchedOutput?.fetched) return 'ready'
+    if (fetchedOutput?.fetched) return section ? 'ready' : 'fetching'
     if (fetchedOutput) return 'fetching'
     return 'fetching'
   }
@@ -51,29 +53,15 @@ function getCardStatus(
 }
 
 function getSectionIcon(sectionType: StudySetUiSectionType) {
-  const iconMap: Record<StudySetUiSectionType, any> = {
-    notes: FileText,
-    multipleChoice: ListChecks,
-    flashcards: Layers,
-    podcast: Headphones,
-    tutorLesson: GraduationCap,
-    writtenTests: PenSquare,
-    fillInTheBlanks: Edit3,
-  }
-  return iconMap[sectionType] || FileText
+  return sectionType === 'podcast'
+    ? Headphones
+    : studySetFormatOptionMap[sectionType]?.icon ?? BookOpen
 }
 
 function getSectionDescription(sectionType: StudySetUiSectionType): string {
-  const descriptions: Record<StudySetUiSectionType, string> = {
-    notes: 'Structured summary + key terms',
-    multipleChoice: 'Quiz yourself',
-    flashcards: 'Active recall, two-sided',
-    podcast: 'Audio-style talking points',
-    tutorLesson: 'Guided explanation',
-    writtenTests: 'Open-ended responses',
-    fillInTheBlanks: 'Recall from memory',
-  }
-  return descriptions[sectionType] || ''
+  return sectionType === 'podcast'
+    ? 'Audio-style talking points'
+    : studySetFormatOptionMap[sectionType]?.description ?? ''
 }
 
 function getItemCount(sectionType: StudySetUiSectionType, studySet: StudySet | null): number {
@@ -151,6 +139,7 @@ interface StudySetOverviewProps {
   generationMeta: StoredStudySetGenerationMeta | null
   onOpenSection: (sectionType: StudySetUiSectionType) => void
   onRetrySection?: (sectionType: StudySetUiSectionType) => Promise<void>
+  onGenerateMore: (sectionTypes: StudySetUiSectionType[]) => Promise<void>
 }
 
 export function StudySetOverview({
@@ -159,9 +148,11 @@ export function StudySetOverview({
   generationMeta,
   onOpenSection,
   onRetrySection,
+  onGenerateMore,
 }: StudySetOverviewProps) {
   const [progress, setProgress] = useState<StudySetProgressResponse | null>(null)
   const [showProgressModal, setShowProgressModal] = useState(false)
+  const [showGenerateMoreModal, setShowGenerateMoreModal] = useState(false)
 
   useEffect(() => {
     if (!studySetId) return
@@ -190,7 +181,44 @@ export function StudySetOverview({
     )
   }
 
-  const selections = (studySet.selections || []) as StudySetUiSectionType[]
+  const sectionTypes = studySet.sections
+    .map((section) => section.type)
+    .filter(
+      (type): type is StudySetUiSectionType =>
+        type in uiSectionTypeLabels,
+    )
+  const trackedTypes = (generationMeta?.jobs ?? [])
+    .map((job) => toUiSectionType(job.type))
+    .filter((type): type is StudySetUiSectionType => Boolean(type))
+  const selections = Array.from(
+    new Set<StudySetUiSectionType>([
+      ...((studySet.selections || []) as StudySetUiSectionType[]),
+      ...sectionTypes,
+      ...trackedTypes,
+    ]),
+  )
+  const generatedTypes = studySet.sections
+    .filter((section) => {
+      const status = section.status?.toLowerCase()
+      return !status || status === 'completed' || status === 'ready'
+    })
+    .map((section) => section.type)
+    .filter(
+      (type): type is StudySetUiSectionType =>
+        type in uiSectionTypeLabels,
+    )
+  const activeTypes = (generationMeta?.jobs ?? [])
+    .filter((job) => job.status !== 'completed' && job.status !== 'failed')
+    .map((job) => toUiSectionType(job.type))
+    .filter((type): type is StudySetUiSectionType => Boolean(type))
+  const hasActiveBatch = activeTypes.length > 0
+  const allFormatsGenerated = studySetFormatOptions.every((option) =>
+    generatedTypes.includes(option.id),
+  )
+  const generationUnavailableReason = generationMeta
+    ? null
+    : 'Generate more is unavailable for this study set because its source information is not stored on this device.'
+
   return (
     <div className="space-y-8">
       {/* Header Card */}
@@ -354,10 +382,33 @@ export function StudySetOverview({
 
       {/* Generated Sections - 3 Column Grid */}
       <div>
-        <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
-  
-          Generated content
-        </h2>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="flex items-center gap-3 text-2xl font-black text-slate-900">
+            Generated content
+          </h2>
+
+          {allFormatsGenerated ? (
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+              <CheckCircle2 className="h-4 w-4" />
+              All study formats generated
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={hasActiveBatch}
+              onClick={() => setShowGenerateMoreModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              title={hasActiveBatch ? 'Wait for the current generation batch to finish.' : undefined}
+            >
+              {hasActiveBatch ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              {hasActiveBatch ? 'Generating…' : 'Generate more'}
+            </button>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {selections.map((sectionType) => {
@@ -410,7 +461,9 @@ export function StudySetOverview({
                         <p className={`font-bold text-base transition-colors ${isReady ? 'text-slate-900 group-hover:text-blue-600' : 'text-slate-700'}`}>{label}</p>
                         <p className="text-sm text-slate-600 mt-1">{description}</p>
                         {isGenerating && (
-                          <p className="mt-2 text-xs font-bold tracking-wide text-blue-600">GENERATING...</p>
+                          <p className="mt-2 text-xs font-bold tracking-wide text-blue-600">
+                            {status === 'fetching' ? 'FETCHING CONTENT…' : 'GENERATING…'}
+                          </p>
                         )}
                         {itemCount > 0 && (
                           <p className={`text-xs font-bold mt-2 tracking-wide ${isReady ? 'text-blue-600' : 'text-slate-500'}`}>
@@ -444,8 +497,43 @@ export function StudySetOverview({
               </div>
             )
           })}
+
+          {/* {!allFormatsGenerated ? (
+            <button
+              type="button"
+              disabled={hasActiveBatch}
+              onClick={() => setShowGenerateMoreModal(true)}
+              className="group flex min-h-36 items-center justify-center rounded-2xl border-2 border-dashed border-primary/30 bg-primary/[0.03] p-6 text-center transition-colors hover:border-primary/60 hover:bg-primary/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span>
+                {hasActiveBatch ? (
+                  <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-primary" />
+                ) : (
+                  <Plus className="mx-auto h-7 w-7 text-primary" />
+                )}
+                <span className="mt-3 block text-sm font-bold text-slate-900">
+                  {hasActiveBatch ? 'Generation in progress' : 'Add study format'}
+                </span>
+                <span className="mt-1 block text-xs text-slate-600">
+                  {hasActiveBatch
+                    ? 'New formats will appear here as they become ready.'
+                    : 'Generate another way to learn this material.'}
+                </span>
+              </span>
+            </button>
+          ) : null} */}
         </div>
       </div>
+
+      <GenerateMoreModal
+        open={showGenerateMoreModal}
+        studySetTitle={studySet.title}
+        generatedTypes={generatedTypes}
+        activeTypes={activeTypes}
+        unavailableReason={generationUnavailableReason}
+        onOpenChange={setShowGenerateMoreModal}
+        onGenerate={onGenerateMore}
+      />
     </div>
   )
 }

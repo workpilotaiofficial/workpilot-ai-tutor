@@ -172,6 +172,18 @@ export function getStudySetGenerationMeta(documentId: string) {
   return readGenerationMetaMap()[documentId] ?? null
 }
 
+export function getStudySetGenerationMetaByStudySetId(studySetId: string) {
+  if (!studySetId) {
+    return null
+  }
+
+  return (
+    Object.values(readGenerationMetaMap()).find(
+      (meta) => meta.studySetId === studySetId,
+    ) ?? null
+  )
+}
+
 export function getLatestStudySetGenerationMeta() {
   if (!isBrowser()) {
     return null
