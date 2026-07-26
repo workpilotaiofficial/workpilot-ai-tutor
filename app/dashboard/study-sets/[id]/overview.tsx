@@ -215,9 +215,9 @@ export function StudySetOverview({
   const allFormatsGenerated = studySetFormatOptions.every((option) =>
     generatedTypes.includes(option.id),
   )
-  const generationUnavailableReason = generationMeta
+  const generationUnavailableReason = progress?.document_id || generationMeta
     ? null
-    : 'Generate more is unavailable for this study set because its source information is not stored on this device.'
+    : 'Generate more is unavailable for this study set because its source information could not be found.'
 
   return (
     <div className="space-y-8">

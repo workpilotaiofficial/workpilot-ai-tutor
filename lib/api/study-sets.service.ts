@@ -250,6 +250,8 @@ export type StudySetProgressByType = {
 
 export type StudySetProgressResponse = {
   study_set_id: string
+  document_id: string
+  document_ids: { name: string; id: string }[]
   summary: StudySetProgressSummary
   by_type: StudySetProgressByType[]
 }
@@ -731,6 +733,25 @@ export function submitStudySetFillBlankAnswer(studySetId: string, payload: Submi
       question_id: payload.questionId,
       answers: payload.answers,
       response_time_ms: Math.max(0, Math.round(payload.responseTimeMs)),
+    },
+  })
+}
+
+export type UpdateStudySetNotesPayload = {
+  richTextContent?: Record<string, unknown> | null
+  markdownContent?: string
+  plainTextContent?: string
+  changeDescription?: string
+}
+
+export function updateStudySetNotes(studySetId: string, payload: UpdateStudySetNotesPayload) {
+  return apiClient.request<StudySetNotesResponse>(`/api/v1/study-sets/${studySetId}/notes`, {
+    method: 'PATCH',
+    body: {
+      ...(payload.richTextContent !== undefined ? { rich_text_content: payload.richTextContent } : {}),
+      ...(payload.markdownContent !== undefined ? { markdown_content: payload.markdownContent } : {}),
+      ...(payload.plainTextContent !== undefined ? { plain_text_content: payload.plainTextContent } : {}),
+      ...(payload.changeDescription !== undefined ? { change_description: payload.changeDescription } : {}),
     },
   })
 }

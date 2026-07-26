@@ -2,18 +2,30 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Trash2 } from 'lucide-react'
 import { normalizeStudySetResponse, type StudySet } from '@/components/study-sets/utils'
 import {
+  deleteStudySet,
   fetchStudySetFillInTheBlanks,
   fetchStudySetFlashcards,
   fetchStudySetMultipleChoice,
+  fetchStudySetProgress,
   fetchUnifiedStudySet,
   generateStudySet,
   submitStudySetFillBlankAnswer,
   submitStudySetFlashcardReview,
   submitStudySetMcqAnswer,
+  updateStudySetNotes,
 } from '@/lib/api/study-sets.service'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   type StudySetUiSectionType,
   toUiSectionType,
@@ -299,9 +311,12 @@ export default function StudySetDetailPage({
   const { id } = use(params)
 
   const [studySet, setStudySet] = useState<StudySet | null>(null)
+  const [documentId, setDocumentId] = useState<string | null>(null)
   const [generationMeta, setGenerationMeta] = useState<StoredStudySetGenerationMeta | null>(null)
   const [isLoadingStudySet, setIsLoadingStudySet] = useState(true)
   const [studySetError, setStudySetError] = useState('')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeletingStudySet, setIsDeletingStudySet] = useState(false)
   const [activeSectionType, setActiveSectionType] = useState<string | null>(null)
   const [currentItemIndex, setCurrentItemIndex] = useState(0)
   const [flashcardFlipped, setFlashcardFlipped] = useState(false)
@@ -367,6 +382,25 @@ export default function StudySetDetailPage({
 
   useEffect(() => {
     setGenerationMeta(getStudySetGenerationMetaByStudySetId(id))
+  }, [id])
+
+  useEffect(() => {
+    if (!id) return
+    const abortController = new AbortController()
+
+    fetchStudySetProgress(id, abortController.signal)
+      .then((progress) => {
+        if (!abortController.signal.aborted && progress.document_id) {
+          setDocumentId(progress.document_id)
+        }
+      })
+      .catch((error) => {
+        if (!abortController.signal.aborted) {
+          console.error('Error fetching study set progress:', error)
+        }
+      })
+
+    return () => abortController.abort()
   }, [id])
 
   useEffect(() => {
@@ -700,33 +734,71 @@ export default function StudySetDetailPage({
     setCurrentItemIndex((prev) => Math.min(activeSection.items.length - 1, prev + 1))
   }
 
+  const notesSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestNotesHtmlRef = useRef('')
+
   const handleNotesChange = (html: string) => {
+    latestNotesHtmlRef.current = html
     setStudySet((current) => {
       if (!current) return current
       if ((current.notesHtml ?? '') === html) return current
 
-      const updatedSet = {
+      return {
         ...current,
         notesHtml: html,
         updatedAt: new Date().toISOString(),
       }
-
-      return updatedSet
     })
   }
+
+  const handleNotesJSONChange = (json: Record<string, unknown>) => {
+    if (!id) return
+    if (notesSaveTimeoutRef.current) clearTimeout(notesSaveTimeoutRef.current)
+
+    notesSaveTimeoutRef.current = setTimeout(() => {
+      const plainText =
+        typeof window !== 'undefined'
+          ? (() => {
+              const container = document.createElement('div')
+              container.innerHTML = latestNotesHtmlRef.current
+              return container.innerText.trim()
+            })()
+          : undefined
+
+      void updateStudySetNotes(id, {
+        richTextContent: json,
+        plainTextContent: plainText,
+      }).catch((error) => {
+        console.error('Failed to save notes:', error)
+        toast({
+          title: 'Failed to save notes',
+          description: getApiClientErrorMessage(error, 'Your latest edits could not be saved. Please try again.'),
+          variant: 'destructive',
+        })
+      })
+    }, 1000)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (notesSaveTimeoutRef.current) clearTimeout(notesSaveTimeoutRef.current)
+    }
+  }, [])
 
   const handleOpenSection = (sectionType: string) => {
     router.push(`/dashboard/study-sets/${id}?mode=${sectionType}`)
   }
 
   const handleGenerateMore = async (requestedTypes: StudySetUiSectionType[]) => {
-    if (!studySet || !generationMeta?.documentId) {
+    const effectiveDocumentId = documentId ?? generationMeta?.documentId
+
+    if (!studySet || !effectiveDocumentId) {
       throw new Error(
-        'Generate more is unavailable because this study set source is not stored on this device.',
+        'Generate more is unavailable because this study set has no source document.',
       )
     }
 
-    const hasActiveJob = generationMeta.jobs.some(
+    const hasActiveJob = (generationMeta?.jobs ?? []).some(
       (job) => job.status !== 'completed' && job.status !== 'failed',
     )
     if (hasActiveJob) {
@@ -750,7 +822,7 @@ export default function StudySetDetailPage({
     }
 
     const response = await generateStudySet({
-      documentId: generationMeta.documentId,
+      documentId: effectiveDocumentId,
       types: nextTypes.map((type) => uiToBackendGenerationType[type]),
     })
 
@@ -762,7 +834,7 @@ export default function StudySetDetailPage({
 
     const startedAt = new Date().toISOString()
     const nextMeta: StoredStudySetGenerationMeta = {
-      documentId: generationMeta.documentId,
+      documentId: effectiveDocumentId,
       studySetId: response.study_set_id,
       batch: {
         id: response.batch.id,
@@ -808,6 +880,26 @@ export default function StudySetDetailPage({
         description: getApiClientErrorMessage(error, 'Please try again.'),
         variant: 'destructive',
       })
+    }
+  }
+
+  const handleDeleteStudySet = async () => {
+    if (isDeletingStudySet) return
+
+    setIsDeletingStudySet(true)
+    try {
+      await deleteStudySet(id)
+      toast({ title: 'Study set deleted' })
+      router.push('/dashboard/study-sets')
+    } catch (error) {
+      toast({
+        title: 'Failed to delete study set',
+        description: getApiClientErrorMessage(error, 'Please try again.'),
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeletingStudySet(false)
+      setShowDeleteDialog(false)
     }
   }
 
@@ -1443,12 +1535,13 @@ export default function StudySetDetailPage({
 
   const renderNotesWorkspace = () => {
     return (
-      <div className="flex h-full flex-col overflow-hidden  bg-[#fcfbf8] shadow-sm">
+      <div className="flex h-full flex-col overflow-hidden bg-background shadow-sm">
         <div className="flex flex-col gap-4 h-[calc(100vh-70px)] overflow-y-scroll  ">
           <NotesEditor
             value={studySet?.notesHtml}
             notesMarkdown={studySet?.notesMarkdown}
             onChange={handleNotesChange}
+            onJSONChange={handleNotesJSONChange}
           />
         </div>
       </div>
@@ -1571,12 +1664,45 @@ export default function StudySetDetailPage({
                   {formatUpdatedAt(studySet.updatedAt ?? studySet.createdAt)}
                 </p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowDeleteDialog(true)}
+                aria-label="Delete study set"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-background text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </header>
 
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete study set?</AlertDialogTitle>
+              <AlertDialogDescription>
+                &ldquo;{studySet.title}&rdquo; and its generated study materials will be permanently deleted.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeletingStudySet}>Cancel</AlertDialogCancel>
+              <button
+                type="button"
+                onClick={() => void handleDeleteStudySet()}
+                disabled={isDeletingStudySet}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isDeletingStudySet && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isDeletingStudySet ? 'Deleting...' : 'Delete'}
+              </button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <div className="flex-1 overflow-hidden">
-          <div className="flex h-full flex-col lg:flex-row p-5">
+          <div className="flex h-full flex-col lg:flex-row">
             <section className={`min-w-0 flex-1 ${isShowingAssessmentFinalScreen ? 'max-w-none' : 'max-w-[1400px] mx-auto'}`}>
               {!activeModeFromQuery ? (
                 <div className="p-6">
@@ -1603,7 +1729,7 @@ export default function StudySetDetailPage({
 
            
                   </div>
-     <div className="mt-2 flex items-center gap-3 max-w-[700px] mx-auto">
+     <div className=" flex items-center gap-3 max-w-[700px] mx-auto">
                       {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
                         <span className="rounded-full mb-3 border border-border bg-white px-3 py-1.5 text-xs font-semibold text-muted-foreground">
                           Item {currentItemIndex + 1} of {totalItems}

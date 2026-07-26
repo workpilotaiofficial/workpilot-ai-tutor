@@ -31,6 +31,7 @@ import {
   type CreditLimitReachedEventDetail,
 } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
+import { ScrollArea } from '../ui/scroll-area'
 
 type Offer =
   | { kind: 'plan'; id: string }
@@ -300,202 +301,203 @@ export default function InsufficientCreditsModal({
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="z-[81] max-h-[calc(100vh-2rem)] w-[min(672px,calc(100%-2rem))] max-w-none gap-0 overflow-y-auto rounded-[30px] border border-slate-200 bg-white p-0 text-slate-900 shadow-[0_32px_90px_rgba(0,0,0,0.32)] [&_[data-slot=dialog-close]]:right-7 [&_[data-slot=dialog-close]]:top-7 [&_[data-slot=dialog-close]]:rounded-full [&_[data-slot=dialog-close]]:p-1 [&_[data-slot=dialog-close]]:text-slate-500 [&_[data-slot=dialog-close]]:hover:bg-slate-100 [&_[data-slot=dialog-close]_svg]:size-5"
+        className="z-[81] max-h-[calc(100vh-2rem)] w-[min(672px,calc(100%-2rem))] max-w-none gap-0  rounded-[20px] border border-slate-200 bg-white p-0 text-slate-900 shadow-[0_32px_90px_rgba(0,0,0,0.32)] [&_[data-slot=dialog-close]]:right-7 [&_[data-slot=dialog-close]]:top-7 [&_[data-slot=dialog-close]]:rounded-full [&_[data-slot=dialog-close]]:p-1 [&_[data-slot=dialog-close]]:text-slate-500 [&_[data-slot=dialog-close]]:hover:bg-slate-100 [&_[data-slot=dialog-close]_svg]:size-5"
         showCloseButton
       >
-        <DialogHeader className="border-b border-slate-200 px-8 pb-8 pt-8 text-center sm:px-12 sm:text-center">
-          <DialogTitle className="text-[32px] font-bold leading-tight tracking-[-0.025em] text-[#0877ee] sm:text-[38px]">
-            Upgrade Your Plan
-          </DialogTitle>
-          <DialogDescription className="mx-auto mt-1.5 max-w-lg text-[15px] leading-6 text-slate-600 sm:text-[17px]">
-            {resolvedDetails.message}
-          </DialogDescription>
-        </DialogHeader>
+<ScrollArea className="max-h-[calc(100vh-2rem)] w-full overflow-y-auto">
+          <DialogHeader className="border-b border-slate-200 px-8 pb-8 pt-8 text-center sm:px-12 sm:text-center">
+            <DialogTitle className="text-[32px] font-bold leading-tight tracking-[-0.025em] text-primary">
+              Upgrade Your Plan
+            </DialogTitle>
+            <DialogDescription className="mx-auto max-w-lg text-sm leading-6 text-slate-600 sm:text-sm">
+              {resolvedDetails.message}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="px-7 pb-7 pt-6 sm:px-[30px]">
-          <div className="space-y-[17px]">
-            {[
-              'More credits for uploads and pasted study material',
-              'Create more flashcards, quizzes, and study notes',
-              'Turn more syllabi into clear learning roadmaps',
-              'Grade more papers with rubric-based AI feedback',
-              'Use one credit balance across every AI study tool',
-            ].map((label) => (
-              <div
-                key={label}
-                className="flex items-center gap-4 text-[16px] leading-6 text-slate-700 sm:text-[17px]"
+          <div className="px-7 pb-7 pt-6 sm:px-[20px]">
+            <div className="space-y-[17px] text-sm">
+              {[
+                'More credits for uploads and pasted study material',
+                'Create more flashcards, quizzes, and study notes',
+                'Turn more syllabi into clear learning roadmaps',
+                'Grade more papers with rubric-based AI feedback',
+                'Use one credit balance across every AI study tool',
+              ].map((label) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-4 text-sm leading-6 text-slate-700 "
+                >
+                  <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                    <Check className="h-[12px] w-[12px]" strokeWidth={2} />
+                  </span>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-7">
+              {isLoading ? (
+                <OfferSkeleton />
+              ) : offerMode === 'plan' && upgradePlans.length > 0 ? (
+                <div className="space-y-[18px] pt-2">
+                  {upgradePlans.map((plan, index) => {
+                    const isSelected =
+                      selectedOffer?.kind === 'plan' &&
+                      selectedOffer.id === plan.id
+
+                    return (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedOffer({ kind: 'plan', id: plan.id })
+                        }
+                        className={cn(
+                          'relative flex min-h-[98px] w-full items-center gap-4 rounded-[19px] border px-5 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0877ee]/50',
+                          isSelected
+                            ? 'border-[#2f80ff] bg-[#edf4ff] shadow-[0_8px_24px_rgba(21,101,247,0.08)]'
+                            : 'border-slate-200 bg-white hover:border-[#2f80ff]/50',
+                        )}
+                      >
+                        {index === 0 ? (
+                          <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 rounded-full bg-[#3478ed] px-4 py-1.5 text-[11px] font-bold text-white shadow-md">
+                            ☆ Recommended
+                          </span>
+                        ) : null}
+                        <span
+                          className={cn(
+                            'flex h-[25px] w-[25px] shrink-0 items-center justify-center rounded-full border-2',
+                            isSelected
+                              ? 'border-[#3e8cff]'
+                              : 'border-slate-300',
+                          )}
+                        >
+                          {isSelected ? (
+                            <span className="h-[13px] w-[13px] rounded-full bg-[#3e8cff]" />
+                          ) : null}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[17px] font-medium text-slate-700">
+                            {plan.name}
+                          </span>
+                          <span className="mt-1.5 inline-flex rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                            {plan.monthlyCreditAllotment === null
+                              ? 'Monthly credits included'
+                              : `${plan.monthlyCreditAllotment.toLocaleString('en-US')} credits every month`}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-right">
+                          <span className="block text-[18px] font-bold text-slate-800">
+                            {formatUsd(plan.priceMonthly)}
+                          </span>
+                          <span className="mt-1 block text-[13px] text-slate-500">
+                            Billed monthly
+                          </span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : offerMode === 'pack' && packs.length > 0 ? (
+                <div className="space-y-3">
+                  {packs.map((pack) => {
+                    const isSelected =
+                      selectedOffer?.kind === 'pack' &&
+                      selectedOffer.id === pack.id
+
+                    return (
+                      <button
+                        key={pack.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedOffer({ kind: 'pack', id: pack.id })
+                        }
+                        className={cn(
+                          'flex min-h-[98px] w-full items-center gap-4 rounded-[19px] border px-5 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0877ee]/50',
+                          isSelected
+                            ? 'border-[#2f80ff] bg-[#edf4ff] shadow-[0_8px_24px_rgba(21,101,247,0.08)]'
+                            : 'border-slate-200 bg-white hover:border-[#2f80ff]/50',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex h-[25px] w-[25px] shrink-0 items-center justify-center rounded-full border-2',
+                            isSelected
+                              ? 'border-[#3e8cff]'
+                              : 'border-slate-300',
+                          )}
+                        >
+                          {isSelected ? (
+                            <span className="h-[13px] w-[13px] rounded-full bg-[#3e8cff]" />
+                          ) : null}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="text-[17px] font-medium text-slate-700">
+                            {pack.name}
+                          </span>
+                          <span className="mt-1.5 block text-[13px] text-slate-500">
+                            {pack.credits.toLocaleString('en-US')} credits ·
+                            one-time purchase
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-[18px] font-bold text-slate-800">
+                          {formatPackPrice(pack)}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-[19px] border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                  {loadError ||
+                    'No checkout options are available at the moment.'}
+                </div>
+              )}
+            </div>
+
+            {!isLoading && upgradePlans.length > 0 && packs.length > 0 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  handleOfferModeChange(
+                    offerMode === 'plan' ? 'pack' : 'plan',
+                  )
+                }
+                className="mt-4 block w-full text-center text-[13px] font-medium text-[#0877ee] hover:underline"
               >
-                <span className="flex h-[25px] w-[25px] shrink-0 items-center justify-center rounded-full bg-[#0877ee] text-white">
-                  <Check className="h-[15px] w-[15px]" strokeWidth={2.7} />
-                </span>
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
+                {offerMode === 'plan'
+                  ? 'Prefer a one-time top-up? View credit packs'
+                  : 'Prefer monthly credits? View subscription plans'}
+              </button>
+            ) : null}
 
-          <div className="mt-7">
-            {isLoading ? (
-              <OfferSkeleton />
-            ) : offerMode === 'plan' && upgradePlans.length > 0 ? (
-              <div className="space-y-[18px] pt-2">
-                {upgradePlans.map((plan, index) => {
-                  const isSelected =
-                    selectedOffer?.kind === 'plan' &&
-                    selectedOffer.id === plan.id
+            {checkoutError ? (
+              <p
+                role="alert"
+                className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              >
+                {checkoutError}
+              </p>
+            ) : null}
 
-                  return (
-                    <button
-                      key={plan.id}
-                      type="button"
-                      onClick={() =>
-                        setSelectedOffer({ kind: 'plan', id: plan.id })
-                      }
-                      className={cn(
-                        'relative flex min-h-[98px] w-full items-center gap-4 rounded-[19px] border px-5 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0877ee]/50',
-                        isSelected
-                          ? 'border-[#2f80ff] bg-[#edf4ff] shadow-[0_8px_24px_rgba(21,101,247,0.08)]'
-                          : 'border-slate-200 bg-white hover:border-[#2f80ff]/50',
-                      )}
-                    >
-                      {index === 0 ? (
-                        <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 rounded-full bg-[#3478ed] px-4 py-1.5 text-[11px] font-bold text-white shadow-md">
-                          ☆ Recommended
-                        </span>
-                      ) : null}
-                      <span
-                        className={cn(
-                          'flex h-[25px] w-[25px] shrink-0 items-center justify-center rounded-full border-2',
-                          isSelected
-                            ? 'border-[#3e8cff]'
-                            : 'border-slate-300',
-                        )}
-                      >
-                        {isSelected ? (
-                          <span className="h-[13px] w-[13px] rounded-full bg-[#3e8cff]" />
-                        ) : null}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[17px] font-medium text-slate-700">
-                          {plan.name}
-                        </span>
-                        <span className="mt-1.5 inline-flex rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                          {plan.monthlyCreditAllotment === null
-                            ? 'Monthly credits included'
-                            : `${plan.monthlyCreditAllotment.toLocaleString('en-US')} credits every month`}
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-right">
-                        <span className="block text-[18px] font-bold text-slate-800">
-                          {formatUsd(plan.priceMonthly)}
-                        </span>
-                        <span className="mt-1 block text-[13px] text-slate-500">
-                          Billed monthly
-                        </span>
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            ) : offerMode === 'pack' && packs.length > 0 ? (
-              <div className="space-y-3">
-                {packs.map((pack) => {
-                  const isSelected =
-                    selectedOffer?.kind === 'pack' &&
-                    selectedOffer.id === pack.id
-
-                  return (
-                    <button
-                      key={pack.id}
-                      type="button"
-                      onClick={() =>
-                        setSelectedOffer({ kind: 'pack', id: pack.id })
-                      }
-                      className={cn(
-                        'flex min-h-[98px] w-full items-center gap-4 rounded-[19px] border px-5 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0877ee]/50',
-                        isSelected
-                          ? 'border-[#2f80ff] bg-[#edf4ff] shadow-[0_8px_24px_rgba(21,101,247,0.08)]'
-                          : 'border-slate-200 bg-white hover:border-[#2f80ff]/50',
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'flex h-[25px] w-[25px] shrink-0 items-center justify-center rounded-full border-2',
-                          isSelected
-                            ? 'border-[#3e8cff]'
-                            : 'border-slate-300',
-                        )}
-                      >
-                        {isSelected ? (
-                          <span className="h-[13px] w-[13px] rounded-full bg-[#3e8cff]" />
-                        ) : null}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="text-[17px] font-medium text-slate-700">
-                          {pack.name}
-                        </span>
-                        <span className="mt-1.5 block text-[13px] text-slate-500">
-                          {pack.credits.toLocaleString('en-US')} credits ·
-                          one-time purchase
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-[18px] font-bold text-slate-800">
-                        {formatPackPrice(pack)}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="rounded-[19px] border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                {loadError ||
-                  'No checkout options are available at the moment.'}
-              </div>
-            )}
-          </div>
-
-          {!isLoading && upgradePlans.length > 0 && packs.length > 0 ? (
-            <button
+            <Button
               type="button"
-              onClick={() =>
-                handleOfferModeChange(
-                  offerMode === 'plan' ? 'pack' : 'plan',
-                )
-              }
-              className="mt-4 block w-full text-center text-[13px] font-medium text-[#0877ee] hover:underline"
+              size="lg"
+              className="mt-7 h-16 w-full rounded-[17px] bg-gradient-to-r from-[#1275f4] to-[#0797ed] text-[19px] font-bold text-white shadow-[0_10px_22px_rgba(24,111,225,0.24)] hover:opacity-95"
+              onClick={() => void handleContinue()}
+              disabled={isLoading || isCheckingOut}
             >
-              {offerMode === 'plan'
-                ? 'Prefer a one-time top-up? View credit packs'
-                : 'Prefer monthly credits? View subscription plans'}
-            </button>
-          ) : null}
+              {isCheckingOut ? (
+                <LoaderCircle className="h-5 w-5 animate-spin" />
+              ) : (
+                <CreditCard className="h-5 w-5" />
+              )}
+              {isCheckingOut
+                ? 'Opening secure checkout...'
+                : 'Continue'}
+            </Button>
 
-          {checkoutError ? (
-            <p
-              role="alert"
-              className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-            >
-              {checkoutError}
-            </p>
-          ) : null}
-
-          <Button
-            type="button"
-            size="lg"
-            className="mt-7 h-16 w-full rounded-[17px] bg-gradient-to-r from-[#1275f4] to-[#0797ed] text-[19px] font-bold text-white shadow-[0_10px_22px_rgba(24,111,225,0.24)] hover:opacity-95"
-            onClick={() => void handleContinue()}
-            disabled={isLoading || isCheckingOut}
-          >
-            {isCheckingOut ? (
-              <LoaderCircle className="h-5 w-5 animate-spin" />
-            ) : (
-              <CreditCard className="h-5 w-5" />
-            )}
-            {isCheckingOut
-              ? 'Opening secure checkout...'
-              : 'Continue'}
-          </Button>
-
-          {/* <div className="mt-4 text-center text-[13px] text-slate-500">
+            {/* <div className="mt-4 text-center text-[13px] text-slate-500">
             <span>
               {currentPlanName} plan
               {' · '}
@@ -511,7 +513,9 @@ export default function InsufficientCreditsModal({
               Billing details
             </button>
           </div> */}
-        </div>
+          </div>
+  </ScrollArea>
+
       </DialogContent>
     </Dialog>
   )

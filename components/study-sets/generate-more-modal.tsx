@@ -76,9 +76,7 @@ export function GenerateMoreModal({
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Generate more study material</DialogTitle>
-          <DialogDescription>
-            Add new formats to “{studySetTitle}”. Your existing content and progress will stay unchanged.
-          </DialogDescription>
+         
         </DialogHeader>
 
         {unavailableReason ? (
@@ -128,7 +126,7 @@ export function GenerateMoreModal({
                               : 'border-border bg-card hover:border-primary/40'
                         }`}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-center gap-3 ">
                           <span
                             className={`rounded-xl p-2.5 ${
                               isSelected
@@ -148,9 +146,9 @@ export function GenerateMoreModal({
                             <span className="block text-sm font-semibold text-foreground">
                               {option.label}
                             </span>
-                            <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                            {/* <span className="mt-1 block text-xs leading-5 text-muted-foreground">
                               {option.description}
-                            </span>
+                            </span> */}
                             {isGenerated ? (
                               <span className="mt-2 block text-xs font-semibold text-emerald-700">
                                 Already generated
