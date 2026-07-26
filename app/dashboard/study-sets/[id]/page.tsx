@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Trash2 } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Headphones, Loader2, Trash2 } from 'lucide-react'
 import { normalizeStudySetResponse, type StudySet } from '@/components/study-sets/utils'
 import {
   deleteStudySet,
@@ -29,8 +29,10 @@ import {
 import {
   type StudySetUiSectionType,
   toUiSectionType,
+  uiSectionTypeLabels,
   uiToBackendGenerationType,
 } from '@/components/study-sets/generation-mapping'
+import { studySetFormatOptionMap } from '@/components/study-sets/format-catalog'
 import {
   getStudySetGenerationMetaByStudySetId,
   type StoredStudySetGenerationMeta,
@@ -43,6 +45,7 @@ import { getApiClientErrorMessage } from '@/lib/api/client'
 import { toast } from '@/hooks/use-toast'
 import { NotesEditor } from '@/components/study-sets/NotesEditor'
 import { StudySetOverview } from './overview'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 function formatUpdatedAt(value?: string) {
   if (!value) return 'Just now'
@@ -486,6 +489,15 @@ export default function StudySetDetailPage({
     () => studySet?.sections.find((section) => section.type === activeSectionType) ?? null,
     [studySet, activeSectionType],
   )
+
+  const readySections = useMemo(() => {
+    if (!studySet) return []
+    return studySet.sections.filter((section) => {
+      if (!(section.type in uiSectionTypeLabels)) return false
+      const status = section.status?.toLowerCase()
+      return !status || status === 'completed' || status === 'ready'
+    })
+  }, [studySet])
 
   const activeItem =
     activeSection && Array.isArray(activeSection.items)
@@ -1536,14 +1548,14 @@ export default function StudySetDetailPage({
   const renderNotesWorkspace = () => {
     return (
       <div className="flex h-full flex-col overflow-hidden bg-background shadow-sm">
-        <div className="flex flex-col gap-4 h-[calc(100vh-70px)] overflow-y-scroll  ">
+        <ScrollArea className="flex flex-col gap-4 h-[calc(100vh-70px)]  no-scrollbar">
           <NotesEditor
             value={studySet?.notesHtml}
             notesMarkdown={studySet?.notesMarkdown}
             onChange={handleNotesChange}
             onJSONChange={handleNotesJSONChange}
           />
-        </div>
+        </ScrollArea>
       </div>
     )
   }
@@ -1784,6 +1796,36 @@ export default function StudySetDetailPage({
               )}
             </section>
 
+            {activeModeFromQuery && readySections.length > 1 && (
+              <aside className="hidden md:block shrink-0 absolute right-3 top-1/2 space-y-4 z-50">
+                {readySections.map((section) => {
+                  const Icon =
+                    section.type === 'podcast'
+                      ? Headphones
+                      : studySetFormatOptionMap[section.type as StudySetUiSectionType]?.icon ?? BookOpen
+                  const isActive = section.type === activeSectionType
+                  const label = uiSectionTypeLabels[section.type as StudySetUiSectionType] ?? section.type
+
+                  return (
+                    <button
+                      key={section.type}
+                      type="button"
+                      onClick={() => handleOpenSection(section.type)}
+                      title={label}
+                      aria-label={label}
+                      aria-current={isActive}
+                      className={`group flex h-12 w-12 items-center justify-center rounded-2xl border shadow-sm transition-all ${
+                        isActive
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-border bg-white text-muted-foreground hover:border-primary/40 hover:text-primary'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </button>
+                  )
+                })}
+              </aside>
+            )}
 
           </div>
         </div>

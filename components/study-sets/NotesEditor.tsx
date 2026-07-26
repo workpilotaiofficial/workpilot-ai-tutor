@@ -205,7 +205,7 @@ export const NotesEditor = forwardRef<
         editorProps: {
             attributes: {
                 class: [
-                    'mx-left min-h-[700px] h-full w-full max-w-[820px] px-1 py-8 text-[16px] leading-[1.3] text-foreground caret-primary focus:outline-none sm:px-5 lg:py-12',
+                    'mx-left min-h-[700px] h-full w-full max-w-[820px] px-1 py-8 text-[16px] leading-[1.3] text-foreground  caret-primary focus:outline-none sm:px-5 lg:py-12',
                     '[&_.rich-note-document]:w-full',
                     '[&_h1]:mb-6 [&_h1]:font-sans [&_h1]:text-[2rem] [&_h1]:font-bold [&_h1]:tracking-[0] [&_h1]:text-foreground [&_h1]:leading-[1.3] lg:[&_h1]:text-[2.5rem]',
                     '[&_h2]:mb-4 [&_h2]:mt-12 [&_h2]:border-t [&_h2]:border-border [&_h2]:pt-8 [&_h2]:font-sans [&_h2]:font-bold [&_h2]:tracking-[-0.02em] [&_h2]:text-primary [&_h2]:text-[1.25rem] [&_h2]:leading-[1.25] lg:[&_h2]:text-[1.59rem]',
