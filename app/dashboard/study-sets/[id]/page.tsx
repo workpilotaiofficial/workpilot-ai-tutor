@@ -4,6 +4,8 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Trash2 } from 'lucide-react'
 import { normalizeStudySetResponse, type StudySet } from '@/components/study-sets/utils'
+import { ItemSidePanel } from '@/components/study-sets/ItemSidePanel'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import {
   deleteStudySet,
   fetchStudySetFillInTheBlanks,
@@ -43,6 +45,7 @@ import { getApiClientErrorMessage } from '@/lib/api/client'
 import { toast } from '@/hooks/use-toast'
 import { NotesEditor } from '@/components/study-sets/NotesEditor'
 import { StudySetOverview } from './overview'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 function formatUpdatedAt(value?: string) {
   if (!value) return 'Just now'
@@ -546,6 +549,9 @@ export default function StudySetDetailPage({
   const isFillComplete = Boolean(fillTotalCount) && fillAnsweredCount === fillTotalCount
   const isShowingFillFinalScreen = activeSection?.type === 'fillInTheBlanks' && isFillComplete
   const isShowingAssessmentFinalScreen = isShowingMcqFinalScreen || isShowingFillFinalScreen
+  const showItemSidePanel = ['flashcards', 'multipleChoice', 'fillInTheBlanks', 'writtenTests'].includes(
+    activeSection?.type ?? '',
+  )
   const fillImprovementTip = getAssessmentImprovementTip(fillScorePercent, fillAnsweredCount - fillCorrectCount)
 
   const writtenTestItems = useMemo(
@@ -1632,6 +1638,86 @@ export default function StudySetDetailPage({
     )
   }
 
+  const studyItemSection = (
+    <section className={`min-w-0 flex-1 ${isShowingAssessmentFinalScreen ? 'max-w-none' : 'max-w-[1400px] mx-auto'}`}>
+      {!activeModeFromQuery ? (
+        <div className="p-6">
+          <StudySetOverview
+            studySetId={backendStudySetId}
+            studySet={studySet}
+            generationMeta={generationMeta}
+            onOpenSection={handleOpenSection}
+            onRetrySection={handleRetrySection}
+            onGenerateMore={handleGenerateMore}
+          />
+        </div>
+      ) : (
+        <>
+          <div className=" flex flex-wrap items-center justify-between gap-3">
+            {/* <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/70">
+                Study Mode
+              </p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {activeSection?.label ?? 'Select a method'}
+              </p>
+            </div> */}
+          </div>
+          <div className=" flex items-center gap-3 max-w-[700px] mx-auto">
+            {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
+              <span className="rounded-full mb-3 border border-border bg-white px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                Item {currentItemIndex + 1} of {totalItems}
+              </span>
+            )}
+          </div>
+          <div>
+            {renderActiveContent()}
+          </div>
+
+          {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
+            <div className="mt-4 flex items-center gap-3 max-w-[700px] mx-auto">
+              <button
+                onClick={handlePrev}
+                disabled={currentItemIndex === 0}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-white px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </button>
+
+              <button
+                onClick={handleNext}
+                disabled={isNextDisabled}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {activeSection?.type === 'multipleChoice' && !isCurrentMcqAnswered && !isShowingAssessmentFinalScreen && (
+            <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
+              Select an option to unlock the next question.
+            </p>
+          )}
+
+          {activeSection?.type === 'fillInTheBlanks' && !isCurrentFillAnswered && !isShowingAssessmentFinalScreen && (
+            <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
+              Submit your blank answer to unlock the next question.
+            </p>
+          )}
+
+          {/* {activeSection?.type === 'writtenTests' && !isCurrentWrittenAnswered && (
+            <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
+              Evaluate your written response to unlock the next question.
+            </p>
+          )} */}
+        </>
+      )}
+    </section>
+  )
+
   return (
     <div className="flex min-h-screen bg-[#fffaf5]">
       <div className="flex min-w-0 flex-1 flex-col">
@@ -1703,88 +1789,21 @@ export default function StudySetDetailPage({
 
         <div className="flex-1 overflow-hidden">
           <div className="flex h-full flex-col lg:flex-row">
-            <section className={`min-w-0 flex-1 ${isShowingAssessmentFinalScreen ? 'max-w-none' : 'max-w-[1400px] mx-auto'}`}>
-              {!activeModeFromQuery ? (
-                <div className="p-6">
-                  <StudySetOverview
-                    studySetId={backendStudySetId}
-                    studySet={studySet}
-                    generationMeta={generationMeta}
-                    onOpenSection={handleOpenSection}
-                    onRetrySection={handleRetrySection}
-                    onGenerateMore={handleGenerateMore}
-                  />
-                </div>
-              ) : (
-                <>
-                  <div className=" flex flex-wrap items-center justify-between gap-3">
-                    {/* <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/70">
-                        Study Mode
-                      </p>
-                      <p className="mt-1 text-lg font-semibold text-foreground">
-                        {activeSection?.label ?? 'Select a method'}
-                      </p>
-                    </div> */}
-
-           
+            {showItemSidePanel ? (
+              <ResizablePanelGroup direction="horizontal" autoSaveId="study-item-panel" className="h-full">
+                <ResizablePanel defaultSize={65} minSize={40}>
+                  <ScrollArea className="h-[calc(100vh-70px)]">{studyItemSection}</ScrollArea>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={35} minSize={22} maxSize={55}>
+                  <div className="h-full">
+                    <ItemSidePanel studySet={studySet} />
                   </div>
-     <div className=" flex items-center gap-3 max-w-[700px] mx-auto">
-                      {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
-                        <span className="rounded-full mb-3 border border-border bg-white px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-                          Item {currentItemIndex + 1} of {totalItems}
-                        </span>
-                      )}
-     </div>
-                  <div >
-                    
-                    {renderActiveContent()}</div>
-
-                  {activeSection?.type !== 'notes' && Boolean(totalItems) && !isShowingAssessmentFinalScreen && (
-                    <div className="mt-4 flex items-center gap-3 max-w-[700px] mx-auto">
-                      
-                      <button
-                        onClick={handlePrev}
-                        disabled={currentItemIndex === 0}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-white px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        Previous
-                      </button>
-
-                      <button
-                        onClick={handleNext}
-                        disabled={isNextDisabled}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Next
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
-
-                  {activeSection?.type === 'multipleChoice' && !isCurrentMcqAnswered && !isShowingAssessmentFinalScreen && (
-                    <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
-                      Select an option to unlock the next question.
-                    </p>
-                  )}
-
-                  {activeSection?.type === 'fillInTheBlanks' && !isCurrentFillAnswered && !isShowingAssessmentFinalScreen && (
-                    <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
-                      Submit your blank answer to unlock the next question.
-                    </p>
-                  )}
-
-                  {activeSection?.type === 'writtenTests' && !isCurrentWrittenAnswered && (
-                    <p className="mt-2 text-center text-xs font-medium text-muted-foreground">
-                      Evaluate your written response to unlock the next question.
-                    </p>
-                  )}
-                </>
-              )}
-            </section>
-
-
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            ) : (
+              studyItemSection
+            )}
           </div>
         </div>
       </div>
