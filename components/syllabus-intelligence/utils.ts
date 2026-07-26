@@ -66,6 +66,7 @@ export type SyllabusIntelligenceResult = {
   id: string
   title: string
   courseName: string | null
+  description:string | null
   courseCode: string | null
   institution: string | null
   instructorName: string | null

@@ -826,9 +826,9 @@ export default function StudySetDetailPage({
       types: nextTypes.map((type) => uiToBackendGenerationType[type]),
     })
 
-    if (response.study_set_id !== id) {
+    if (response.study_set_id.trim().toLowerCase() !== id.trim().toLowerCase()) {
       throw new Error(
-        'The generated content could not be attached to this study set. Please try again later.',
+        `The generated content could not be attached to this study set (expected ${id}, got ${response.study_set_id}). Please try again later.`,
       )
     }
 
