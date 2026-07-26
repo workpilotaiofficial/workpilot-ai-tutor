@@ -76,6 +76,12 @@ export {
   updatePersonalization,
 } from '@/lib/api/user-settings.service'
 export { fetchGraderHistory, fetchGraderResult, submitGraderAssignment } from '@/lib/api/paper-grader.service'
+export {
+  fetchSolveSession,
+  fetchSolveSessionHistory,
+  sendSolveMessage,
+  startSolveSession,
+} from '@/lib/api/solve.service'
 export { fetchDashboard } from '@/lib/api/dashboard.service'
 export {
   clearAuthBrowserState,
@@ -170,6 +176,31 @@ export type {
   GraderSubmitResponse,
   GraderWebsocket,
 } from '@/lib/api/paper-grader.service'
+export type {
+  SendSolveMessageResponse,
+  SolveChatMessage,
+  SolveCitation,
+  SolveContent,
+  SolveFinalAnswer,
+  SolveGenericContent,
+  SolveInputType,
+  SolveKeyTerm,
+  SolveMathContent,
+  SolveMessageRole,
+  SolveMessageStatus,
+  SolveNarrativeContent,
+  SolveNarrativeSection,
+  SolveResult,
+  SolveScienceContent,
+  SolveSession,
+  SolveSessionDetail,
+  SolveSessionHistoryResponse,
+  SolveSessionSummary,
+  SolveStep,
+  SolveSubjectCategory,
+  SolveWebsocket,
+  StartSolveSessionResponse,
+} from '@/lib/api/solve.service'
 export type {
   PersonalizationProfile,
   PersonalizationSettings,

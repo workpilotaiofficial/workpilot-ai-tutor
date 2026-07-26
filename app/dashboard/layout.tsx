@@ -26,6 +26,7 @@ import {
   PenSquare,
   Smartphone,
   Sparkles,
+  Wand2,
 } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
@@ -105,6 +106,11 @@ function DashboardLayoutContent({
       label: 'Study Sets',
       href: '/dashboard/study-sets',
       icon: BookOpen,
+    },
+    {
+      label: 'Solve',
+      href: '/dashboard/solve',
+      icon: Wand2,
     },
     {
       label: 'Syllabus Intelligence',
