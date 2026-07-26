@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Features | WorkPilot AI Study Platform",
+  title: "Features | Neurova AI Study Platform",
   description:
     "Turn source material into complete study systems with AI study sets, syllabus intelligence, paper grading, personalized learning, and mastery tracking.",
 };
@@ -59,7 +59,7 @@ const featureGroups = [
     eyebrow: "Syllabus intelligence",
     title: "Turn a syllabus into an action plan.",
     description:
-      "WorkPilot reads a pasted or uploaded syllabus and organizes it into useful modules, priorities, and a timeline—so a long course document becomes a plan you can actually follow.",
+      "Neurova reads a pasted or uploaded syllabus and organizes it into useful modules, priorities, and a timeline—so a long course document becomes a plan you can actually follow.",
     icon: Route,
     gradient: "from-[#0EA5E9] to-[#5B65E0]",
     points: [
@@ -113,22 +113,7 @@ const supportingFeatures = [
 export default function FeaturesPage() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#f8f9fd] text-slate-950">
-      <header className="relative z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
-          <Link href="/" className="flex items-center gap-3" aria-label="WorkPilot home">
-            <Image src="/icon.png" alt="" width={34} height={34} />
-            <span className="text-lg font-semibold tracking-tight">WorkPilot</span>
-          </Link>
-          <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 sm:flex" aria-label="Primary">
-            <Link href="/features" className="text-primary">Features</Link>
-            <Link href="/#pricing" className="transition hover:text-slate-950">Pricing</Link>
-            <Link href="/contact" className="transition hover:text-slate-950">Contact</Link>
-          </nav>
-          <Link href="/login" className="rounded-full bg-gradient-to-r from-button to-thirdary px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(81,0,167,0.22)] transition hover:-translate-y-0.5">
-            Log in
-          </Link>
-        </div>
-      </header>
+
 
       <section className="relative px-5 pb-24 pt-20 sm:px-8 sm:pb-32 sm:pt-28">
         <div className="pointer-events-none absolute left-1/2 top-[-18rem] h-[38rem] w-[64rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(91,101,224,0.18),rgba(81,0,167,0.08)_45%,transparent_72%)]" />
@@ -142,13 +127,13 @@ export default function FeaturesPage() {
             <span className="bg-gradient-to-r from-button via-thirdary to-primary bg-clip-text text-transparent">study system.</span>
           </h1>
           <p className="mx-auto mt-7 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-            WorkPilot connects content creation, practice, planning, feedback, and progress—so you can spend less time organizing tools and more time learning.
+            Neurova connects content creation, practice, planning, feedback, and progress—so you can spend less time organizing tools and more time learning.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-button to-thirdary px-7 py-3.5 text-sm font-semibold text-white shadow-[0_18px_45px_rgba(81,0,167,0.25)] transition hover:-translate-y-1">
               Open your workspace <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link href="/#pricing" className="rounded-full border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950">
+            <Link href="/pricing" className="rounded-full border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950">
               View pricing
             </Link>
           </div>
@@ -200,7 +185,7 @@ export default function FeaturesPage() {
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">Designed around how you learn</p>
             <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-5xl">More than generation</h2>
-            <p className="mt-5 text-base leading-8 text-slate-600">WorkPilot helps you turn generated material into an ongoing learning process.</p>
+            <p className="mt-5 text-base leading-8 text-slate-600">Neurova helps you turn generated material into an ongoing learning process.</p>
           </div>
           <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {supportingFeatures.map(({ icon: Icon, title, text }) => (
@@ -221,14 +206,14 @@ export default function FeaturesPage() {
             <FileAudio className="mx-auto h-9 w-9 text-white/80" />
             <h2 className="mx-auto mt-6 max-w-3xl text-3xl font-semibold tracking-[-0.04em] sm:text-5xl">Start with the material you already have.</h2>
             <p className="mx-auto mt-5 max-w-xl leading-7 text-white/75">Turn it into the notes, practice, plan, and feedback you need next.</p>
-            <Link href="/login" className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-thirdary shadow-lg transition hover:-translate-y-1">Log in to WorkPilot <ArrowRight className="h-4 w-4" /></Link>
+            <Link href="/login" className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-thirdary shadow-lg transition hover:-translate-y-1">Log in to Neurova <ArrowRight className="h-4 w-4" /></Link>
           </div>
         </div>
       </section>
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <p>© {new Date().getFullYear()} WorkPilot. AI-powered study tools.</p>
+          <p>© {new Date().getFullYear()} Neurova. AI-powered study tools.</p>
           <div className="flex flex-wrap gap-5"><Link href="/privacy-policy">Privacy</Link><Link href="/terms-of-service">Terms</Link><Link href="/refund-policy">Refunds</Link><Link href="/contact">Contact</Link></div>
         </div>
       </footer>

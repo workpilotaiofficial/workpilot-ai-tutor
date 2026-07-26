@@ -10,7 +10,7 @@ type FooterLink = { name: string; href: string };
 
 const pages: FooterLink[] = [
   { name: "Features", href: "/features" },
-  { name: "Pricing", href: "/#pricing" },
+  { name: "Pricing", href: "/pricing" },
   { name: "Contact Us", href: "/contact" },
 ];
 

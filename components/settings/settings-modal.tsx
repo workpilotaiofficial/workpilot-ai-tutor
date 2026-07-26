@@ -398,7 +398,7 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
                 <div className="rounded-xl border border-border bg-card p-4">
                   <p className="text-sm text-muted-foreground">Preview</p>
                   <div className="mt-3 rounded-lg border border-border p-4">
-                      <h4 className="text-base font-semibold" style={{ fontFamily: themeSettings.headingFontFamily, color: themeSettings.textColor }}>WorkPilot Theme Preview Heading</h4>
+                      <h4 className="text-base font-semibold" style={{ fontFamily: themeSettings.headingFontFamily, color: themeSettings.textColor }}>Neurova Theme Preview Heading</h4>
                     <p className="mt-1 text-sm" style={{ fontFamily: themeSettings.bodyFontFamily, color: themeSettings.textColor }}>This paragraph preview uses your selected text color and body font family.</p>
                     <button className="mt-3 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ backgroundColor: themeSettings.buttonColor, color: '#FFFFFF' }}>Preview Button</button>
                     <div className="mt-3 flex gap-2">

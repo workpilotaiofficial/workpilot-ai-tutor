@@ -104,6 +104,7 @@ type NormalizedAnalysisPayload = {
 type NormalizedSyllabusPayload = {
   id?: unknown
   title?: unknown
+  description?: unknown
   courseName?: unknown
   course_name?: unknown
   courseCode?: unknown
@@ -349,6 +350,7 @@ export function mapSyllabusDetailToResult(payload: unknown): SyllabusIntelligenc
   return {
     id,
     title: normalizeText(source.title, 'Untitled Syllabus'),
+    description: normalizeNullableText(source.description),
     courseName: normalizeNullableText(source.courseName ?? source.course_name),
     courseCode: normalizeNullableText(source.courseCode ?? source.course_code),
     institution: normalizeNullableText(source.institution),

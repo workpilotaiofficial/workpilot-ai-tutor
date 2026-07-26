@@ -13,7 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useRbac } from "@/hooks/use-rbac";
 import { getPortalRouteByRole } from "@/lib/api/auth.service";
@@ -25,11 +25,11 @@ const navItems = [
   },
   {
     name: "App",
-    link: "#app",
+    link: "/app",
   },
   {
     name: "Pricing",
-    link: "#pricing",
+    link: "/pricing",
   },
   {
     name: "Contact",
@@ -56,7 +56,14 @@ export default function Nav({
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, displayName, role, isReady } = useRbac();
+
+  const hideNav = pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin");
+
+  if (hideNav) {
+    return <>{children}</>;
+  }
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 

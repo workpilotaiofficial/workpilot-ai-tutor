@@ -143,7 +143,7 @@ const fallbackCards: MarqueeCard[] = [
   {
     eyebrow: "Fallback",
     title: "Build your study system",
-    description: "Add WorkPilot feature cards here.",
+    description: "Add Neurova feature cards here.",
     metric: "Ready",
     chip: "Preview",
     progress: "70%",

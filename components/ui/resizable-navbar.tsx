@@ -240,7 +240,7 @@ export const MobileNavToggle = ({
 export const NavbarLogo = () => {
   return (
     <a
-      href="#"
+      href="/"
       className="relative z-20 mr-4 flex items-center justify-center space-x-2 px-2 py-2 text-sm font-normal text-black"
     >
       <div className="text-3xl flex font-bold items-center gap-2   ">

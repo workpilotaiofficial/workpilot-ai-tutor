@@ -55,11 +55,11 @@ export default function MacbookScrollDemo() {
   );
 }
 
-// WorkPilot brand mark shown on the laptop base
+// Neurova brand mark shown on the laptop base
 const BrandBadge = () => {
   return (
     <div className="flex h-9 w-9 -rotate-12 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-black/5">
-      <Image src="/logo.svg" alt="WorkPilot" width={20} height={20} className="h-5 w-5" />
+      <Image src="/logo.svg" alt="Neurova" width={20} height={20} className="h-5 w-5" />
     </div>
   );
 };

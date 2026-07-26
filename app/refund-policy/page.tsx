@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { EffectiveDate, PolicyContent, PolicySection, SitePageShell, SUPPORT_EMAIL } from "@/components/site-page-shell";
 
-export const metadata: Metadata = { title: "Refund Policy | WorkPilot", description: "WorkPilot subscription and credit-pack refund rules." };
+export const metadata: Metadata = { title: "Refund Policy | Neurova", description: "Neurova subscription and credit-pack refund rules." };
 
 export default function RefundPolicyPage() {
   return (
@@ -16,7 +16,7 @@ export default function RefundPolicyPage() {
           <p>Credit-pack purchases are final once any purchased credits have been used. An entirely unused credit pack may be refunded if you contact us within 7 calendar days of purchase. Partially used packs are not eligible for partial refunds and credits cannot be exchanged for cash.</p>
         </PolicySection>
         <PolicySection title="3. Billing errors and service failures">
-          <p>Please contact us promptly if you were charged more than once for the same purchase, charged after a timely cancellation, or unable to receive purchased credits because of a verified WorkPilot error. When confirmed, we will correct the charge, restore credits, extend access, or issue an appropriate refund.</p>
+          <p>Please contact us promptly if you were charged more than once for the same purchase, charged after a timely cancellation, or unable to receive purchased credits because of a verified Neurova error. When confirmed, we will correct the charge, restore credits, extend access, or issue an appropriate refund.</p>
           <p>Temporary downtime, dissatisfaction with an AI-generated result, failure to cancel before renewal, or unused time or credits do not by themselves qualify for a refund. Your statutory consumer rights, where applicable, are not limited by this policy.</p>
         </PolicySection>
         <PolicySection title="4. How to request a refund">

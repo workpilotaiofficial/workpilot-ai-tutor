@@ -1,6 +1,6 @@
-# WorkPilot — AI Study Platform
+# Neurova — AI Study Platform
 
-WorkPilot turns your study material into interactive learning experiences: study sets (notes, flashcards, quizzes, fill-in-the-blanks, written tests, tutor lessons, podcasts), syllabus intelligence (modules, timeline, priorities), and an AI paper grader.
+Neurova turns your study material into interactive learning experiences: study sets (notes, flashcards, quizzes, fill-in-the-blanks, written tests, tutor lessons, podcasts), syllabus intelligence (modules, timeline, priorities), and an AI paper grader.
 
 ## Stack
 

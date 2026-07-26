@@ -8,6 +8,7 @@ import {
   THEME_FONT_OPTIONS,
 } from '@/components/settings/theme-customization'
 import './globals.css'
+import Nav from '@/components/resizable-navbar'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -181,7 +182,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
+   <Nav>
         {children}
+    </Nav>
         <Toaster />
         <Analytics />
       </body>
