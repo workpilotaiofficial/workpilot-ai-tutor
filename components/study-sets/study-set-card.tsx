@@ -203,16 +203,22 @@ export default function StudySetCard({ set, isListView, onDelete }: StudySetCard
       </div>
 
       <div className="flex flex-1 flex-col gap-2.5 px-5 py-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="grid grid-cols-[54px_1fr] items-center gap-3">
-            <span className="rounded-xl border border-border bg-background px-3 py-2 text-center text-sm font-semibold text-foreground">
-              {stat.value}
-            </span>
-            <span className={`rounded-xl px-3 py-2 text-sm font-medium ${stat.bg} ${stat.color}`}>
-              {stat.label}
-            </span>
-          </div>
-        ))}
+        {stats.map((stat) => {
+          const statPercent = set.items > 0 ? Math.max(0, Math.min(100, (stat.value / set.items) * 100)) : 0
+          return (
+            <div key={stat.label} className="grid grid-cols-[54px_1fr] items-center gap-3">
+              <span className="rounded-xl border border-border bg-background px-3 py-2 text-center text-sm font-semibold text-foreground">
+                {stat.value}
+              </span>
+              <span
+                className={`justify-self-start whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-all duration-500 ${stat.bg} ${stat.color}`}
+                style={{ width: statPercent > 0 ? `${statPercent}%` : undefined, minWidth: 'fit-content' }}
+              >
+                {stat.label}
+              </span>
+            </div>
+          )
+        })}
         <div className="mt-1 flex items-center justify-between px-1 text-xs text-muted-foreground">
           <span>{set.items} items</span>
           <span>{completionProgress}% completed</span>
