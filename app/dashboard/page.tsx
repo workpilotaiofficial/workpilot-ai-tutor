@@ -285,7 +285,7 @@ export default function DashboardIndexPage() {
                       id: item.id,
                       title: item.title,
                       meta: `${item.module_count} modules · ${item.percentage_completed}% complete`,
-                      href: '/dashboard/syllabus-intelligence',
+                      href: `/dashboard/syllabus-intelligence?id=${item.id}`,
                     })) ?? [],
                   },
                   {

@@ -326,7 +326,7 @@ export default function SyllabusIntelligenceContent() {
   }, [])
 
   const openResult = useCallback(
-    async (resultId: string) => {
+    async (resultId: string, updateUrl = true) => {
       setErrorMessage('')
 
       try {
@@ -341,7 +341,10 @@ export default function SyllabusIntelligenceContent() {
         }
 
         setActiveResult(normalized)
-        router.push(`?id=${resultId}`)
+
+        if (updateUrl) {
+          router.push(`?id=${resultId}`)
+        }
       } catch (error) {
         console.error(
           'Error fetching syllabus detail:',
@@ -394,7 +397,7 @@ export default function SyllabusIntelligenceContent() {
     }
 
     if (activeResult?.id !== resultIdParam) {
-      void openResult(resultIdParam)
+      void openResult(resultIdParam, false)
     }
   }, [activeResult, openResult, resultIdParam])
 

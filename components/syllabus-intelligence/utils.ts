@@ -3,28 +3,50 @@
 export type PriorityLevel = 'High' | 'Medium' | 'Low'
 
 export type SyllabusModule = {
+  id: string
+  moduleNumber: number | null
+  weekNumber: number | null
   title: string
+  description: string | null
+  priority: PriorityLevel
   topics: string[]
+  readings: string[]
+  deliverables: string[]
+  isCompleted: boolean
   estimatedWeeks: number | null
 }
 
 export type SemesterTimelineItem = {
+  id: string
+  weekNumber: number | null
+  weekStartDate: string | null
+  weekEndDate: string | null
   weekRange: string
   focus: string
+  scheduledModules: string[]
   outcomes: string[]
+  studyRecommendations: string[]
+  estimatedStudyHours: number | null
+  isCurrentWeek: boolean
 }
 
 export type PriorityTopic = {
+  id: string
   topic: string
   reason: string
   priority: PriorityLevel
+  examFrequencyScore: number | null
 }
 
 export type CourseworkPlanItem = {
+  id: string
   task: string
+  type: string | null
   when: string
   effort: string
   tips: string
+  weightPercentage: number | null
+  dueDate: string | null
 }
 
 export type SyllabusAnalysisSummary = {
@@ -43,6 +65,14 @@ export type SyllabusAnalysisSummary = {
 export type SyllabusIntelligenceResult = {
   id: string
   title: string
+  courseName: string | null
+  courseCode: string | null
+  institution: string | null
+  instructorName: string | null
+  semesterLabel: string | null
+  semesterStartDate: string | null
+  semesterEndDate: string | null
+  totalWeeks: number | null
   sourceType: string
   originalFilename: string | null
   rawExtractedText: string
@@ -73,6 +103,21 @@ type NormalizedAnalysisPayload = {
 type NormalizedSyllabusPayload = {
   id?: unknown
   title?: unknown
+  courseName?: unknown
+  course_name?: unknown
+  courseCode?: unknown
+  course_code?: unknown
+  institution?: unknown
+  instructorName?: unknown
+  instructor_name?: unknown
+  semesterLabel?: unknown
+  semester_label?: unknown
+  semesterStartDate?: unknown
+  semester_start_date?: unknown
+  semesterEndDate?: unknown
+  semester_end_date?: unknown
+  totalWeeks?: unknown
+  total_weeks?: unknown
   sourceType?: unknown
   originalFilename?: unknown
   rawExtractedText?: unknown
@@ -110,6 +155,19 @@ function normalizeNumber(value: unknown, fallback = 0) {
   return fallback
 }
 
+function normalizeNullableNumber(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
+function normalizeBoolean(value: unknown) {
+  return value === true
+}
+
 function normalizeStringList(value: unknown) {
   if (!Array.isArray(value)) return []
   return value
@@ -132,12 +190,26 @@ function normalizeModuleList(value: unknown): SyllabusModule[] {
       if (!entry || typeof entry !== 'object') return null
       const item = entry as Record<string, unknown>
       const title = normalizeText(item.title, `Module ${index + 1}`)
-      const topics = normalizeStringList(item.topics)
+      const readings = normalizeStringList(item.readings)
+      const learningObjectives = normalizeStringList(item.learningObjectives ?? item.learning_objectives)
+      const topics =
+        (Array.isArray(item.topics) && item.topics.length ? normalizeStringList(item.topics) : null) ??
+        (learningObjectives.length ? learningObjectives : readings)
       const estimatedWeeks = normalizeNumber(item.estimatedWeeks ?? item.estimated_weeks ?? item.weeks, 0)
+      const moduleNumber = normalizeNullableNumber(item.moduleNumber ?? item.module_number ?? index + 1)
+      const weekNumber = normalizeNullableNumber(item.weekNumber ?? item.week_number)
 
       return {
+        id: normalizeText(item.id, `module-${index}`),
+        moduleNumber,
+        weekNumber,
         title,
+        description: normalizeNullableText(item.description),
+        priority: normalizePriority(item.priorityLevel ?? item.priority_level ?? item.priority),
         topics,
+        readings,
+        deliverables: normalizeStringList(item.deliverables),
+        isCompleted: normalizeBoolean(item.isCompleted ?? item.is_completed),
         estimatedWeeks: estimatedWeeks > 0 ? estimatedWeeks : null,
       }
     })
@@ -148,20 +220,43 @@ function normalizeTimelineList(value: unknown): SemesterTimelineItem[] {
   if (!Array.isArray(value)) return []
 
   return value
-    .map((entry) => {
+    .map((entry, index) => {
       if (!entry || typeof entry !== 'object') return null
       const item = entry as Record<string, unknown>
-      const weekRange = normalizeText(item.weekRange ?? item.week_range ?? item.range)
-      const focus = normalizeText(item.focus ?? item.title)
+      const weekNumber = normalizeNullableNumber(item.weekNumber ?? item.week_number)
+      const weekRange = normalizeText(
+        item.weekRange ?? item.week_range ?? item.range ?? (weekNumber !== null ? `Week ${weekNumber}` : ''),
+      )
+      const scheduledModules = normalizeStringList(item.scheduledModules ?? item.scheduled_modules)
+      const focus = normalizeText(
+        item.focus ?? item.title ?? (scheduledModules.length ? scheduledModules.join(', ') : ''),
+      )
 
       if (!weekRange && !focus) {
         return null
       }
 
+      const studyRecommendationsRaw = item.studyRecommendations ?? item.study_recommendations
+      const studyRecommendations = Array.isArray(studyRecommendationsRaw)
+        ? normalizeStringList(studyRecommendationsRaw)
+        : normalizeStringList(
+            typeof studyRecommendationsRaw === 'string' && studyRecommendationsRaw.trim()
+              ? [studyRecommendationsRaw]
+              : [],
+          )
+
       return {
+        id: normalizeText(item.id, `timeline-${index}`),
+        weekNumber,
+        weekStartDate: normalizeNullableText(item.weekStartDate ?? item.week_start_date),
+        weekEndDate: normalizeNullableText(item.weekEndDate ?? item.week_end_date),
         weekRange: weekRange || 'Timeline item',
         focus: focus || 'No focus provided',
-        outcomes: normalizeStringList(item.outcomes),
+        scheduledModules,
+        outcomes: normalizeStringList(item.outcomes ?? item.scheduledDeliverables ?? item.scheduled_deliverables),
+        studyRecommendations,
+        estimatedStudyHours: normalizeNullableNumber(item.estimatedStudyHours ?? item.estimated_study_hours),
+        isCurrentWeek: normalizeBoolean(item.isCurrentWeek ?? item.is_current_week),
       }
     })
     .filter((entry): entry is SemesterTimelineItem => Boolean(entry))
@@ -171,19 +266,21 @@ function normalizePriorityList(value: unknown): PriorityTopic[] {
   if (!Array.isArray(value)) return []
 
   return value
-    .map((entry) => {
+    .map((entry, index) => {
       if (!entry || typeof entry !== 'object') return null
       const item = entry as Record<string, unknown>
-      const topic = normalizeText(item.topic ?? item.title ?? item.name)
+      const topic = normalizeText(item.topic ?? item.title ?? item.name ?? item.topicName ?? item.topic_name)
 
       if (!topic) {
         return null
       }
 
       return {
+        id: normalizeText(item.id, `priority-${index}`),
         topic,
         reason: normalizeText(item.reason ?? item.description),
-        priority: normalizePriority(item.priority ?? item.level),
+        priority: normalizePriority(item.priority ?? item.level ?? item.priorityLevel ?? item.priority_level),
+        examFrequencyScore: normalizeNullableNumber(item.examFrequencyScore ?? item.exam_frequency_score),
       }
     })
     .filter((entry): entry is PriorityTopic => Boolean(entry))
@@ -193,7 +290,7 @@ function normalizeCourseworkList(value: unknown): CourseworkPlanItem[] {
   if (!Array.isArray(value)) return []
 
   return value
-    .map((entry) => {
+    .map((entry, index) => {
       if (!entry || typeof entry !== 'object') return null
       const item = entry as Record<string, unknown>
       const task = normalizeText(item.task ?? item.title ?? item.name)
@@ -203,10 +300,14 @@ function normalizeCourseworkList(value: unknown): CourseworkPlanItem[] {
       }
 
       return {
+        id: normalizeText(item.id, `coursework-${index}`),
         task,
-        when: normalizeText(item.when ?? item.timing),
+        type: normalizeNullableText(item.courseworkType ?? item.coursework_type),
+        when: normalizeText(item.when ?? item.timing ?? item.weekDue ?? item.week_due),
         effort: normalizeText(item.effort ?? item.load),
         tips: normalizeText(item.tips ?? item.description),
+        weightPercentage: normalizeNullableNumber(item.weightPercentage ?? item.weight_percentage),
+        dueDate: normalizeNullableText(item.dueDate ?? item.due_date),
       }
     })
     .filter((entry): entry is CourseworkPlanItem => Boolean(entry))
@@ -247,6 +348,14 @@ export function mapSyllabusDetailToResult(payload: unknown): SyllabusIntelligenc
   return {
     id,
     title: normalizeText(source.title, 'Untitled Syllabus'),
+    courseName: normalizeNullableText(source.courseName ?? source.course_name),
+    courseCode: normalizeNullableText(source.courseCode ?? source.course_code),
+    institution: normalizeNullableText(source.institution),
+    instructorName: normalizeNullableText(source.instructorName ?? source.instructor_name),
+    semesterLabel: normalizeNullableText(source.semesterLabel ?? source.semester_label),
+    semesterStartDate: normalizeNullableText(source.semesterStartDate ?? source.semester_start_date),
+    semesterEndDate: normalizeNullableText(source.semesterEndDate ?? source.semester_end_date),
+    totalWeeks: normalizeNullableNumber(source.totalWeeks ?? source.total_weeks),
     sourceType: normalizeText(source.sourceType, 'unknown'),
     originalFilename: normalizeNullableText(source.originalFilename),
     rawExtractedText,
