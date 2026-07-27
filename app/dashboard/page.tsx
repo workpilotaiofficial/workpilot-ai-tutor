@@ -163,7 +163,7 @@ export default function DashboardIndexPage() {
             month: 'short',
             day: 'numeric',
           }).format(new Date(studySet.created_at)),
-          score: Math.min(100, Math.max(0, studySet.percentage_completed)),
+          score: Math.round(Math.min(100, Math.max(0, studySet.percentage_completed))),
         })),
     [studySetHistory],
   )

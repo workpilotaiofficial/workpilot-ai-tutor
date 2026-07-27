@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { LoaderCircle, Send, Sparkles } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { NotesEditor } from '@/components/study-sets/NotesEditor'
 import type { StudySet } from '@/components/study-sets/utils'
@@ -19,6 +21,46 @@ import { getApiClientErrorMessage } from '@/lib/api/client'
 
 function getConversationStorageKey(studySetId: string) {
   return `neurova:study-set-chat:${studySetId}`
+}
+
+function AssistantMessageContent({ text }: { text: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => (
+          <p className="mb-2 whitespace-pre-wrap last:mb-0">{children}</p>
+        ),
+        strong: ({ children }) => (
+          <strong className="font-semibold">{children}</strong>
+        ),
+        ul: ({ children }) => (
+          <ul className="my-2 list-disc space-y-1 pl-5">{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="my-2 list-decimal space-y-1 pl-5">{children}</ol>
+        ),
+        li: ({ children }) => <li>{children}</li>,
+        code: ({ children }) => (
+          <code className="rounded bg-background/70 px-1 py-0.5 text-[0.85em]">
+            {children}
+          </code>
+        ),
+        a: ({ children, href }) => (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium underline underline-offset-2"
+          >
+            {children}
+          </a>
+        ),
+      }}
+    >
+      {text}
+    </ReactMarkdown>
+  )
 }
 
 function ChatTab({
@@ -201,9 +243,13 @@ function ChatTab({
                 message.role === 'user'
                   ? 'ml-auto bg-primary text-primary-foreground'
                   : 'bg-secondary text-foreground'
-              } whitespace-pre-wrap`}
+              }`}
             >
-              {message.text}
+              {message.role === 'assistant' ? (
+                <AssistantMessageContent text={message.text} />
+              ) : (
+                <span className="whitespace-pre-wrap">{message.text}</span>
+              )}
             </div>
           ))
         )}
