@@ -17,7 +17,7 @@ export default function ContactPage() {
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.05)] sm:p-9">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Mail className="h-5 w-5" /></div>
           <h2 className="mt-6 text-2xl font-semibold tracking-tight text-slate-950">Email our support team</h2>
-          <p className="mt-3 leading-7 text-slate-600">For the fastest help, email us from the address connected to your WorkPilot account and include the feature you were using, what happened, and any relevant error message.</p>
+          <p className="mt-3 leading-7 text-slate-600">For the fastest help, email us from the address connected to your Neurova account and include the feature you were using, what happened, and any relevant error message.</p>
           <a href={`mailto:${SUPPORT_EMAIL}?subject=Neurova support request`} className="mt-7 inline-flex rounded-full bg-gradient-to-r from-button to-thirdary px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5">{SUPPORT_EMAIL}</a>
           <div className="mt-8 flex items-start gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
             <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -35,7 +35,7 @@ export default function ContactPage() {
             </div>
           ))}
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
-            <strong>Keep your account secure.</strong> WorkPilot support will never ask for your password, full payment-card number, or authentication code.
+            <strong>Keep your account secure.</strong> Neurova support will never ask for your password, full payment-card number, or authentication code.
           </div>
         </aside>
       </div>

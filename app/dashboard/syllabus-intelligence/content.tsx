@@ -326,7 +326,7 @@ export default function SyllabusIntelligenceContent() {
   }, [])
 
   const openResult = useCallback(
-    async (resultId: string) => {
+    async (resultId: string, updateUrl = true) => {
       setErrorMessage('')
 
       try {
@@ -341,7 +341,10 @@ export default function SyllabusIntelligenceContent() {
         }
 
         setActiveResult(normalized)
-        router.push(`?id=${resultId}`)
+
+        if (updateUrl) {
+          router.push(`?id=${resultId}`)
+        }
       } catch (error) {
         console.error(
           'Error fetching syllabus detail:',
@@ -394,7 +397,7 @@ export default function SyllabusIntelligenceContent() {
     }
 
     if (activeResult?.id !== resultIdParam) {
-      void openResult(resultIdParam)
+      void openResult(resultIdParam, false)
     }
   }, [activeResult, openResult, resultIdParam])
 
@@ -843,7 +846,7 @@ export default function SyllabusIntelligenceContent() {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-3">
                                   <p className="truncate text-lg font-semibold text-foreground">
-                                    {result.title}
+                                    {result.title ?? result.description}
                                   </p>
 
                                   <motion.span
@@ -862,7 +865,7 @@ export default function SyllabusIntelligenceContent() {
                                   </motion.span>
                                 </div>
 
-                                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                {/* <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                                   <motion.span
                                     className="rounded-full border border-border bg-background px-2.5 py-1 font-medium text-muted-foreground"
                                     whileHover={{
@@ -884,10 +887,10 @@ export default function SyllabusIntelligenceContent() {
                                       .length ?? 0}{' '}
                                     objectives
                                   </motion.span>
-                                </div>
+                                </div> */}
 
                                 <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
-                                  {result.analysis?.courseSummary ??
+                                  {result.analysis?.courseSummary ?? result?.description ??
                                     'No AI summary available yet.'}
                                 </p>
                               </div>

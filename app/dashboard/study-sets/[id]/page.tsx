@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Trash2 } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Headphones, Loader2, Trash2 } from 'lucide-react'
 import { normalizeStudySetResponse, type StudySet } from '@/components/study-sets/utils'
 import { ItemSidePanel } from '@/components/study-sets/ItemSidePanel'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
@@ -31,8 +31,10 @@ import {
 import {
   type StudySetUiSectionType,
   toUiSectionType,
+  uiSectionTypeLabels,
   uiToBackendGenerationType,
 } from '@/components/study-sets/generation-mapping'
+import { studySetFormatOptionMap } from '@/components/study-sets/format-catalog'
 import {
   getStudySetGenerationMetaByStudySetId,
   type StoredStudySetGenerationMeta,
@@ -43,7 +45,7 @@ import {
 } from '@/components/study-sets/generation-tracker'
 import { getApiClientErrorMessage } from '@/lib/api/client'
 import { toast } from '@/hooks/use-toast'
-import { NotesEditor } from '@/components/study-sets/NotesEditor'
+import { NotesEditor, type NotesEditorContent } from '@/components/study-sets/NotesEditor'
 import { StudySetOverview } from './overview'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -490,6 +492,15 @@ export default function StudySetDetailPage({
     [studySet, activeSectionType],
   )
 
+  const readySections = useMemo(() => {
+    if (!studySet) return []
+    return studySet.sections.filter((section) => {
+      if (!(section.type in uiSectionTypeLabels)) return false
+      const status = section.status?.toLowerCase()
+      return !status || status === 'completed' || status === 'ready'
+    })
+  }, [studySet])
+
   const activeItem =
     activeSection && Array.isArray(activeSection.items)
       ? activeSection.items[currentItemIndex] ?? activeSection.items[0]
@@ -741,55 +752,88 @@ export default function StudySetDetailPage({
   }
 
   const notesSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const latestNotesHtmlRef = useRef('')
+  const pendingNotesSaveRef = useRef<NotesEditorContent | null>(null)
+  const notesSaveQueueRef = useRef<Promise<void>>(Promise.resolve())
 
-  const handleNotesChange = (html: string) => {
-    latestNotesHtmlRef.current = html
-    setStudySet((current) => {
-      if (!current) return current
-      if ((current.notesHtml ?? '') === html) return current
-
-      return {
-        ...current,
-        notesHtml: html,
-        updatedAt: new Date().toISOString(),
-      }
-    })
-  }
-
-  const handleNotesJSONChange = (json: Record<string, unknown>) => {
+  const persistNotes = useCallback((content: NotesEditorContent) => {
     if (!id) return
-    if (notesSaveTimeoutRef.current) clearTimeout(notesSaveTimeoutRef.current)
 
-    notesSaveTimeoutRef.current = setTimeout(() => {
-      const plainText =
-        typeof window !== 'undefined'
-          ? (() => {
-              const container = document.createElement('div')
-              container.innerHTML = latestNotesHtmlRef.current
-              return container.innerText.trim()
-            })()
-          : undefined
+    notesSaveQueueRef.current = notesSaveQueueRef.current.then(async () => {
+      try {
+        const response = await updateStudySetNotes(id, {
+          markdownContent: content.markdown,
+          richTextContent: content.json as Record<string, unknown>,
+          plainTextContent: content.plainText,
+        })
 
-      void updateStudySetNotes(id, {
-        richTextContent: json,
-        plainTextContent: plainText,
-      }).catch((error) => {
+        if (pendingNotesSaveRef.current === content) {
+          pendingNotesSaveRef.current = null
+        }
+
+        const updatedAt = response?.notes?.updated_at
+        if (!updatedAt) return
+
+        setStudySet((current) =>
+          current
+            ? {
+                ...current,
+                updatedAt,
+              }
+            : current,
+        )
+      } catch (error) {
         console.error('Failed to save notes:', error)
         toast({
           title: 'Failed to save notes',
           description: getApiClientErrorMessage(error, 'Your latest edits could not be saved. Please try again.'),
           variant: 'destructive',
         })
-      })
+      }
+    })
+  }, [id])
+
+  const handleNotesChange = (content: NotesEditorContent) => {
+    pendingNotesSaveRef.current = content
+
+    setStudySet((current) => {
+      if (!current) return current
+
+      return {
+        ...current,
+        notesHtml: content.html,
+        notesMarkdown: content.markdown,
+        sections: current.sections.map((section) =>
+          section.type === 'notes'
+            ? {
+                ...section,
+                format: 'markdown',
+                content: content.markdown,
+              }
+            : section,
+        ),
+        updatedAt: new Date().toISOString(),
+      }
+    })
+
+    if (notesSaveTimeoutRef.current) clearTimeout(notesSaveTimeoutRef.current)
+
+    notesSaveTimeoutRef.current = setTimeout(() => {
+      notesSaveTimeoutRef.current = null
+      persistNotes(content)
     }, 1000)
   }
 
   useEffect(() => {
     return () => {
-      if (notesSaveTimeoutRef.current) clearTimeout(notesSaveTimeoutRef.current)
+      if (!notesSaveTimeoutRef.current) return
+
+      clearTimeout(notesSaveTimeoutRef.current)
+      notesSaveTimeoutRef.current = null
+
+      const pendingSave = pendingNotesSaveRef.current
+      if (pendingSave) persistNotes(pendingSave)
     }
-  }, [])
+  }, [persistNotes])
 
   const handleOpenSection = (sectionType: string) => {
     router.push(`/dashboard/study-sets/${id}?mode=${sectionType}`)
@@ -832,9 +876,9 @@ export default function StudySetDetailPage({
       types: nextTypes.map((type) => uiToBackendGenerationType[type]),
     })
 
-    if (response.study_set_id !== id) {
+    if (response.study_set_id.trim().toLowerCase() !== id.trim().toLowerCase()) {
       throw new Error(
-        'The generated content could not be attached to this study set. Please try again later.',
+        `The generated content could not be attached to this study set (expected ${id}, got ${response.study_set_id}). Please try again later.`,
       )
     }
 
@@ -1542,14 +1586,13 @@ export default function StudySetDetailPage({
   const renderNotesWorkspace = () => {
     return (
       <div className="flex h-full flex-col overflow-hidden bg-background shadow-sm">
-        <div className="flex flex-col gap-4 h-[calc(100vh-70px)] overflow-y-scroll  ">
+        <ScrollArea className="flex flex-col gap-4 h-[calc(100vh-70px)]  no-scrollbar">
           <NotesEditor
             value={studySet?.notesHtml}
             notesMarkdown={studySet?.notesMarkdown}
-            onChange={handleNotesChange}
-            onJSONChange={handleNotesJSONChange}
+            onContentChange={handleNotesChange}
           />
-        </div>
+        </ScrollArea>
       </div>
     )
   }

@@ -244,7 +244,7 @@ export default function LoginPage() {
                   <div className="relative h-full w-full overflow-hidden rounded-[18px] bg-white/95">
                     <Image
                       src="/demo-1.png"
-                      alt="WorkPilot study workspace"
+                      alt="Neurova study workspace"
                       fill
                       priority
                       sizes="(min-width: 1024px) 48vw, 0px"
@@ -288,7 +288,7 @@ export default function LoginPage() {
                 <Link href="/" className="inline-flex items-center">
                   <Image
                     src="/logo.png"
-                    alt="WorkPilot"
+                    alt="Neurova"
                     width={20}
                     height={58}
                     className="h-auto w-[180px] sm:w-[210px]"

@@ -63,9 +63,11 @@ export function GenerateMoreModal({
       await onGenerate(selectedTypes)
       onOpenChange(false)
     } catch (error) {
-      setErrorMessage(
-        getApiClientErrorMessage(error, 'Failed to start generation. Please try again.'),
-      )
+      const message =
+        getApiClientErrorMessage(error, '') ||
+        (error instanceof Error ? error.message : '') ||
+        'Failed to start generation. Please try again.'
+      setErrorMessage(message)
     } finally {
       setIsSubmitting(false)
     }
