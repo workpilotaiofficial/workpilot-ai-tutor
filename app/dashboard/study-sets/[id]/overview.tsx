@@ -220,87 +220,78 @@ export function StudySetOverview({
     : 'Generate more is unavailable for this study set because its source information could not be found.'
 
   return (
-    <div className="space-y-8">
+    <div className="study-set-overview min-w-0 space-y-8">
       {/* Header Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-white  backdrop:blur-lg shadow-2xl shadow-primary/30 to-primary/10 border border-primary/20 p-8 sm:p-10">
+      <div className="study-set-overview__hero relative overflow-hidden rounded-3xl bg-linear-to-br from-white backdrop:blur-lg shadow-2xl shadow-primary/30 to-primary/10 border border-primary/20">
         <div className="absolute inset-0 opacity-[0.02]">
           <div className="absolute -top-40 right-0 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl"></div>
         </div>
 
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
-          <div className="flex-1">
-            <div className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-linear-to-r from-blue-100/60 to-purple-100/60 border border-blue-200/40 backdrop-blur-sm">
-              <span className="text-xs font-bold text-blue-700 tracking-wide">GENERATED STUDY SET</span>
+        <div className="study-set-overview__hero-content relative flex min-w-0 flex-col gap-8">
+          <div className="min-w-0 flex-1">
+            <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-linear-to-r from-blue-100/60 to-purple-100/60 border border-blue-200/40 backdrop-blur-sm">
+              <span className="text-xs font-bold text-primary tracking-wide">STUDY SET</span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 leading-tight">{studySet.title}</h1>
-            <div className="flex flex-wrap gap-6 text-sm text-slate-600">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-blue-100/60 rounded-lg">
-                  <BookOpen className="w-4 h-4 text-blue-600" />
-                </div>
-                <span className="font-semibold">{selections.length} study formats</span>
-              </div>
-              <div className="flex items-center gap-3">
-               
-                <span className="font-semibold">Ready to learn</span>
-              </div>
-            </div>
+            <h1 className="study-set-overview__title capitalize mb-4 break-words text-3xl font-black leading-tight text-slate-900">{studySet.title}</h1>
+          
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-8 shrink-0">
-            <div className="flex flex-col items-center gap-3">
-              <div className="relative w-28 h-28">
-                <svg className="w-28 h-28" viewBox="0 0 100 100">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="text-slate-200"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="var(--primary)"
-                    strokeWidth="3"
-                    strokeDasharray={`${(masteryPercentage / 100) * 282.7} 282.7`}
-                    className="transition-all"
-                    strokeLinecap="round"
-                    style={{
-                      transform: 'rotate(-90deg)',
-                      transformOrigin: '50% 50%'
-                    }}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center flex-col">
-                  <span className="text-3xl font-black text-blue-700">{masteryPercentage}%</span>
-                  <span className="text-xs text-slate-600 font-bold mt-1">MASTERY</span>
-                </div>
-              </div>
+          <div className="study-set-overview__actions flex shrink-0 flex-col items-center gap-4">
+            <div className=' flex flex-col gap-2'>
               <button
-                onClick={() => setShowProgressModal(true)}
-                className="px-4 py-2 text-sm font-bold text-blue-700 bg-blue-100/60 hover:bg-blue-100 border border-blue-200/40 rounded-xl transition-colors"
-              >
-                View progress
-              </button>
-            </div>
-
-            <button
               onClick={() => {
                 const firstSection = selections[0]
                 if (firstSection) {
                   onOpenSection(firstSection)
                 }
               }}
-              className="px-8 py-4 bg-linear-to-r from-primary to-thirdary text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-600/40 transition-all duration-300 whitespace-nowrap hover:scale-105 active:scale-95"
+              className="px-8 py-3 bg-linear-to-r from-primary to-thirdary text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-600/40 transition-all duration-300 whitespace-nowrap hover:scale-105 active:scale-95"
             >
               Start Learning
             </button>
+             
+              <button
+                onClick={() => setShowProgressModal(true)}
+                className="px-8 py-3 text-sm font-bold text-primary bg-blue-100/60 hover:bg-blue-100 border border-blue-200/40 rounded-xl transition-colors"
+              >
+                View progress
+              </button>
+            </div>
+     
+       
+            <div className="relative w-28 h-28">
+              <svg className="w-28 h-28" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-slate-200"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="var(--primary)"
+                  strokeWidth="3"
+                  strokeDasharray={`${(masteryPercentage / 100) * 282.7} 282.7`}
+                  className="transition-all"
+                  strokeLinecap="round"
+                  style={{
+                    transform: 'rotate(-90deg)',
+                    transformOrigin: '50% 50%'
+                  }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center flex-col">
+                <span className="text-3xl font-black text-primary">{masteryPercentage}%</span>
+                <span className="text-xs text-slate-600 font-bold mt-1">MASTERY</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -410,93 +401,95 @@ export function StudySetOverview({
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {selections.map((sectionType) => {
-            const status = getCardStatus(sectionType, studySet, generationMeta)
-            const Icon = getSectionIcon(sectionType)
-            const label = uiSectionTypeLabels[sectionType] || sectionType
-            const description = getSectionDescription(sectionType)
-            const itemCount = getItemCount(sectionType, studySet)
-            const isReady = status === 'ready'
-            const isFailed = status === 'failed'
-            const isGenerating = status === 'generating' || status === 'fetching'
+        <div className="@container/generated-cards">
+          <div className="grid grid-cols-1 gap-5 @xl/generated-cards:grid-cols-2 @4xl/generated-cards:grid-cols-3">
+            {selections.map((sectionType) => {
+              const status = getCardStatus(sectionType, studySet, generationMeta)
+              const Icon = getSectionIcon(sectionType)
+              const label = uiSectionTypeLabels[sectionType] || sectionType
+              const description = getSectionDescription(sectionType)
+              const itemCount = getItemCount(sectionType, studySet)
+              const isReady = status === 'ready'
+              const isFailed = status === 'failed'
+              const isGenerating = status === 'generating' || status === 'fetching'
 
-            let cardClasses = 'rounded-2xl border p-6 transition-all duration-300 animate-in fade-in-0 zoom-in-95 relative group'
+              let cardClasses = 'group relative h-fit min-w-0 rounded-2xl border p-4 transition-all duration-300 animate-in fade-in-0 zoom-in-95 @2xl/generated-cards:p-5'
 
-            if (isReady) {
-              cardClasses += ' border-blue-200/40 bg-white hover:border-blue-300/60 hover:shadow-lg hover:shadow-blue-200/20 hover:bg-blue-50/20 cursor-pointer'
-            } else if (isFailed) {
-              cardClasses += ' border-red-200/60 bg-white'
-            } else {
-              cardClasses += ' border-slate-200 bg-slate-50 cursor-not-allowed opacity-60'
-            }
+              if (isReady) {
+                cardClasses += ' border-blue-200/40 bg-white hover:border-blue-300/60 hover:shadow-lg hover:shadow-blue-200/20 hover:bg-blue-50/20 cursor-pointer'
+              } else if (isFailed) {
+                cardClasses += ' border-red-200/60 bg-white'
+              } else {
+                cardClasses += ' border-slate-200 bg-slate-50 cursor-not-allowed opacity-60'
+              }
 
-            return (
-              <div key={sectionType} className={cardClasses}>
-                <button
-                  onClick={() => isReady && onOpenSection(sectionType)}
-                  disabled={!isReady}
-                  className="w-full text-left"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    {/* Left side: Icon + Text */}
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className={`rounded-xl p-3 w-fit shrink-0 flex items-center justify-center ${
-                        isReady
-                          ? 'bg-blue-100/60 text-blue-600'
-                          : isFailed
-                            ? 'bg-red-100 text-red-600'
-                            : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {isFailed ? (
-                          <AlertCircle className="h-6 w-6" />
-                        ) : isGenerating ? (
-                          <LoaderCircle className="h-6 w-6 animate-spin text-blue-600" />
-                        ) : (
-                          <Icon className="h-6 w-6" />
-                        )}
-                      </div>
-
-                      <div className="text-left">
-                        <p className={`font-bold text-base transition-colors ${isReady ? 'text-slate-900 group-hover:text-blue-600' : 'text-slate-700'}`}>{label}</p>
-                        <p className="text-sm text-slate-600 mt-1">{description}</p>
-                        {isGenerating && (
-                          <p className="mt-2 text-xs font-bold tracking-wide text-blue-600">
-                            {status === 'fetching' ? 'FETCHING CONTENT…' : 'GENERATING…'}
-                          </p>
-                        )}
-                        {itemCount > 0 && (
-                          <p className={`text-xs font-bold mt-2 tracking-wide ${isReady ? 'text-blue-600' : 'text-slate-500'}`}>
-                            {itemCount} {itemCount === 1 ? 'ITEM' : 'ITEMS'}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right side: Arrow */}
-                    {isReady && (
-                      <div className="shrink-0 text-blue-400 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1">
-                        <ChevronRight className="h-6 w-6" />
-                      </div>
-                    )}
-                  </div>
-                </button>
-
-                {isFailed && (
+              return (
+                <div key={sectionType} className={cardClasses}>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onRetrySection?.(sectionType)
-                    }}
-                    className="absolute top-4 right-4 p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                    title="Retry generation for this section"
+                    onClick={() => isReady && onOpenSection(sectionType)}
+                    disabled={!isReady}
+                    className="w-full text-left"
                   >
-                    <RotateCw className="h-5 w-5" />
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      {/* Left side: Icon + Text */}
+                      <div className="flex min-w-0 flex-1 items-start gap-4">
+                        <div className={`rounded-xl p-3 w-fit shrink-0 flex items-center justify-center ${
+                          isReady
+                            ? 'bg-blue-100/60 text-blue-600'
+                            : isFailed
+                              ? 'bg-red-100 text-red-600'
+                              : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {isFailed ? (
+                            <AlertCircle className="h-6 w-6" />
+                          ) : isGenerating ? (
+                            <LoaderCircle className="h-6 w-6 animate-spin text-blue-600" />
+                          ) : (
+                            <Icon className="h-6 w-6" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0 text-left">
+                          <p className={`whitespace-nowrap text-base font-bold transition-colors ${isReady ? 'text-slate-900 group-hover:text-primary' : 'text-slate-700'}`}>{label}</p>
+                          {/* <p className="mt-1 break-words text-sm text-slate-600">{description}</p> */}
+                          {isGenerating && (
+                            <p className="mt-2 text-xs font-bold tracking-wide text-primary">
+                              {status === 'fetching' ? 'FETCHING CONTENT…' : 'GENERATING…'}
+                            </p>
+                          )}
+                          {itemCount > 0 && (
+                            <p className={`text-xs font-bold mt-2 tracking-wide ${isReady ? 'text-primary' : 'text-slate-500'}`}>
+                              {itemCount} {itemCount === 1 ? 'ITEM' : 'ITEMS'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right side: Arrow */}
+                      {isReady && (
+                        <div className="shrink-0 text-primary opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1">
+                          <ChevronRight className="h-6 w-6" />
+                        </div>
+                      )}
+                    </div>
                   </button>
-                )}
-              </div>
-            )
-          })}
+
+                  {isFailed && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onRetrySection?.(sectionType)
+                      }}
+                      className="absolute top-4 right-4 p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                      title="Retry generation for this section"
+                    >
+                      <RotateCw className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
 
           {/* {!allFormatsGenerated ? (
             <button

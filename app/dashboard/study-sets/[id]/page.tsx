@@ -638,7 +638,7 @@ export default function StudySetDetailPage({
       const isCorrect = result
         ? result.isCorrect
         : typeof selectedOption === 'string' &&
-          isCorrectMultipleChoiceOption(item, selectedOption, selectedIdx)
+        isCorrectMultipleChoiceOption(item, selectedOption, selectedIdx)
       if (isCorrect) {
         mastered += 1
       } else {
@@ -776,9 +776,9 @@ export default function StudySetDetailPage({
         setStudySet((current) =>
           current
             ? {
-                ...current,
-                updatedAt,
-              }
+              ...current,
+              updatedAt,
+            }
             : current,
         )
       } catch (error) {
@@ -805,10 +805,10 @@ export default function StudySetDetailPage({
         sections: current.sections.map((section) =>
           section.type === 'notes'
             ? {
-                ...section,
-                format: 'markdown',
-                content: content.markdown,
-              }
+              ...section,
+              format: 'markdown',
+              content: content.markdown,
+            }
             : section,
         ),
         updatedAt: new Date().toISOString(),
@@ -1236,69 +1236,69 @@ export default function StudySetDetailPage({
     const hasReviewed = currentReview !== undefined
 
     return (
-    <div className="space-y-4">
-      <p className="text-sm uppercase tracking-wide text-muted-foreground">Flashcard</p>
+      <div className="space-y-4">
+        <p className="text-sm uppercase tracking-wide text-muted-foreground">Flashcard</p>
 
-      <div className="min-h-[280px]" style={{ perspective: '1200px' }}>
-        <button
-          type="button"
-          onClick={() => setFlashcardFlipped((prev) => !prev)}
-          className="group relative h-[320px] w-full rounded-3xl text-left transition-transform duration-300 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          aria-label={flashcardFlipped ? 'Show prompt side of flashcard' : 'Show answer side of flashcard'}
-        >
-          <div
-            className="relative h-full w-full rounded-3xl border-2 border-primary/40 bg-gradient-to-br from-primary/5 to-primary/10 shadow-sm transition-transform duration-500 [transform-style:preserve-3d]"
-            style={{ transform: flashcardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
-          >
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center [backface-visibility:hidden]">
-              <p className="mb-4 text-xs uppercase tracking-widest text-primary/60">Prompt</p>
-              <p className="text-2xl font-semibold leading-snug text-foreground">
-                {item?.prompt ?? 'Prompt unavailable'}
-              </p>
-              {item?.clue && <p className="mt-4 text-xs text-muted-foreground">{item.clue}</p>}
-            </div>
-
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
-              <p className="mb-4 text-xs uppercase tracking-widest text-primary/60">Answer</p>
-              <p className="text-2xl font-semibold leading-snug text-foreground">
-                {item?.answer ?? 'Answer unavailable'}
-              </p>
-            </div>
-          </div>
-        </button>
-      </div>
-
-      <p className="text-center text-xs text-muted-foreground">
-        Click card to {flashcardFlipped ? 'see prompt again' : 'reveal answer'}
-      </p>
-
-      {flashcardFlipped && !hasReviewed && (
-        <div className="flex items-center justify-center gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+        <div className="min-h-[280px]" style={{ perspective: '1200px' }}>
           <button
             type="button"
-            onClick={() => handleFlashcardReview(item, false)}
-            className="rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-100"
+            onClick={() => setFlashcardFlipped((prev) => !prev)}
+            className="group relative h-[320px] w-full rounded-3xl text-left transition-transform duration-300 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label={flashcardFlipped ? 'Show prompt side of flashcard' : 'Show answer side of flashcard'}
           >
-            I got it wrong
-          </button>
-          <button
-            type="button"
-            onClick={() => handleFlashcardReview(item, true)}
-            className="rounded-xl border border-green-300 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-100"
-          >
-            I got it right
+            <div
+              className="relative h-full w-full rounded-3xl border-2 border-primary/40 bg-gradient-to-br from-primary/5 to-primary/10 shadow-sm transition-transform duration-500 [transform-style:preserve-3d]"
+              style={{ transform: flashcardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+            >
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center [backface-visibility:hidden]">
+                <p className="mb-4 text-xs uppercase tracking-widest text-primary/60">Prompt</p>
+                <p className="text-2xl font-semibold leading-snug text-foreground">
+                  {item?.prompt ?? 'Prompt unavailable'}
+                </p>
+                {item?.clue && <p className="mt-4 text-xs text-muted-foreground">{item.clue}</p>}
+              </div>
+
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                <p className="mb-4 text-xs uppercase tracking-widest text-primary/60">Answer</p>
+                <p className="text-2xl font-semibold leading-snug text-foreground">
+                  {item?.answer ?? 'Answer unavailable'}
+                </p>
+              </div>
+            </div>
           </button>
         </div>
-      )}
 
-      {hasReviewed && (
-        <p
-          className={`text-center text-sm font-semibold ${currentReview ? 'text-green-700' : 'text-red-700'}`}
-        >
-          {currentReview ? 'Marked as correct. Keep it up!' : 'Marked for review. You will see this again.'}
+        <p className="text-center text-xs text-muted-foreground">
+          Click card to {flashcardFlipped ? 'see prompt again' : 'reveal answer'}
         </p>
-      )}
-    </div>
+
+        {flashcardFlipped && !hasReviewed && (
+          <div className="flex items-center justify-center gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+            <button
+              type="button"
+              onClick={() => handleFlashcardReview(item, false)}
+              className="rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-100"
+            >
+              I got it wrong
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFlashcardReview(item, true)}
+              className="rounded-xl border border-green-300 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-100"
+            >
+              I got it right
+            </button>
+          </div>
+        )}
+
+        {hasReviewed && (
+          <p
+            className={`text-center text-sm font-semibold ${currentReview ? 'text-green-700' : 'text-red-700'}`}
+          >
+            {currentReview ? 'Marked as correct. Keep it up!' : 'Marked for review. You will see this again.'}
+          </p>
+        )}
+      </div>
     )
   }
 
@@ -1759,6 +1759,7 @@ export default function StudySetDetailPage({
         </>
       )}
     </section>
+
   )
 
   return (
@@ -1780,10 +1781,43 @@ export default function StudySetDetailPage({
               <ArrowLeft className="h-5 w-5" />
             </button>
 
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 flex gap-10 items-center">
               <h1 className="truncate text-xl font-bold text-foreground ">
                 {studySet.title}
               </h1>
+              {activeModeFromQuery && readySections.length > 1 && (
+                <nav
+                  aria-label="Study modes"
+                  className="z-40"
+                >
+                  <div className="mx-auto flex max-w-[900px] gap-2 overflow-x-auto">
+                    {readySections.map((section) => {
+                      const Icon =
+                        section.type === 'podcast'
+                          ? Headphones
+                          : studySetFormatOptionMap[section.type as StudySetUiSectionType]?.icon ?? BookOpen
+                      const isActive = section.type === activeSectionType
+                      const label = uiSectionTypeLabels[section.type as StudySetUiSectionType] ?? section.type
+
+                      return (
+                        <button
+                          key={section.type}
+                          type="button"
+                          onClick={() => handleOpenSection(section.type)}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${isActive
+                            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                            : 'border-border bg-white text-muted-foreground hover:border-primary/40 hover:text-primary'
+                            }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span>{label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </nav>
+              )}
             </div>
 
             <div className="ml-auto flex items-center gap-6 text-sm text-muted-foreground">
@@ -1805,6 +1839,8 @@ export default function StudySetDetailPage({
             </div>
           </div>
         </header>
+
+   
 
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
@@ -1835,7 +1871,7 @@ export default function StudySetDetailPage({
             {showItemSidePanel ? (
               <ResizablePanelGroup direction="horizontal" autoSaveId="study-item-panel" className="h-full">
                 <ResizablePanel defaultSize={65} minSize={40}>
-                  <ScrollArea className="h-[calc(100vh-70px)]">{studyItemSection}</ScrollArea>
+                  <ScrollArea className="h-[calc(100vh-70px)] pt-4">{studyItemSection}</ScrollArea>
                 </ResizablePanel>
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize={35} minSize={22} maxSize={55}>
@@ -1847,8 +1883,10 @@ export default function StudySetDetailPage({
             ) : (
               studyItemSection
             )}
+  
           </div>
         </div>
+
       </div>
     </div>
   )

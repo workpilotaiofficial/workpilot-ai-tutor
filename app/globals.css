@@ -181,6 +181,69 @@ html.lenis body {
   }
 }
 
+/*
+ * The study-set overview can live inside a draggable split panel. Viewport
+ * breakpoints do not react when that panel is resized, so its layout is driven
+ * by the panel's actual inline size instead.
+ */
+.study-set-overview {
+  container-name: study-overview;
+  container-type: inline-size;
+}
+
+.study-set-overview__hero {
+  padding: 1.5rem;
+}
+
+.study-set-overview__formats-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.study-set-overview__format-card {
+  min-width: 0;
+  width: 100%;
+}
+
+@container study-overview (min-width: 36rem) {
+  .study-set-overview__hero {
+    padding: 2rem;
+  }
+
+  .study-set-overview__actions {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .study-set-overview__formats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container study-overview (min-width: 52rem) {
+  .study-set-overview__hero {
+    padding: 2.5rem;
+  }
+
+  .study-set-overview__hero-content {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .study-set-overview__title {
+    font-size: 2.25rem;
+  }
+}
+
+@container study-overview (min-width: 56rem) {
+  .study-set-overview__formats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-md bg-gradient-to-r from-button to-thirdary  px-6 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(12,20,121,0.28)] transition-transform duration-300 hover:-translate-y-1;

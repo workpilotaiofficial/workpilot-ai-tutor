@@ -131,7 +131,7 @@ function NotesTab({ notesMarkdown }: { notesMarkdown?: string }) {
 export function ItemSidePanel({ studySet }: { studySet: StudySet }) {
   return (
     <Tabs defaultValue="chat" className="h-[calc(100vh-70px)] gap-0 bg-card ">
-      <TabsList className="m-3 mb-0">
+      <TabsList className="m-3 mb-0 !w-full !m-0 !rounded-0">
         <TabsTrigger value="chat">Chat</TabsTrigger>
         <TabsTrigger value="content">Content</TabsTrigger>
         <TabsTrigger value="notes">Notes</TabsTrigger>
