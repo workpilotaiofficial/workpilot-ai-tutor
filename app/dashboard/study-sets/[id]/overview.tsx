@@ -430,9 +430,9 @@ export function StudySetOverview({
                     disabled={!isReady}
                     className="w-full text-left"
                   >
-                    <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center justify-between gap-3">
                       {/* Left side: Icon + Text */}
-                      <div className="flex min-w-0 flex-1 items-start gap-4">
+                      <div className="flex min-w-0 flex-1 items-center gap-4">
                         <div className={`rounded-xl p-3 w-fit shrink-0 flex items-center justify-center ${
                           isReady
                             ? 'bg-blue-100/60 text-blue-600'
