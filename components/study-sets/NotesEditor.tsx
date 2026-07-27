@@ -9,14 +9,8 @@ import { BubbleMenu } from '@tiptap/react/menus'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Highlight from '@tiptap/extension-highlight'
+import { Markdown } from '@tiptap/markdown'
 import { JSONContent } from '@tiptap/core'
-import { unified } from 'unified'
-import remarkParse from 'remark-parse'
-import remarkGfm from 'remark-gfm'
-import remarkRehype from 'remark-rehype'
-import rehypeSanitize from 'rehype-sanitize'
-import rehypeHighlight from 'rehype-highlight'
-import rehypeStringify from 'rehype-stringify'
 import {
     Bold,
     Code2,
@@ -35,10 +29,18 @@ import {
 
 export type RichNotesEditorRef = {
     getHTML: () => string
+    getMarkdown: () => string
     getJSON: () => JSONContent | null
     setHTML: (html: string) => void
     focus: () => void
     clear: () => void
+}
+
+export type NotesEditorContent = {
+    html: string
+    markdown: string
+    plainText: string
+    json: JSONContent
 }
 
 type RichNotesEditorProps = {
@@ -60,6 +62,11 @@ type RichNotesEditorProps = {
     onChange?: (html: string) => void
 
     /**
+     * Fires once per update with every representation needed by the notes API.
+     */
+    onContentChange?: (content: NotesEditorContent) => void
+
+    /**
      * Fires on every content update with TipTap JSON
      */
     onJSONChange?: (json: JSONContent) => void
@@ -69,6 +76,7 @@ type RichNotesEditorProps = {
      */
     onReady?: (payload: {
         getHTML: () => string
+        getMarkdown: () => string
         getJSON: () => JSONContent | null
         focus: () => void
     }) => void
@@ -98,25 +106,6 @@ function normalizeMarkdown(markdown: string) {
         })
 
     return cleanedLines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
-}
-
-function buildMarkdownHtml(markdown: string) {
-    const normalized = normalizeMarkdown(markdown)
-    if (!normalized) {
-        return ''
-    }
-
-    const rendered = unified()
-        .use(remarkParse)
-        .use(remarkGfm)
-        .use(remarkRehype)
-        .use(rehypeSanitize)
-        .use(rehypeHighlight)
-        .use(rehypeStringify)
-        .processSync(normalized)
-        .toString()
-
-    return `<div class="rich-note-document markdown-note-document">${rendered}</div>`
 }
 
 function ToolbarButton({
@@ -159,6 +148,7 @@ export const NotesEditor = forwardRef<
         value,
         defaultValue,
         onChange,
+        onContentChange,
         onJSONChange,
         onReady,
         editable = true,
@@ -170,14 +160,16 @@ export const NotesEditor = forwardRef<
     },
     ref,
 ) {
-    const generatedHtml = useMemo(() => {
+    const generatedMarkdown = useMemo(() => {
         if (typeof notesMarkdown === 'string' && notesMarkdown.trim()) {
-            return buildMarkdownHtml(notesMarkdown)
+            return normalizeMarkdown(notesMarkdown)
         }
         return ''
     }, [notesMarkdown])
 
-    const initialContent = value ?? defaultValue ?? generatedHtml
+    const initialContent = value ?? defaultValue ?? generatedMarkdown
+    const initialContentType =
+        value !== undefined || defaultValue !== undefined ? 'html' : 'markdown'
 
     const editor = useEditor({
         extensions: [
@@ -195,11 +187,13 @@ export const NotesEditor = forwardRef<
                 },
             }),
             Highlight,
+            Markdown,
             Placeholder.configure({
                 placeholder,
             }),
         ],
         content: initialContent,
+        contentType: initialContentType,
         editable,
         immediatelyRender: false,
         editorProps: {
@@ -237,8 +231,17 @@ export const NotesEditor = forwardRef<
             },
         },
         onUpdate: ({ editor }) => {
-            onChange?.(editor.getHTML())
-            onJSONChange?.(editor.getJSON())
+            const html = editor.getHTML()
+            const json = editor.getJSON()
+
+            onChange?.(html)
+            onJSONChange?.(json)
+            onContentChange?.({
+                html,
+                markdown: editor.getMarkdown(),
+                plainText: editor.getText().trim(),
+                json,
+            })
         },
     })
 
@@ -257,20 +260,32 @@ export const NotesEditor = forwardRef<
 
     useEffect(() => {
         if (!editor || value !== undefined) return
-        if (!defaultValue && !generatedHtml) return
+        if (!defaultValue && !generatedMarkdown) return
 
-        const current = editor.getHTML()
-        const next = defaultValue ?? generatedHtml
-        if (next && current !== next) {
-            editor.commands.setContent(next, { emitUpdate: false })
+        if (defaultValue) {
+            if (editor.getHTML() !== defaultValue) {
+                editor.commands.setContent(defaultValue, {
+                    emitUpdate: false,
+                    contentType: 'html',
+                })
+            }
+            return
         }
-    }, [editor, defaultValue, generatedHtml, value])
+
+        if (editor.getMarkdown() !== generatedMarkdown) {
+            editor.commands.setContent(generatedMarkdown, {
+                emitUpdate: false,
+                contentType: 'markdown',
+            })
+        }
+    }, [editor, defaultValue, generatedMarkdown, value])
 
     useEffect(() => {
         if (!editor || !onReady) return
 
         onReady({
             getHTML: () => editor.getHTML(),
+            getMarkdown: () => editor.getMarkdown(),
             getJSON: () => editor.getJSON(),
             focus: () => editor.chain().focus().run(),
         })
@@ -280,6 +295,7 @@ export const NotesEditor = forwardRef<
         ref,
         () => ({
             getHTML: () => editor?.getHTML() ?? '',
+            getMarkdown: () => editor?.getMarkdown() ?? '',
             getJSON: () => editor?.getJSON() ?? null,
             setHTML: (html: string) => {
                 editor?.commands.setContent(html, { emitUpdate: false })
