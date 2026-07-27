@@ -136,17 +136,19 @@ export type StudySetBatchStatusResponse = {
   jobs: StudySetBatchStatusJob[]
 }
 
+export type StudySetNote = {
+  id: string
+  generationStatus: string | null
+  isUserEdited: boolean
+  richTextContent: Record<string, unknown> | null
+  markdownContent: string | null
+  plainTextContent: string | null
+  updatedAt: string | null
+}
+
 export type StudySetNotesResponse = {
-  study_set_id: string
-  notes: {
-    id: string
-    generation_status?: string
-    is_user_edited?: boolean
-    rich_text_content?: Record<string, unknown> | null
-    markdown_content?: string | null
-    plain_text_content?: string | null
-    updated_at?: string
-  }
+  studySetId: string
+  notes: StudySetNote
 }
 
 export type StudySetTutorLessonResponse = {
@@ -616,8 +618,55 @@ async function fetchStudySetOutput<TResponse>(studySetId: string, endpoint: stri
   })
 }
 
-export function fetchStudySetNotes(studySetId: string) {
-  return fetchStudySetOutput<StudySetNotesResponse>(studySetId, 'notes')
+function optionalString(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
+function normalizeStudySetNotesResponse(payload: unknown): StudySetNotesResponse {
+  if (!payload || typeof payload !== 'object') {
+    throw new ApiClientError('Notes response failed: invalid response payload.')
+  }
+
+  const response = payload as Record<string, unknown>
+  const rawNotes =
+    response.notes && typeof response.notes === 'object'
+      ? (response.notes as Record<string, unknown>)
+      : response
+  const studySetId = optionalString(response.study_set_id ?? response.studySetId)
+  const noteId = optionalString(rawNotes.id)
+
+  if (!studySetId || !noteId) {
+    throw new ApiClientError('Notes response failed: missing study set or note id.')
+  }
+
+  const richTextContent = rawNotes.rich_text_content ?? rawNotes.richTextContent
+
+  return {
+    studySetId,
+    notes: {
+      id: noteId,
+      generationStatus: optionalString(
+        rawNotes.generation_status ?? rawNotes.generationStatus,
+      ),
+      isUserEdited: Boolean(rawNotes.is_user_edited ?? rawNotes.isUserEdited),
+      richTextContent:
+        richTextContent && typeof richTextContent === 'object'
+          ? (richTextContent as Record<string, unknown>)
+          : null,
+      markdownContent: optionalString(
+        rawNotes.markdown_content ?? rawNotes.markdownContent,
+      ),
+      plainTextContent: optionalString(
+        rawNotes.plain_text_content ?? rawNotes.plainTextContent,
+      ),
+      updatedAt: optionalString(rawNotes.updated_at ?? rawNotes.updatedAt),
+    },
+  }
+}
+
+export async function fetchStudySetNotes(studySetId: string, signal?: AbortSignal) {
+  const response = await fetchStudySetOutput<unknown>(studySetId, 'notes', signal)
+  return normalizeStudySetNotesResponse(response)
 }
 
 export function fetchStudySetTutorLesson(studySetId: string) {
@@ -744,8 +793,8 @@ export type UpdateStudySetNotesPayload = {
   changeDescription?: string
 }
 
-export function updateStudySetNotes(studySetId: string, payload: UpdateStudySetNotesPayload) {
-  return apiClient.request<StudySetNotesResponse>(`/api/v1/study-sets/${studySetId}/notes`, {
+export async function updateStudySetNotes(studySetId: string, payload: UpdateStudySetNotesPayload) {
+  const response = await apiClient.request<unknown>(`/api/v1/study-sets/${studySetId}/notes`, {
     method: 'PATCH',
     body: {
       ...(payload.richTextContent !== undefined ? { rich_text_content: payload.richTextContent } : {}),
@@ -754,6 +803,8 @@ export function updateStudySetNotes(studySetId: string, payload: UpdateStudySetN
       ...(payload.changeDescription !== undefined ? { change_description: payload.changeDescription } : {}),
     },
   })
+
+  return normalizeStudySetNotesResponse(response)
 }
 
 export function fetchCompletedStudySetOutput(studySetId: string, type: StudySetGenerateType) {

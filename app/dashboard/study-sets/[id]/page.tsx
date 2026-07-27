@@ -15,7 +15,6 @@ import {
   submitStudySetFillBlankAnswer,
   submitStudySetFlashcardReview,
   submitStudySetMcqAnswer,
-  updateStudySetNotes,
 } from '@/lib/api/study-sets.service'
 import {
   AlertDialog,
@@ -43,7 +42,7 @@ import {
 } from '@/components/study-sets/generation-tracker'
 import { getApiClientErrorMessage } from '@/lib/api/client'
 import { toast } from '@/hooks/use-toast'
-import { NotesEditor, type NotesEditorContent } from '@/components/study-sets/NotesEditor'
+import { NotesWorkspace } from '@/components/study-sets/NotesWorkspace'
 import { StudySetOverview } from './overview'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -746,89 +745,26 @@ export default function StudySetDetailPage({
     setCurrentItemIndex((prev) => Math.min(activeSection.items.length - 1, prev + 1))
   }
 
-  const notesSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingNotesSaveRef = useRef<NotesEditorContent | null>(null)
-  const notesSaveQueueRef = useRef<Promise<void>>(Promise.resolve())
-
-  const persistNotes = useCallback((content: NotesEditorContent) => {
-    if (!id) return
-
-    notesSaveQueueRef.current = notesSaveQueueRef.current.then(async () => {
-      try {
-        const response = await updateStudySetNotes(id, {
-          markdownContent: content.markdown,
-          richTextContent: content.json as Record<string, unknown>,
-          plainTextContent: content.plainText,
-        })
-
-        if (pendingNotesSaveRef.current === content) {
-          pendingNotesSaveRef.current = null
-        }
-
-        const updatedAt = response?.notes?.updated_at
-        if (!updatedAt) return
-
-        setStudySet((current) =>
-          current
-            ? {
-                ...current,
-                updatedAt,
-              }
-            : current,
-        )
-      } catch (error) {
-        console.error('Failed to save notes:', error)
-        toast({
-          title: 'Failed to save notes',
-          description: getApiClientErrorMessage(error, 'Your latest edits could not be saved. Please try again.'),
-          variant: 'destructive',
-        })
-      }
-    })
-  }, [id])
-
-  const handleNotesChange = (content: NotesEditorContent) => {
-    pendingNotesSaveRef.current = content
-
+  const handleNotesSaved = useCallback((markdown: string, updatedAt: string | null) => {
     setStudySet((current) => {
       if (!current) return current
 
       return {
         ...current,
-        notesHtml: content.html,
-        notesMarkdown: content.markdown,
+        notesMarkdown: markdown,
         sections: current.sections.map((section) =>
           section.type === 'notes'
             ? {
                 ...section,
                 format: 'markdown',
-                content: content.markdown,
+                content: markdown,
               }
             : section,
         ),
-        updatedAt: new Date().toISOString(),
+        updatedAt: updatedAt ?? current.updatedAt,
       }
     })
-
-    if (notesSaveTimeoutRef.current) clearTimeout(notesSaveTimeoutRef.current)
-
-    notesSaveTimeoutRef.current = setTimeout(() => {
-      notesSaveTimeoutRef.current = null
-      persistNotes(content)
-    }, 1000)
-  }
-
-  useEffect(() => {
-    return () => {
-      if (!notesSaveTimeoutRef.current) return
-
-      clearTimeout(notesSaveTimeoutRef.current)
-      notesSaveTimeoutRef.current = null
-
-      const pendingSave = pendingNotesSaveRef.current
-      if (pendingSave) persistNotes(pendingSave)
-    }
-  }, [persistNotes])
+  }, [])
 
   const handleOpenSection = (sectionType: string) => {
     router.push(`/dashboard/study-sets/${id}?mode=${sectionType}`)
@@ -1582,10 +1518,11 @@ export default function StudySetDetailPage({
     return (
       <div className="flex h-full flex-col overflow-hidden bg-background shadow-sm">
         <ScrollArea className="flex flex-col gap-4 h-[calc(100vh-70px)]  no-scrollbar">
-          <NotesEditor
-            value={studySet?.notesHtml}
-            notesMarkdown={studySet?.notesMarkdown}
-            onContentChange={handleNotesChange}
+          <NotesWorkspace
+            studySetId={id}
+            fallbackHtml={studySet?.notesHtml}
+            fallbackMarkdown={studySet?.notesMarkdown}
+            onSaved={handleNotesSaved}
           />
         </ScrollArea>
       </div>

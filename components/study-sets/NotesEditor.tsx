@@ -45,6 +45,7 @@ export type NotesEditorContent = {
 
 type RichNotesEditorProps = {
     notesMarkdown?: string
+    initialJSON?: JSONContent | null
 
     /**
      * Controlled HTML value
@@ -145,6 +146,7 @@ export const NotesEditor = forwardRef<
 >(function NotesEditor(
     {
         notesMarkdown,
+        initialJSON,
         value,
         defaultValue,
         onChange,
@@ -167,9 +169,13 @@ export const NotesEditor = forwardRef<
         return ''
     }, [notesMarkdown])
 
-    const initialContent = value ?? defaultValue ?? generatedMarkdown
+    const initialContent = initialJSON ?? value ?? defaultValue ?? generatedMarkdown
     const initialContentType =
-        value !== undefined || defaultValue !== undefined ? 'html' : 'markdown'
+        initialJSON
+            ? 'json'
+            : value !== undefined || defaultValue !== undefined
+                ? 'html'
+                : 'markdown'
 
     const editor = useEditor({
         extensions: [
