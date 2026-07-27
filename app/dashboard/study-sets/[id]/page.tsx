@@ -1876,7 +1876,13 @@ export default function StudySetDetailPage({
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize={35} minSize={22} maxSize={55}>
                   <div className="h-full">
-                    <ItemSidePanel studySet={studySet} />
+                    <ItemSidePanel
+                      studySet={studySet}
+                      studySetId={backendStudySetId}
+                      activeSectionType={activeSection?.type ?? null}
+                      activeItem={activeItem}
+                      activeItemIndex={currentItemIndex}
+                    />
                   </div>
                 </ResizablePanel>
               </ResizablePanelGroup>
