@@ -7,10 +7,11 @@ import {
   MotionConfig,
   type Variants,
 } from 'framer-motion'
-import { Upload, Link as LinkIcon, Grid2X2, List } from 'lucide-react'
+import { Upload, Link as LinkIcon, Grid2X2, List, Youtube } from 'lucide-react'
 import { toast } from 'sonner'
 import UploadModal from '@/components/study-sets/upload-modal'
 import PasteModal from '@/components/study-sets/paste-modal'
+import YoutubeModal from '@/components/study-sets/youtube-modal'
 import StudySetCard from '@/components/study-sets/study-set-card'
 import type { StudySetPreview } from '@/components/study-sets/utils'
 import {
@@ -154,6 +155,7 @@ const cardVariants: Variants = {
 export default function StudySetsPage() {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showPasteModal, setShowPasteModal] = useState(false)
+  const [showYoutubeModal, setShowYoutubeModal] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [studySets, setStudySets] = useState<StudySetPreview[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -196,13 +198,19 @@ export default function StudySetsPage() {
     })
   }, [])
 
-  const loadStudySets = useCallback(async (signal?: AbortSignal) => {
+  const loadStudySets = useCallback(async (
+    signal?: AbortSignal,
+    forceRefresh = false,
+  ) => {
     setIsLoading(true)
     setErrorMessage('')
     setLoadMoreError('')
 
     try {
-      const historyResponse = await fetchStudySetHistory({ limit: 20 }, signal)
+      const historyResponse = await fetchStudySetHistory(
+        { limit: 20, forceRefresh },
+        signal,
+      )
       const history = Array.isArray(historyResponse.data)
         ? historyResponse.data
         : []
@@ -296,7 +304,7 @@ export default function StudySetsPage() {
   }, [loadStudySets])
 
   const refreshStudySets = () => {
-    void loadStudySets()
+    void loadStudySets(undefined, true)
   }
 
   const handleDeleteStudySet = async (studySetId: string) => {
@@ -343,7 +351,7 @@ export default function StudySetsPage() {
             </motion.p>
 
             <motion.div
-              className="mx-auto mt-10 grid max-w-[540px] grid-cols-1 gap-8 text-left sm:grid-cols-2"
+              className="mx-auto mt-10 grid max-w-[820px] grid-cols-1 gap-8 text-left sm:grid-cols-3"
               variants={uploadOptionsVariants}
             >
               <motion.button
@@ -387,6 +395,52 @@ export default function StudySetsPage() {
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Image, file (Max-10mb)
+                  </p>
+                </div>
+              </motion.button>
+
+              <motion.button
+                id="youtube-content-btn"
+                type="button"
+                onClick={() => setShowYoutubeModal(true)}
+                className="group flex flex-col gap-2 rounded-[15px] border border-border bg-card p-5 text-left transition-colors hover:border-foreground/20 hover:shadow-md"
+                variants={uploadOptionVariants}
+                whileHover={{
+                  y: -5,
+                  scale: 1.015,
+                }}
+                whileTap={{
+                  scale: 0.98,
+                }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 350,
+                  damping: 24,
+                }}
+              >
+                <motion.div
+                  whileHover={{
+                    rotate: -4,
+                    scale: 1.08,
+                  }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 400,
+                    damping: 18,
+                  }}
+                >
+                  <Youtube
+                    className="h-7 w-7 text-foreground/80"
+                    strokeWidth={2}
+                  />
+                </motion.div>
+
+                <div>
+                  <p className="text-xl font-semibold text-foreground">
+                    YouTube
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Paste a video link
                   </p>
                 </div>
               </motion.button>
@@ -577,8 +631,8 @@ export default function StudySetsPage() {
                   </h3>
 
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Upload or paste content above to create your first
-                    one.
+                    Upload, paste, or import a YouTube video to create
+                    your first one.
                   </p>
                 </motion.div>
               ) : (
@@ -660,6 +714,15 @@ export default function StudySetsPage() {
           <PasteModal
             onClose={() => {
               setShowPasteModal(false)
+              refreshStudySets()
+            }}
+          />
+        )}
+
+        {showYoutubeModal && (
+          <YoutubeModal
+            onClose={() => {
+              setShowYoutubeModal(false)
               refreshStudySets()
             }}
           />

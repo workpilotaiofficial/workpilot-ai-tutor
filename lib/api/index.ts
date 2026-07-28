@@ -63,6 +63,7 @@ export {
   generateStudySet,
   uploadStudySetPdf,
   uploadStudySetText,
+  uploadStudySetYoutube,
 } from '@/lib/api/study-sets.service'
 export {
   fetchSyllabusById,

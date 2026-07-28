@@ -2,17 +2,23 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, X } from 'lucide-react'
+import { Upload, X, Youtube } from 'lucide-react'
 import { getApiClientErrorMessage } from '@/lib/api/client'
 import { saveStudySetUploadMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
-import { generateStudySet, type StudySetUploadResponse, uploadStudySetPdf, uploadStudySetText } from '@/lib/api/study-sets.service'
+import {
+  generateStudySet,
+  type StudySetUploadResponse,
+  uploadStudySetPdf,
+  uploadStudySetText,
+  uploadStudySetYoutube,
+} from '@/lib/api/study-sets.service'
 import { startStudySetGenerationTracking } from './generation-tracker'
 import { type StudySetUiSectionType, uiToBackendGenerationType, uiSectionTypeLabels } from './generation-mapping'
 import { studySetFormatOptions } from './format-catalog'
 import { createUploadPlaceholderStudySet } from './upload-placeholder'
 import { persistStudySet } from './utils'
 
-type SourceType = 'pdf' | 'text'
+type SourceType = 'pdf' | 'text' | 'youtube'
 type OutputType = StudySetUiSectionType
 
 const outputOptions = studySetFormatOptions
@@ -22,6 +28,22 @@ const presets: Array<{ id: string; label: string; outputs: OutputType[] }> = [
   { id: 'exam', label: 'Exam Prep', outputs: ['notes', 'multipleChoice', 'writtenTests', 'fillInTheBlanks'] },
   { id: 'full', label: 'Full Set', outputs: outputOptions.map((option) => option.id) },
 ]
+
+function isValidYoutubeVideoUrl(value: string) {
+  try {
+    const url = new URL(value.trim())
+    const hostname = url.hostname.toLowerCase().replace(/^www\./, '')
+
+    if (!['http:', 'https:'].includes(url.protocol)) return false
+    if (hostname === 'youtu.be') return url.pathname.slice(1).length > 0
+    if (hostname !== 'youtube.com' && !hostname.endsWith('.youtube.com')) return false
+
+    if (url.pathname === '/watch') return Boolean(url.searchParams.get('v'))
+    return /^\/(embed|live|shorts)\/[^/]+/.test(url.pathname)
+  } catch {
+    return false
+  }
+}
 
 interface CreateStudySetModalProps {
   onClose: () => void
@@ -35,6 +57,7 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
   const [step, setStep] = useState<1 | 2>(1)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [content, setContent] = useState('')
+  const [youtubeUrl, setYoutubeUrl] = useState('')
   const [studySetName, setStudySetName] = useState('')
   const [selectedOutputs, setSelectedOutputs] = useState<OutputType[]>(['notes', 'flashcards'])
   const [isUploading, setIsUploading] = useState(false)
@@ -44,12 +67,19 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
 
   const hasValidPdf = Boolean(selectedFile && selectedFile.type === 'application/pdf' && selectedFile.size <= 10 * 1024 * 1024)
   const hasValidText = content.trim().length >= 50
-  const canContinueSource = sourceType === 'pdf' ? hasValidPdf : hasValidText
+  const hasValidYoutubeUrl = isValidYoutubeVideoUrl(youtubeUrl)
+  const canContinueSource =
+    sourceType === 'pdf'
+      ? hasValidPdf
+      : sourceType === 'text'
+        ? hasValidText
+        : hasValidYoutubeUrl
 
   const resolvedTitle = () => {
     const byInput = studySetName.trim()
     if (byInput) return byInput
     if (sourceType === 'pdf') return selectedFile?.name.replace(/\.pdf$/i, '') || 'Untitled Study Set'
+    if (sourceType === 'youtube') return uploadedResponse?.document.title || 'YouTube Study Set'
     const firstLine = content.split('\n').find((line) => line.trim().length > 0)?.trim() || ''
     return firstLine.slice(0, 60) || 'Untitled Study Set'
   }
@@ -69,17 +99,22 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
     setIsUploading(true)
     setErrorMessage('')
     try {
-      const title = resolvedTitle()
+      const title = studySetName.trim()
       const response =
         sourceType === 'pdf'
-          ? await uploadStudySetPdf({ title, file: selectedFile as File })
-          : await uploadStudySetText({ title, text: content })
+          ? await uploadStudySetPdf({ title: resolvedTitle(), file: selectedFile as File })
+          : sourceType === 'text'
+            ? await uploadStudySetText({ title: resolvedTitle(), text: content })
+            : await uploadStudySetYoutube({
+                youtubeUrl: youtubeUrl.trim(),
+                title: title || null,
+              })
       saveStudySetUploadMeta({
         documentId: response.document.id,
         embeddingJobId: response.embedding_job_id,
         title: response.document.title,
         filename: response.document.filename || (selectedFile?.name ?? null),
-        sourceType: sourceType === 'pdf' ? 'pdf' : 'text',
+        sourceType,
         status: response.document.status,
         createdAt: response.document.createdAt,
         updatedAt: response.document.updatedAt,
@@ -135,7 +170,7 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
       persistStudySet(
         createUploadPlaceholderStudySet({
           documentId: uploadedResponse.document.id,
-          title: resolvedTitle(),
+          title: uploadedResponse.document.title || resolvedTitle(),
           selections: selectedOutputs,
           sourceType,
           sourceText: sourceType === 'text' ? content : undefined,
@@ -195,6 +230,13 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
                 >
                   Paste Text
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setSourceType('youtube')}
+                  className={`rounded-lg px-4 py-2 text-sm font-semibold ${sourceType === 'youtube' ? 'bg-card' : 'text-muted-foreground'}`}
+                >
+                  YouTube
+                </button>
               </div>
 
               {sourceType === 'pdf' ? (
@@ -212,7 +254,7 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
                   <p className="text-sm font-semibold">Upload one PDF (max 10MB)</p>
                   {selectedFile ? <p className="mt-2 text-xs text-muted-foreground">{selectedFile.name}</p> : null}
                 </div>
-              ) : (
+              ) : sourceType === 'text' ? (
                 <div>
                   <textarea
                     value={content}
@@ -221,6 +263,35 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
                     placeholder="Paste your notes or study material..."
                   />
                   <p className="mt-2 text-xs text-muted-foreground">Minimum 50 characters</p>
+                </div>
+              ) : (
+                <div className="space-y-3 rounded-2xl border border-border bg-secondary/20 p-5">
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-xl bg-red-500/10 p-2.5 text-red-600 dark:text-red-400">
+                      <Youtube className="h-6 w-6" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Import a YouTube video</p>
+                      <p className="text-xs text-muted-foreground">Paste the full link to turn the video into study materials.</p>
+                    </div>
+                  </div>
+                  <input
+                    type="url"
+                    value={youtubeUrl}
+                    onChange={(event) => {
+                      setYoutubeUrl(event.target.value)
+                      setErrorMessage('')
+                      setUploadedResponse(null)
+                    }}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    aria-label="YouTube video URL"
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+                  />
+                  <p className={`text-xs ${youtubeUrl.trim() && !hasValidYoutubeUrl ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {youtubeUrl.trim() && !hasValidYoutubeUrl
+                      ? 'Enter a valid YouTube video link.'
+                      : 'Supports youtube.com and youtu.be video links.'}
+                  </p>
                 </div>
               )}
 

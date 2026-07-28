@@ -1874,7 +1874,7 @@ export default function StudySetDetailPage({
                   <ScrollArea className="h-[calc(100vh-70px)] pt-4">{studyItemSection}</ScrollArea>
                 </ResizablePanel>
                 <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={35} minSize={22} maxSize={55}>
+                <ResizablePanel defaultSize={25} minSize={22} maxSize={35}>
                   <div className="h-full">
                     <ItemSidePanel
                       studySet={studySet}

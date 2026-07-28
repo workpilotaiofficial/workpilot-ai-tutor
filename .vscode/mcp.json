@@ -1,0 +1,21 @@
+{
+	"servers": {
+		"figma-react": {
+			"command": "npm",
+			"args": [
+				"run",
+				"dev"
+			],
+			"type": "stdio"
+		},
+		"my-mcp-server-bf11eac9": {
+			"type": "stdio",
+			"command": "npm",
+			"args": [
+				"run",
+				"dev"
+			]
+		}
+	},
+	"inputs": []
+}

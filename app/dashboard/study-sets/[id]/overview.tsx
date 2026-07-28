@@ -233,7 +233,7 @@ export function StudySetOverview({
             <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-linear-to-r from-blue-100/60 to-purple-100/60 border border-blue-200/40 backdrop-blur-sm">
               <span className="text-xs font-bold text-primary tracking-wide">STUDY SET</span>
             </div>
-            <h1 className="study-set-overview__title capitalize mb-4 break-words text-3xl font-black leading-tight text-slate-900">{studySet.title}</h1>
+            <h1 className=" capitalize mb-4 break-words text-3xl font-black leading-tight text-slate-900 line-clamp-2">{studySet.title}</h1>
           
           </div>
 

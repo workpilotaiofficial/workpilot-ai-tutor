@@ -1,4 +1,9 @@
 import { ApiClientError, apiClient } from '@/lib/api/client'
+import {
+  cacheStudySetHistory,
+  getCachedStudySetHistory,
+  invalidateStudySetHistoryCache,
+} from '@/lib/api/study-sets.storage'
 
 export type StudySetUploadDocument = {
   id: string
@@ -283,6 +288,7 @@ type StudySetHistoryApiResponse = StudySetHistoryResponse | StudySetHistoryItem[
 export type FetchStudySetHistoryParams = {
   cursor?: string | null
   limit?: number
+  forceRefresh?: boolean
 }
 
 export type UnifiedStudySetResponse = {
@@ -344,6 +350,11 @@ type UploadStudySetTextPayload = {
 type UploadStudySetPdfPayload = {
   title: string
   file: File
+}
+
+type UploadStudySetYoutubePayload = {
+  youtubeUrl: string
+  title?: string | null
 }
 
 type GenerateStudySetPayload = {
@@ -428,6 +439,20 @@ export async function uploadStudySetPdf(payload: UploadStudySetPdfPayload) {
   return normalizeUploadResponse(response)
 }
 
+export async function uploadStudySetYoutube(payload: UploadStudySetYoutubePayload) {
+  const response = await apiClient.request<StudySetUploadResponse>('/api/v1/upload/youtube-url', {
+    method: 'POST',
+    body: {
+      youtube_url: payload.youtubeUrl,
+      title: payload.title?.trim() || null,
+    },
+    // Fetching and processing a video transcript may take longer than a normal JSON request.
+    timeoutMs: 120_000,
+  })
+
+  return normalizeUploadResponse(response)
+}
+
 function normalizeGenerateResponse(payload: unknown): StudySetGenerateResponse {
   if (!payload || typeof payload !== 'object') {
     throw new ApiClientError('Generate failed: invalid response payload.')
@@ -506,7 +531,9 @@ export async function generateStudySet(payload: GenerateStudySetPayload) {
     },
   })
 
-  return normalizeGenerateResponse(response)
+  const normalizedResponse = normalizeGenerateResponse(response)
+  invalidateStudySetHistoryCache()
+  return normalizedResponse
 }
 
 function normalizeFillInTheBlanksQuestion(question: FillInTheBlanksQuestion): Record<string, unknown> {
@@ -648,6 +675,14 @@ export async function fetchStudySetHistory(
   params: FetchStudySetHistoryParams = {},
   signal?: AbortSignal,
 ) {
+  if (!params.forceRefresh) {
+    const cachedResponse = getCachedStudySetHistory(params)
+
+    if (cachedResponse) {
+      return cachedResponse
+    }
+  }
+
   const searchParams = new URLSearchParams()
 
   if (params.cursor) {
@@ -668,8 +703,8 @@ export async function fetchStudySetHistory(
     },
   )
 
-  if (Array.isArray(response)) {
-    return {
+  const normalizedResponse: StudySetHistoryResponse = Array.isArray(response)
+    ? {
       data: response,
       count: response.length,
       pagination: {
@@ -679,9 +714,10 @@ export async function fetchStudySetHistory(
       },
       next_cursor: null,
     }
-  }
+    : response
 
-  return response
+  cacheStudySetHistory(params, normalizedResponse)
+  return normalizedResponse
 }
 
 export function fetchUnifiedStudySet(studySetId: string, signal?: AbortSignal) {
@@ -691,10 +727,13 @@ export function fetchUnifiedStudySet(studySetId: string, signal?: AbortSignal) {
   })
 }
 
-export function deleteStudySet(studySetId: string) {
-  return apiClient.request<unknown>(`/api/v1/study-sets/${encodeURIComponent(studySetId)}`, {
+export async function deleteStudySet(studySetId: string) {
+  const response = await apiClient.request<unknown>(`/api/v1/study-sets/${encodeURIComponent(studySetId)}`, {
     method: 'DELETE',
   })
+
+  invalidateStudySetHistoryCache()
+  return response
 }
 
 export function fetchStudySetProgress(studySetId: string, signal?: AbortSignal) {
@@ -704,8 +743,8 @@ export function fetchStudySetProgress(studySetId: string, signal?: AbortSignal) 
   })
 }
 
-export function submitStudySetMcqAnswer(studySetId: string, payload: SubmitMcqAnswerPayload) {
-  return apiClient.request<StudySetMcqAnswerResponse>(`/api/v1/study-sets/${studySetId}/mcq/answer`, {
+export async function submitStudySetMcqAnswer(studySetId: string, payload: SubmitMcqAnswerPayload) {
+  const response = await apiClient.request<StudySetMcqAnswerResponse>(`/api/v1/study-sets/${studySetId}/mcq/answer`, {
     method: 'POST',
     body: {
       question_id: payload.questionId,
@@ -713,10 +752,13 @@ export function submitStudySetMcqAnswer(studySetId: string, payload: SubmitMcqAn
       response_time_ms: Math.max(0, Math.round(payload.responseTimeMs)),
     },
   })
+
+  invalidateStudySetHistoryCache()
+  return response
 }
 
-export function submitStudySetFlashcardReview(studySetId: string, payload: SubmitFlashcardReviewPayload) {
-  return apiClient.request<StudySetFlashcardReviewResponse>(`/api/v1/study-sets/${studySetId}/flashcard/review`, {
+export async function submitStudySetFlashcardReview(studySetId: string, payload: SubmitFlashcardReviewPayload) {
+  const response = await apiClient.request<StudySetFlashcardReviewResponse>(`/api/v1/study-sets/${studySetId}/flashcard/review`, {
     method: 'POST',
     body: {
       flashcard_id: payload.flashcardId,
@@ -724,10 +766,13 @@ export function submitStudySetFlashcardReview(studySetId: string, payload: Submi
       response_time_ms: Math.max(0, Math.round(payload.responseTimeMs)),
     },
   })
+
+  invalidateStudySetHistoryCache()
+  return response
 }
 
-export function submitStudySetFillBlankAnswer(studySetId: string, payload: SubmitFillBlankAnswerPayload) {
-  return apiClient.request<StudySetFillBlankAnswerResponse>(`/api/v1/study-sets/${studySetId}/fill_blank/answer`, {
+export async function submitStudySetFillBlankAnswer(studySetId: string, payload: SubmitFillBlankAnswerPayload) {
+  const response = await apiClient.request<StudySetFillBlankAnswerResponse>(`/api/v1/study-sets/${studySetId}/fill_blank/answer`, {
     method: 'POST',
     body: {
       question_id: payload.questionId,
@@ -735,6 +780,9 @@ export function submitStudySetFillBlankAnswer(studySetId: string, payload: Submi
       response_time_ms: Math.max(0, Math.round(payload.responseTimeMs)),
     },
   })
+
+  invalidateStudySetHistoryCache()
+  return response
 }
 
 export type UpdateStudySetNotesPayload = {
