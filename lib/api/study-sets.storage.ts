@@ -9,7 +9,7 @@ export type StoredStudySetUploadMeta = {
   embeddingJobId: string | null
   title: string
   filename: string | null
-  sourceType: 'text' | 'pdf' | 'youtube'
+  sourceType: 'text' | 'pdf' | 'image' | 'youtube'
   status: string
   createdAt: string
   updatedAt: string

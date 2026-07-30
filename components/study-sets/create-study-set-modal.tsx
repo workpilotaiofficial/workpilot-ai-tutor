@@ -21,6 +21,8 @@ import { persistStudySet } from './utils'
 type SourceType = 'pdf' | 'text' | 'youtube'
 type OutputType = StudySetUiSectionType
 
+const acceptedUploadTypes = '.pdf,application/pdf,image/*'
+
 const outputOptions = studySetFormatOptions
 
 const presets: Array<{ id: string; label: string; outputs: OutputType[] }> = [
@@ -65,12 +67,16 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
   const [errorMessage, setErrorMessage] = useState('')
   const [uploadedResponse, setUploadedResponse] = useState<StudySetUploadResponse | null>(null)
 
-  const hasValidPdf = Boolean(selectedFile && selectedFile.type === 'application/pdf' && selectedFile.size <= 10 * 1024 * 1024)
+  const hasValidFile = Boolean(
+    selectedFile &&
+    (selectedFile.type === 'application/pdf' || selectedFile.type.startsWith('image/')) &&
+    selectedFile.size <= 10 * 1024 * 1024,
+  )
   const hasValidText = content.trim().length >= 50
   const hasValidYoutubeUrl = isValidYoutubeVideoUrl(youtubeUrl)
   const canContinueSource =
     sourceType === 'pdf'
-      ? hasValidPdf
+      ? hasValidFile
       : sourceType === 'text'
         ? hasValidText
         : hasValidYoutubeUrl
@@ -78,16 +84,19 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
   const resolvedTitle = () => {
     const byInput = studySetName.trim()
     if (byInput) return byInput
-    if (sourceType === 'pdf') return selectedFile?.name.replace(/\.pdf$/i, '') || 'Untitled Study Set'
+    if (sourceType === 'pdf') return selectedFile?.name.replace(/\.[^/.]+$/, '') || 'Untitled Study Set'
     if (sourceType === 'youtube') return uploadedResponse?.document.title || 'YouTube Study Set'
     const firstLine = content.split('\n').find((line) => line.trim().length > 0)?.trim() || ''
     return firstLine.slice(0, 60) || 'Untitled Study Set'
   }
 
-  const handlePdfPick = (file: File | null) => {
+  const handleFilePick = (file: File | null) => {
     if (!file) return
-    if (file.type !== 'application/pdf' || file.size > 10 * 1024 * 1024) {
-      setErrorMessage('Upload one PDF file only (max 10MB).')
+    if (
+      (file.type !== 'application/pdf' && !file.type.startsWith('image/')) ||
+      file.size > 10 * 1024 * 1024
+    ) {
+      setErrorMessage('Upload one PDF or image file only (max 10MB).')
       return
     }
     setSelectedFile(file)
@@ -100,6 +109,10 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
     setErrorMessage('')
     try {
       const title = studySetName.trim()
+      const resolvedSourceType =
+        sourceType === 'pdf' && selectedFile?.type.startsWith('image/')
+          ? 'image'
+          : sourceType
       const response =
         sourceType === 'pdf'
           ? await uploadStudySetPdf({ title: resolvedTitle(), file: selectedFile as File })
@@ -114,7 +127,7 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
         embeddingJobId: response.embedding_job_id,
         title: response.document.title,
         filename: response.document.filename || (selectedFile?.name ?? null),
-        sourceType,
+        sourceType: resolvedSourceType,
         status: response.document.status,
         createdAt: response.document.createdAt,
         updatedAt: response.document.updatedAt,
@@ -133,6 +146,10 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
     setIsGenerating(true)
     setErrorMessage('')
     try {
+      const resolvedSourceType =
+        sourceType === 'pdf' && selectedFile?.type.startsWith('image/')
+          ? 'image'
+          : sourceType
       const response = await generateStudySet({
         documentId: uploadedResponse.document.id,
         types: selectedOutputs.map((output) => uiToBackendGenerationType[output]),
@@ -172,7 +189,7 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
           documentId: uploadedResponse.document.id,
           title: uploadedResponse.document.title || resolvedTitle(),
           selections: selectedOutputs,
-          sourceType,
+          sourceType: resolvedSourceType,
           sourceText: sourceType === 'text' ? content : undefined,
           createdAt: uploadedResponse.document.createdAt,
           updatedAt: uploadedResponse.document.updatedAt,
@@ -221,7 +238,7 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
                   onClick={() => setSourceType('pdf')}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold ${sourceType === 'pdf' ? 'bg-card' : 'text-muted-foreground'}`}
                 >
-                  Upload PDF
+                  Upload PDF / Image
                 </button>
                 <button
                   type="button"
@@ -243,15 +260,15 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
                 <div
                   onDrop={(event) => {
                     event.preventDefault()
-                    handlePdfPick(event.dataTransfer.files?.[0] ?? null)
+                    handleFilePick(event.dataTransfer.files?.[0] ?? null)
                   }}
                   onDragOver={(event) => event.preventDefault()}
                   onClick={() => fileInputRef.current?.click()}
                   className="cursor-pointer rounded-2xl border-2 border-dashed border-border bg-secondary/20 p-8 text-center hover:border-primary/50"
                 >
-                  <input ref={fileInputRef} type="file" accept=".pdf,application/pdf" className="hidden" onChange={(event) => handlePdfPick(event.target.files?.[0] ?? null)} />
+                  <input ref={fileInputRef} type="file" accept={acceptedUploadTypes} className="hidden" onChange={(event) => handleFilePick(event.target.files?.[0] ?? null)} />
                   <Upload className="mx-auto mb-2 h-10 w-10 text-primary" />
-                  <p className="text-sm font-semibold">Upload one PDF (max 10MB)</p>
+                  <p className="text-sm font-semibold">Upload one PDF or image (max 10MB)</p>
                   {selectedFile ? <p className="mt-2 text-xs text-muted-foreground">{selectedFile.name}</p> : null}
                 </div>
               ) : sourceType === 'text' ? (

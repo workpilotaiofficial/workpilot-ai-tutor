@@ -36,6 +36,8 @@ interface GraderUploadModalProps {
 
 type UploadZone = 'assignment' | 'rubric'
 
+const acceptedFileTypes = '.pdf,.txt,.doc,.docx,.md,image/*'
+
 const smoothEase = [0.22, 1, 0.36, 1] as const
 
 const backdropVariants: Variants = {
@@ -540,7 +542,7 @@ export default function GraderUploadModal({
                       type="file"
                       disabled={isLoading}
                       onChange={handleAssignmentSelect}
-                      accept=".pdf,.txt,.doc,.docx,.md"
+                      accept={acceptedFileTypes}
                       className="hidden"
                     />
 
@@ -651,7 +653,7 @@ export default function GraderUploadModal({
                           </p>
 
                           <p className="text-xs text-muted-foreground">
-                            PDF, Word, or Text files (Max 50MB)
+                            PDF, image, Word, or text files (Max 50MB)
                           </p>
                         </motion.div>
                       )}
@@ -732,7 +734,7 @@ export default function GraderUploadModal({
                       type="file"
                       disabled={isLoading}
                       onChange={handleRubricSelect}
-                      accept=".pdf,.txt,.doc,.docx,.md"
+                      accept={acceptedFileTypes}
                       className="hidden"
                     />
 
@@ -843,7 +845,7 @@ export default function GraderUploadModal({
                           </p>
 
                           <p className="text-xs text-muted-foreground">
-                            PDF, Word, or Text files (Max 50MB)
+                            PDF, image, Word, or text files (Max 50MB)
                           </p>
                         </motion.div>
                       )}

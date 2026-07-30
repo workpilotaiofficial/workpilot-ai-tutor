@@ -13,7 +13,7 @@ type CreateUploadPlaceholderStudySetParams = {
   documentId: string
   title: string
   selections: string[]
-  sourceType: 'text' | 'pdf' | 'youtube'
+  sourceType: 'text' | 'pdf' | 'image' | 'youtube'
   sourceText?: string
   createdAt?: string
   updatedAt?: string
@@ -39,12 +39,18 @@ function normalizeSelections(values: string[]) {
   return normalized.length > 0 ? normalized : fallbackSelections
 }
 
-function createNotesMarkdown(title: string, sourceType: 'text' | 'pdf' | 'youtube', sourceText?: string) {
+function createNotesMarkdown(
+  title: string,
+  sourceType: 'text' | 'pdf' | 'image' | 'youtube',
+  sourceText?: string,
+) {
   const intro =
     typeof sourceText === 'string' && sourceText.trim()
       ? sourceText.trim().slice(0, 220)
       : sourceType === 'pdf'
         ? 'Your PDF has been uploaded successfully. The next backend processing steps will populate the final study materials.'
+        : sourceType === 'image'
+          ? 'Your image has been uploaded successfully. The next backend processing steps will populate the final study materials.'
         : sourceType === 'youtube'
           ? 'Your YouTube video has been imported successfully. The next backend processing steps will populate the final study materials.'
           : 'Your text has been uploaded successfully. The next backend processing steps will populate the final study materials.'
@@ -184,7 +190,7 @@ function createSectionItems(type: OutputType, title: string) {
 function buildSections(
   title: string,
   selections: OutputType[],
-  sourceType: 'text' | 'pdf' | 'youtube',
+  sourceType: 'text' | 'pdf' | 'image' | 'youtube',
   sourceText?: string,
 ) {
   return selections.map<StudySetSection>((selection) => {

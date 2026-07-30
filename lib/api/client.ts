@@ -121,6 +121,17 @@ function extractErrorMessage(payload: unknown): string | null {
     return null
   }
 
+  if (
+    'error' in payload &&
+    payload.error &&
+    typeof payload.error === 'object' &&
+    'details' in payload.error &&
+    typeof payload.error.details === 'string' &&
+    payload.error.details.trim().length > 0
+  ) {
+    return payload.error.details
+  }
+
   if ('message' in payload && typeof payload.message === 'string') {
     return payload.message
   }
