@@ -68,6 +68,7 @@ export {
 export {
   fetchSyllabusById,
   fetchSyllabusHistory,
+  uploadSyllabusImages,
   uploadSyllabusPdf,
   uploadSyllabusText,
 } from '@/lib/api/syllabus.service'

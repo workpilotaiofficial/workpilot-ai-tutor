@@ -127,6 +127,13 @@ type UploadSyllabusPdfPayload = {
   semesterEndDate: string
 }
 
+type UploadSyllabusImagesPayload = {
+  title: string
+  files: File[]
+  semesterStartDate: string
+  semesterEndDate: string
+}
+
 function normalizeUploadResponse(payload: unknown): SyllabusUploadResponse {
   if (!payload || typeof payload !== 'object') {
     throw new ApiClientError('Syllabus upload failed: invalid response payload.')
@@ -257,6 +264,29 @@ export async function uploadSyllabusPdf(payload: UploadSyllabusPdfPayload) {
     // PDF upload + server-side parsing can take well over the default 15s timeout.
     timeoutMs: 120_000,
   })
+
+  return normalizeUploadResponse(response)
+}
+
+export async function uploadSyllabusImages(payload: UploadSyllabusImagesPayload) {
+  const formData = new FormData()
+  formData.set('title', payload.title)
+  formData.set('semester_start_date', payload.semesterStartDate)
+  formData.set('semester_end_date', payload.semesterEndDate)
+
+  payload.files.forEach((file) => {
+    formData.append('files', file)
+  })
+
+  const response = await apiClient.request<SyllabusUploadResponse>(
+    '/api/v1/syllabus/upload/images',
+    {
+      method: 'POST',
+      body: formData,
+      // Vision processing for multiple images can exceed the default request timeout.
+      timeoutMs: 120_000,
+    },
+  )
 
   return normalizeUploadResponse(response)
 }

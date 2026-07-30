@@ -31,11 +31,13 @@ import {
 } from './summary-tracker'
 import {
   getApiClientErrorMessage,
+  uploadSyllabusImages,
   uploadSyllabusPdf,
   uploadSyllabusText,
 } from '@/lib/api'
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
+const MAX_IMAGE_FILES = 10
 const smoothEase = [0.22, 1, 0.36, 1] as const
 
 const backdropVariants: Variants = {
@@ -203,8 +205,61 @@ function isTextLikeFile(file: File) {
   )
 }
 
+function isImageFile(file: File) {
+  return (
+    file.type.startsWith('image/') ||
+    /\.(avif|bmp|gif|heic|heif|jpe?g|png|tiff?|webp)$/i.test(
+      file.name,
+    )
+  )
+}
+
 function isUnsupportedSyllabusFile(file: File) {
-  return !isPdfFile(file) && !isTextLikeFile(file)
+  return (
+    !isPdfFile(file) &&
+    !isTextLikeFile(file) &&
+    !isImageFile(file)
+  )
+}
+
+function getFileSelectionError(
+  selectedFiles: File[],
+) {
+  if (
+    selectedFiles.some(
+      (file) => file.size > MAX_FILE_SIZE_BYTES,
+    )
+  ) {
+    return 'Each file must be smaller than 20MB.'
+  }
+
+  if (
+    selectedFiles.some(isUnsupportedSyllabusFile)
+  ) {
+    return 'Only PDF, TXT, and image files are supported for syllabus analysis.'
+  }
+
+  const imageFiles = selectedFiles.filter(isImageFile)
+
+  if (
+    imageFiles.length > 0 &&
+    imageFiles.length !== selectedFiles.length
+  ) {
+    return 'Images cannot be combined with PDF or TXT files.'
+  }
+
+  if (imageFiles.length > MAX_IMAGE_FILES) {
+    return `You can upload up to ${MAX_IMAGE_FILES} syllabus images at a time.`
+  }
+
+  if (
+    imageFiles.length === 0 &&
+    selectedFiles.length > 1
+  ) {
+    return 'Upload one PDF or TXT file at a time.'
+  }
+
+  return ''
 }
 
 function toDateInputValue(value: Date) {
@@ -357,21 +412,11 @@ export default function SyllabusUploadModal({
               : 0
 
   const validateFiles = (selectedFiles: File[]) => {
-    const oversizedFiles = selectedFiles.filter(
-      (file) => file.size > MAX_FILE_SIZE_BYTES,
+    setErrorMessage(
+      getFileSelectionError(selectedFiles),
     )
 
-    if (oversizedFiles.length > 0) {
-      setErrorMessage(
-        'Each file must be smaller than 20MB.',
-      )
-    } else {
-      setErrorMessage('')
-    }
-
-    return selectedFiles.filter(
-      (file) => file.size <= MAX_FILE_SIZE_BYTES,
-    )
+    return selectedFiles
   }
 
   const handleFileSelect = (
@@ -417,10 +462,13 @@ export default function SyllabusUploadModal({
   }
 
   const removeFile = (fileIndex: number) => {
-    setFiles((previousFiles) =>
-      previousFiles.filter(
-        (_, index) => index !== fileIndex,
-      ),
+    const remainingFiles = files.filter(
+      (_, index) => index !== fileIndex,
+    )
+
+    setFiles(remainingFiles)
+    setErrorMessage(
+      getFileSelectionError(remainingFiles),
     )
 
     if (fileInputRef.current) {
@@ -428,23 +476,11 @@ export default function SyllabusUploadModal({
     }
   }
 
-  const resolveSelectedFile = () => {
-    const supportedFile = files.find(
-      (file) => !isUnsupportedSyllabusFile(file),
-    )
-
-    if (!supportedFile) {
-      throw new Error(
-        'Only PDF and TXT files are supported for syllabus analysis.',
-      )
-    }
-
-    return supportedFile
-  }
-
   const canSubmit =
     !isLoading &&
-    ((inputMode === 'file' && files.length > 0) ||
+    ((inputMode === 'file' &&
+      files.length > 0 &&
+      !getFileSelectionError(files)) ||
       (inputMode === 'text' &&
         text.trim().length > 0))
 
@@ -467,9 +503,17 @@ export default function SyllabusUploadModal({
       let uploadResponse
 
       if (inputMode === 'file') {
-        const selectedFile = resolveSelectedFile()
+        const selectedFile = files[0]
 
-        if (isPdfFile(selectedFile)) {
+        if (files.every(isImageFile)) {
+          uploadResponse =
+            await uploadSyllabusImages({
+              title: resolvedTitle,
+              files,
+              semesterStartDate,
+              semesterEndDate,
+            })
+        } else if (isPdfFile(selectedFile)) {
           uploadResponse = await uploadSyllabusPdf({
             title: resolvedTitle,
             file: selectedFile,
@@ -494,7 +538,7 @@ export default function SyllabusUploadModal({
           })
         } else {
           throw new Error(
-            'Only PDF and TXT files are supported for syllabus analysis.',
+            'Only PDF, TXT, and image files are supported for syllabus analysis.',
           )
         }
       } else {
@@ -648,8 +692,8 @@ export default function SyllabusUploadModal({
                       ease: smoothEase,
                     }}
                   >
-                    Upload a PDF or paste a course
-                    outline to get started
+                    Upload a PDF or images, or paste a
+                    course outline to get started
                   </motion.p>
                 </div>
 
@@ -694,7 +738,9 @@ export default function SyllabusUploadModal({
                   disabled={isLoading}
                   onClick={() => {
                     setInputMode('file')
-                    setErrorMessage('')
+                    setErrorMessage(
+                      getFileSelectionError(files),
+                    )
                   }}
                   className={`relative flex-1 px-4 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${inputMode === 'file'
                       ? 'text-primary'
@@ -767,7 +813,13 @@ export default function SyllabusUploadModal({
                         setTitle(event.target.value)
 
                         if (errorMessage) {
-                          setErrorMessage('')
+                          setErrorMessage(
+                            inputMode === 'file'
+                              ? getFileSelectionError(
+                                files,
+                              )
+                              : '',
+                          )
                         }
                       }}
                       placeholder="e.g., Data Structures and Algorithms"
@@ -900,7 +952,7 @@ export default function SyllabusUploadModal({
                           multiple
                           disabled={isLoading}
                           onChange={handleFileSelect}
-                          accept=".pdf,.txt,.md,.markdown"
+                          accept=".pdf,.txt,.md,.markdown,image/*"
                           className="hidden"
                         />
 
@@ -943,8 +995,8 @@ export default function SyllabusUploadModal({
                         </p>
 
                         <p className="mt-1 text-xs text-muted-foreground">
-                          PDF or plain text (.txt, .md)
-                          up to 20MB
+                          PDF, plain text, or up to 10
+                          images (20MB each)
                         </p>
                       </motion.div>
 
@@ -1020,7 +1072,8 @@ export default function SyllabusUploadModal({
                                           {isUnsupported && (
                                             <p className="text-xs text-amber-600">
                                               Unsupported.
-                                              Use PDF or TXT.
+                                              Use PDF, TXT,
+                                              or an image.
                                             </p>
                                           )}
                                         </div>
