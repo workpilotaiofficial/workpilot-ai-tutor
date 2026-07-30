@@ -2,176 +2,247 @@
 
 import { ApiClientError, apiClient } from '@/lib/api/client'
 import type {
-  ChatHistoryResponse,
+  ChatMessage,
   SendChatMessageRequest,
   SendChatMessageResponse,
+  StudySetChatConversationResponse,
+  StudySetChatSession,
+  StudySetChatSessionsResponse,
 } from '@/lib/chat/contracts'
 
-const CHAT_API_BASE_URL = (
-  process.env.NEXT_PUBLIC_CHAT_API_BASE_URL ?? ''
-).replace(/\/+$/, '')
 const CHAT_REQUEST_TIMEOUT_MS = 60_000
 
-function chatMessagesPath(studySetId: string) {
-  return `/api/v1/study-sets/${encodeURIComponent(studySetId)}/chat/messages`
+function chatPath(studySetId: string) {
+  return `/api/v1/study-sets/${encodeURIComponent(studySetId)}/chat`
 }
 
-function getResponseErrorMessage(payload: unknown, fallback: string) {
-  if (!payload || typeof payload !== 'object') return fallback
+function chatSessionsPath(studySetId: string) {
+  return `${chatPath(studySetId)}/sessions`
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function readString(...values: unknown[]) {
+  return values.find(
+    (value): value is string =>
+      typeof value === 'string' && value.trim().length > 0,
+  )
+}
+
+function readNumber(...values: unknown[]) {
+  return values.find(
+    (value): value is number =>
+      typeof value === 'number' && Number.isFinite(value),
+  )
+}
+
+function normalizeChatMessage(
+  value: unknown,
+  fallbackSerialNumber: number,
+): ChatMessage | null {
+  const message = asRecord(value)
+  if (!message) return null
+
+  const id = readString(message.id, message.message_id, message.messageId)
+  const role = readString(message.role)
+  const text = readString(message.text, message.content)
+  const createdAt = readString(message.created_at, message.createdAt)
 
   if (
-    'error' in payload &&
-    payload.error &&
-    typeof payload.error === 'object' &&
-    'message' in payload.error &&
-    typeof payload.error.message === 'string'
+    !id ||
+    (role !== 'user' && role !== 'assistant') ||
+    !text ||
+    !createdAt
   ) {
-    return payload.error.message
+    return null
   }
 
-  if ('message' in payload && typeof payload.message === 'string') {
-    return payload.message
+  return {
+    id,
+    serial_number:
+      readNumber(message.serial_number, message.serialNumber) ??
+      fallbackSerialNumber,
+    role,
+    text,
+    created_at: createdAt,
   }
-
-  return fallback
 }
 
-async function requestChatApi<TResponse>(
-  path: string,
-  options: {
-    method?: 'GET' | 'POST'
-    body?: unknown
-    headers?: HeadersInit
-    signal?: AbortSignal
-  } = {},
+function normalizeRequiredChatMessage(
+  value: unknown,
+  label: string,
+  fallbackSerialNumber: number,
 ) {
-  const accessToken = await apiClient.ensureValidAccessToken()
-  if (!accessToken) {
+  const message = normalizeChatMessage(value, fallbackSerialNumber)
+
+  if (!message) {
     throw new ApiClientError(
-      'Your session has expired. Please sign in again.',
-      401,
+      `Chat response did not include a valid ${label} message.`,
     )
   }
 
-  const timeoutController = new AbortController()
-  const timeout = window.setTimeout(
-    () => timeoutController.abort(),
-    CHAT_REQUEST_TIMEOUT_MS,
+  return message
+}
+
+function normalizeSendResponse(payload: unknown): SendChatMessageResponse {
+  const envelope = asRecord(payload)
+  const data = asRecord(envelope?.data)
+  const conversationId = readString(
+    data?.conversation_id,
+    data?.conversationId,
   )
-  const abortFromCaller = () => timeoutController.abort()
-  options.signal?.addEventListener('abort', abortFromCaller, { once: true })
 
-  try {
-    const headers = new Headers(options.headers)
-    headers.set('accept', 'application/json')
-    headers.set('authorization', `Bearer ${accessToken}`)
-
-    let body: BodyInit | undefined
-    if (typeof options.body !== 'undefined') {
-      headers.set('content-type', 'application/json')
-      body = JSON.stringify(options.body)
-    }
-
-    const response = await fetch(`${CHAT_API_BASE_URL}${path}`, {
-      method: options.method ?? 'GET',
-      headers,
-      body,
-      signal: timeoutController.signal,
-      credentials: 'same-origin',
-    })
-    const responseText = await response.text()
-    let payload: unknown = null
-
-    if (responseText) {
-      try {
-        payload = JSON.parse(responseText)
-      } catch {
-        payload = responseText
-      }
-    }
-
-    if (!response.ok) {
-      throw new ApiClientError(
-        getResponseErrorMessage(
-          payload,
-          `Chat request failed (${response.status}).`,
-        ),
-        response.status,
-        payload,
-      )
-    }
-
-    return payload as TResponse
-  } catch (error) {
-    if (error instanceof ApiClientError) throw error
-
-    if (
-      error instanceof DOMException &&
-      error.name === 'AbortError'
-    ) {
-      throw new ApiClientError(
-        'The chat request took too long. Please try again.',
-        408,
-      )
-    }
-
+  if (!data || !conversationId) {
     throw new ApiClientError(
-      'Could not connect to chat. Please check your connection and try again.',
-      0,
+      'Chat response did not include a conversation id.',
     )
-  } finally {
-    window.clearTimeout(timeout)
-    options.signal?.removeEventListener('abort', abortFromCaller)
+  }
+
+  return {
+    data: {
+      conversation_id: conversationId,
+      user_message: normalizeRequiredChatMessage(
+        data.user_message ?? data.userMessage,
+        'user',
+        1,
+      ),
+      assistant_message: normalizeRequiredChatMessage(
+        data.assistant_message ?? data.assistantMessage,
+        'assistant',
+        2,
+      ),
+    },
   }
 }
 
-export function sendStudySetChatMessage(
+function normalizeChatSession(value: unknown): StudySetChatSession | null {
+  const session = asRecord(value)
+  if (!session) return null
+
+  const id = readString(session.id, session.conversation_id, session.conversationId)
+  if (!id) return null
+
+  const createdAt =
+    readString(session.createdAt, session.created_at) ??
+    new Date(0).toISOString()
+
+  return {
+    id,
+    contextType:
+      readString(
+        session.contextType,
+        session.context_type,
+        session.section_type,
+      ) ?? 'study_set',
+    contextItemId:
+      readString(
+        session.contextItemId,
+        session.context_item_id,
+        session.item_id,
+      ) ?? null,
+    lastMessageAt:
+      readString(session.lastMessageAt, session.last_message_at) ?? createdAt,
+    createdAt,
+  }
+}
+
+function normalizeSessionsResponse(
+  payload: unknown,
+): StudySetChatSessionsResponse {
+  const envelope = asRecord(payload)
+  const sessions = envelope?.data
+
+  if (!Array.isArray(sessions)) {
+    throw new ApiClientError(
+      'Chat sessions response did not include a valid data list.',
+    )
+  }
+
+  return {
+    data: sessions
+      .map(normalizeChatSession)
+      .filter((session): session is StudySetChatSession => Boolean(session))
+      .sort(
+        (left, right) =>
+          new Date(right.lastMessageAt).getTime() -
+          new Date(left.lastMessageAt).getTime(),
+      ),
+  }
+}
+
+function normalizeConversationResponse(
+  payload: unknown,
+): StudySetChatConversationResponse {
+  const envelope = asRecord(payload)
+  const data = asRecord(envelope?.data)
+  const messages = data?.messages
+
+  if (!data || !Array.isArray(messages)) {
+    throw new ApiClientError(
+      'Chat conversation response did not include a valid message list.',
+    )
+  }
+
+  return {
+    data: {
+      session: asRecord(data.session) ?? {},
+      messages: messages
+        .map((message, index) => normalizeChatMessage(message, index + 1))
+        .filter((message): message is ChatMessage => Boolean(message)),
+    },
+  }
+}
+
+export async function sendStudySetChatMessage(
   studySetId: string,
   payload: SendChatMessageRequest,
   signal?: AbortSignal,
 ) {
-  return requestChatApi<SendChatMessageResponse>(
-    chatMessagesPath(studySetId),
+  const response = await apiClient.request<unknown>(chatPath(studySetId), {
+    method: 'POST',
+    body: payload,
+    signal,
+    timeoutMs: CHAT_REQUEST_TIMEOUT_MS,
+  })
+
+  return normalizeSendResponse(response)
+}
+
+export async function fetchStudySetChatSessions(
+  studySetId: string,
+  signal?: AbortSignal,
+) {
+  const response = await apiClient.request<unknown>(
+    chatSessionsPath(studySetId),
     {
-      method: 'POST',
-      body: payload,
-      headers: {
-        'idempotency-key': payload.client_message_id,
-      },
+      method: 'GET',
       signal,
     },
   )
+
+  return normalizeSessionsResponse(response)
 }
 
-export function fetchStudySetChatHistory(
+export async function fetchStudySetChatConversation(
   studySetId: string,
   conversationId: string,
   signal?: AbortSignal,
 ) {
-  const searchParams = new URLSearchParams({
-    conversation_id: conversationId,
-    limit: '100',
-  })
-
-  return requestChatApi<ChatHistoryResponse>(
-    `${chatMessagesPath(studySetId)}?${searchParams.toString()}`,
-    { signal },
+  const response = await apiClient.request<unknown>(
+    `${chatSessionsPath(studySetId)}/${encodeURIComponent(conversationId)}`,
+    {
+      method: 'GET',
+      signal,
+    },
   )
+
+  return normalizeConversationResponse(response)
 }
 
 export function isChatConversationNotFound(error: unknown) {
-  if (!(error instanceof ApiClientError) || error.status !== 404) {
-    return false
-  }
-
-  const data = error.data
-  return Boolean(
-    data &&
-    typeof data === 'object' &&
-    'error' in data &&
-    data.error &&
-    typeof data.error === 'object' &&
-    'code' in data.error &&
-    data.error.code === 'CONVERSATION_NOT_FOUND',
-  )
+  return error instanceof ApiClientError && error.status === 404
 }

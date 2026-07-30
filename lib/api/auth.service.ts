@@ -50,6 +50,7 @@ export type FirebaseSessionResponse = {
 
 const SESSION_ENDPOINT = '/api/v1/auth/session'
 const ONBOARDING_ENDPOINT = '/api/v1/auth/onboarding'
+const CURRENT_USER_ENDPOINT = '/api/v1/auth/me'
 
 export type UserRole = 'student' | 'admin'
 
@@ -89,6 +90,12 @@ export async function updateOnboarding(onboarding: boolean, signal?: AbortSignal
 
 export async function deleteCurrentSession() {
   return apiClient.request<null>(SESSION_ENDPOINT, {
+    method: 'DELETE',
+  })
+}
+
+export async function deleteCurrentUserAccount() {
+  return apiClient.request<null>(CURRENT_USER_ENDPOINT, {
     method: 'DELETE',
   })
 }

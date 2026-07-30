@@ -32,9 +32,6 @@ Neurova turns your study material into interactive learning experiences: study s
    NEXT_PUBLIC_API_BASE_URL=/backend-api
    API_UPSTREAM_URL=https://your-backend.example.com
 
-   # Gemini study-set chat (server-side only)
-   GEMINI_API_KEY=...
-   GEMINI_MODEL=gemini-3.6-flash
    ```
 
 3. Run the dev server:
@@ -47,6 +44,6 @@ Neurova turns your study material into interactive learning experiences: study s
 
 - Users can create accounts with Firebase email/password authentication; the backend provisions the application session from the Firebase ID token.
 - Study sets, syllabus analyses, and grader results are cached in browser localStorage per device; source-of-truth generation data lives on the backend.
-- Study-set chat currently runs through a temporary Next.js API layer. Its contract and backend migration steps are documented in [`docs/STUDY_SET_CHAT_API.md`](docs/STUDY_SET_CHAT_API.md).
+- Study-set chat uses the authenticated backend API and persists conversations as backend chat sessions. Its contract is documented in [`docs/STUDY_SET_CHAT_API.md`](docs/STUDY_SET_CHAT_API.md).
 - Admin portal lives at `/admin` (requires an admin role); the student dashboard is at `/dashboard`.
 - Backend response shapes are documented in `API_RESPONSE_FORMATS.md`.

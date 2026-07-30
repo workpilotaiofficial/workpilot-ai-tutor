@@ -1,119 +1,100 @@
 # Study-set chat API
 
-The browser uses this contract whether chat is served by the temporary Next.js
-route or the future standalone backend:
+Study-set chat uses the same authenticated backend and `apiClient` flow as the
+other study-set APIs.
 
 ```text
-POST /api/v1/study-sets/{study_set_id}/chat/messages
-GET  /api/v1/study-sets/{study_set_id}/chat/messages
+POST /api/v1/study-sets/{study_set_id}/chat
+GET  /api/v1/study-sets/{study_set_id}/chat/sessions
+GET  /api/v1/study-sets/{study_set_id}/chat/sessions/{conversation_id}
 ```
 
 ## Send a message
 
 ```json
 {
-  "conversation_id": null,
-  "client_message_id": "4a41f488-8cd9-4e3e-b15b-061698307859",
-  "text": "Why is option A the correct answer?",
   "context": {
-    "section_type": "multipleChoice",
-    "item_id": "question-uuid",
+    "section_type": "multiple_choice",
+    "item_id": "123e4567-e89b-12d3-a456-426614174000",
     "item_index": 0
   },
+  "text": "Why is option A the correct answer?",
+  "client_message_id": "4a41f488-8cd9-4e3e-b15b-061698307859",
+  "conversation_id": null,
   "language": "auto"
 }
 ```
+
+Supported `section_type` values:
+
+- `multiple_choice`
+- `flashcards`
+- `written_test`
+- `fill_in_the_blanks`
+- `notes`
+- `tutor_lesson`
 
 Success:
 
 ```json
 {
   "data": {
-    "conversation_id": "conversation-uuid",
+    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
     "user_message": {
-      "id": "user-message-uuid",
+      "id": "123e4567-e89b-12d3-a456-426614174001",
+      "serial_number": 1,
       "role": "user",
       "text": "Why is option A the correct answer?",
-      "created_at": "2026-07-27T12:30:10.000Z"
+      "created_at": "2026-07-30T06:31:05.675Z"
     },
     "assistant_message": {
-      "id": "assistant-message-uuid",
+      "id": "123e4567-e89b-12d3-a456-426614174002",
+      "serial_number": 2,
       "role": "assistant",
       "text": "Option A is correct because...",
-      "created_at": "2026-07-27T12:30:12.000Z",
-      "citations": [
-        {
-          "source_type": "study_item",
-          "source_id": "question-uuid",
-          "label": "multipleChoice · Item 1"
-        }
-      ]
-    },
-    "usage": {
-      "credits_used": 0,
-      "input_tokens": 0,
-      "output_tokens": 0
+      "created_at": "2026-07-30T06:31:06.675Z"
     }
-  },
-  "meta": {
-    "request_id": "request-uuid"
   }
 }
 ```
 
-## Load history
+## List sessions
 
 ```text
-GET /api/v1/study-sets/{study_set_id}/chat/messages?conversation_id={id}&limit=30&cursor={cursor}
+GET /api/v1/study-sets/{study_set_id}/chat/sessions
+```
+
+```json
+{
+  "data": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "contextType": "multiple_choice",
+      "contextItemId": "123e4567-e89b-12d3-a456-426614174010",
+      "lastMessageAt": "2026-07-30T06:31:06.675Z",
+      "createdAt": "2026-07-30T06:31:05.675Z"
+    }
+  ]
+}
+```
+
+## Load a conversation
+
+```text
+GET /api/v1/study-sets/{study_set_id}/chat/sessions/{conversation_id}
 ```
 
 ```json
 {
   "data": {
-    "conversation_id": "conversation-uuid",
-    "messages": [],
-    "pagination": {
-      "next_cursor": null,
-      "has_more": false
-    }
-  },
-  "meta": {
-    "request_id": "request-uuid"
+    "session": {},
+    "messages": []
   }
 }
 ```
 
-## Error envelope
-
-```json
-{
-  "error": {
-    "code": "CHAT_MESSAGE_INVALID",
-    "message": "Some submitted chat fields are invalid.",
-    "details": {}
-  },
-  "request_id": "request-uuid"
-}
-```
-
-## Temporary Next.js implementation
-
-- The Gemini key is read only on the server from `GEMINI_API_KEY`.
-- The active study item is loaded from the authenticated study-set backend;
-  source content and answer data are not accepted from the browser.
-- Conversations and idempotency records use a bounded in-memory adapter. They
-  survive local hot reloads but are not durable across process restarts or
-  serverless instances.
-- Gemini conversation state uses the Gemini Interactions API.
-
-## Moving to the standalone backend
-
-Implement the same endpoints and JSON shapes in the backend, persist
-conversations/messages there, and set:
-
-```bash
-NEXT_PUBLIC_CHAT_API_BASE_URL=https://api.example.com
-```
-
-No component or request-shape change is required. The backend should replace
-the temporary `credits_used: 0` value with actual credit accounting.
+The frontend normalizes documented camelCase and snake_case aliases at the API
+boundary. The chat panel restores the most recently selected valid backend
+session, falls back to the latest session, and provides a new-conversation
+option. Gemini credentials and provider conversation state are not stored or
+used by the frontend application.

@@ -79,6 +79,12 @@ export {
 export { fetchGraderHistory, fetchGraderResult, submitGraderAssignment } from '@/lib/api/paper-grader.service'
 export { fetchDashboard } from '@/lib/api/dashboard.service'
 export {
+  fetchStudySetChatConversation,
+  fetchStudySetChatSessions,
+  isChatConversationNotFound,
+  sendStudySetChatMessage,
+} from '@/lib/api/study-set-chat.service'
+export {
   clearAuthBrowserState,
   clearStoredAuthObject,
   getStoredAccessToken,
@@ -189,3 +195,13 @@ export type {
   SyllabusUploadResponse,
   SyllabusUploadWebsocket,
 } from '@/lib/api/syllabus.service'
+export type {
+  ChatContext,
+  ChatMessage,
+  SendChatMessageRequest,
+  SendChatMessageResponse,
+  StudySetChatConversationResponse,
+  StudySetChatSectionType,
+  StudySetChatSession,
+  StudySetChatSessionsResponse,
+} from '@/lib/chat/contracts'
