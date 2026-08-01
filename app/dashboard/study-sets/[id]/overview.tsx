@@ -228,7 +228,7 @@ export function StudySetOverview({
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl"></div>
         </div>
 
-        <div className="study-set-overview__hero-content relative flex min-w-0 flex-col gap-8">
+        <div className="study-set-overview__hero-content relative flex min-w-0  gap-8">
           <div className="min-w-0 flex-1">
             <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-linear-to-r from-blue-100/60 to-purple-100/60 border border-blue-200/40 backdrop-blur-sm">
               <span className="text-xs font-bold text-primary tracking-wide">STUDY SET</span>
