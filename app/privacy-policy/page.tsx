@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
           <ul>
             <li><strong>Account information:</strong> name, email address, profile photo, authentication identifiers, account role, and sign-in provider details.</li>
             <li><strong>Study content:</strong> documents, text, syllabi, assignments, rubrics, notes, prompts, and other material you upload or submit, plus AI-generated outputs.</li>
-            <li><strong>Learning preferences:</strong> education stage, goals, preferred tone, study pace, formats, and instructions you choose to provide for personalized AI.</li>
+            <li><strong>Learning preferences:</strong> your answers to administrator-provided personalization questions, including learning goals, preferred explanations, study pace, formats, and other guidance you choose to provide to your AI tutor.</li>
             <li><strong>Billing information:</strong> subscription status, plan, credit balance, transaction and invoice details. Payment card details are processed by Stripe and are not stored by Neurova.</li>
             <li><strong>Technical and usage data:</strong> IP address, browser and device information, timestamps, feature interactions, error data, and diagnostic logs.</li>
             <li><strong>Communications:</strong> messages and information you send when requesting support or contacting us.</li>

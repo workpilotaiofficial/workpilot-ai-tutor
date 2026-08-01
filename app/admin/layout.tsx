@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bot, Coins, LayoutDashboard, PanelsTopLeft, ShieldCheck, Users } from 'lucide-react'
+import { Bot, Coins, LayoutDashboard, MessageSquareText, PanelsTopLeft, ShieldCheck, Users } from 'lucide-react'
 import { signOut } from 'firebase/auth'
 
 import { PortalShell, type PortalNavItem } from '@/components/portal/portal-shell'
@@ -38,6 +38,11 @@ const adminNavItems: PortalNavItem[] = [
     label: 'Models',
     href: '/admin/models',
     icon: Bot,
+  },
+  {
+    label: 'Personalized AI',
+    href: '/admin/personalization',
+    icon: MessageSquareText,
   },
   {
     label: 'Access',

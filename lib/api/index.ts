@@ -10,6 +10,12 @@ export {
   fetchAdminModelConfigs,
   updateAdminModelConfig,
 } from '@/lib/api/admin-model-config.service'
+export {
+  createAdminPersonalizationQuestion,
+  deleteAdminPersonalizationQuestion,
+  fetchAdminPersonalizationQuestions,
+  updateAdminPersonalizationQuestion,
+} from '@/lib/api/admin-personalization.service'
 export { fetchAdminPlans } from '@/lib/api/admin-plans.service'
 export {
   adjustAdminCredits,
@@ -74,9 +80,11 @@ export {
   uploadSyllabusText,
 } from '@/lib/api/syllabus.service'
 export {
-  PERSONALIZATION_INSTRUCTIONS_MAX_LENGTH,
-  fetchPersonalization,
-  updatePersonalization,
+  PERSONALIZATION_ANSWER_MAX_LENGTH,
+  PERSONALIZATION_QUESTION_DESCRIPTION_MAX_LENGTH,
+  PERSONALIZATION_QUESTION_MAX_LENGTH,
+  fetchPersonalizationQuestions,
+  updatePersonalizationAnswers,
 } from '@/lib/api/user-settings.service'
 export {
   deleteGraderResult,
@@ -185,10 +193,18 @@ export type {
   GraderWebsocket,
 } from '@/lib/api/paper-grader.service'
 export type {
-  PersonalizationProfile,
-  PersonalizationSettings,
-  UpdatePersonalizationPayload,
+  PersonalizationAnswer,
+  PersonalizationAnswerInput,
+  PersonalizationQuestion,
+  PersonalizationQuestionsResponse,
+  PersonalizationQuestionWithAnswer,
+  UpdatePersonalizationAnswersPayload,
 } from '@/lib/api/user-settings.service'
+export type {
+  AdminPersonalizationQuestion,
+  CreateAdminPersonalizationQuestionPayload,
+  UpdateAdminPersonalizationQuestionPayload,
+} from '@/lib/api/admin-personalization.service'
 export type {
   SyllabusAnalysisResponse,
   SyllabusDetailCourseworkItem,
