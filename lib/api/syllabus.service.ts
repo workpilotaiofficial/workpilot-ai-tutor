@@ -111,6 +111,17 @@ export type SyllabusDetailResponse = {
 
 export type SyllabusHistoryResponse = {
   data: unknown[]
+  pagination: {
+    next_cursor: string | null
+    has_more: boolean
+    limit: number
+  } | null
+  next_cursor: string | null
+}
+
+export type FetchSyllabusHistoryParams = {
+  cursor?: string | null
+  limit?: number
 }
 
 type UploadSyllabusTextPayload = {
@@ -296,18 +307,86 @@ export async function fetchSyllabusById(id: string) {
   return normalizeSyllabusDetailResponse(response)
 }
 
-export async function fetchSyllabusHistory(signal?: AbortSignal) {
-  const response = await apiClient.request<unknown>('/api/v1/syllabus/history', {
-    method: 'GET',
-    signal,
-  })
+export function deleteSyllabus(syllabusId: string) {
+  return apiClient.request<unknown>(
+    `/api/v1/syllabus/${encodeURIComponent(syllabusId)}`,
+    {
+      method: 'DELETE',
+    },
+  )
+}
+
+export async function fetchSyllabusHistory(
+  params: FetchSyllabusHistoryParams = {},
+  signal?: AbortSignal,
+) {
+  const searchParams = new URLSearchParams()
+
+  if (params.cursor) {
+    searchParams.set('cursor', params.cursor)
+  }
+
+  if (typeof params.limit === 'number') {
+    searchParams.set('limit', String(params.limit))
+  }
+
+  const query = searchParams.toString()
+  const response = await apiClient.request<unknown>(
+    `/api/v1/syllabus/history${query ? `?${query}` : ''}`,
+    {
+      method: 'GET',
+      signal,
+    },
+  )
 
   if (Array.isArray(response)) {
-    return { data: response } satisfies SyllabusHistoryResponse
+    return {
+      data: response,
+      pagination: null,
+      next_cursor: null,
+    } satisfies SyllabusHistoryResponse
   }
 
   if (response && typeof response === 'object' && Array.isArray((response as { data?: unknown }).data)) {
-    return { data: (response as { data: unknown[] }).data } satisfies SyllabusHistoryResponse
+    const payload = response as {
+      data: unknown[]
+      pagination?: unknown
+      next_cursor?: unknown
+    }
+    const rawPagination =
+      payload.pagination && typeof payload.pagination === 'object'
+        ? payload.pagination as Record<string, unknown>
+        : null
+    const paginationNextCursor =
+      typeof rawPagination?.next_cursor === 'string' &&
+      rawPagination.next_cursor.trim()
+        ? rawPagination.next_cursor
+        : null
+    const topLevelNextCursor =
+      typeof payload.next_cursor === 'string' &&
+      payload.next_cursor.trim()
+        ? payload.next_cursor
+        : null
+    const nextCursor =
+      paginationNextCursor ?? topLevelNextCursor
+
+    return {
+      data: payload.data,
+      pagination: rawPagination
+        ? {
+            next_cursor: nextCursor,
+            has_more:
+              typeof rawPagination.has_more === 'boolean'
+                ? rawPagination.has_more
+                : Boolean(nextCursor),
+            limit:
+              typeof rawPagination.limit === 'number'
+                ? rawPagination.limit
+                : params.limit ?? payload.data.length,
+          }
+        : null,
+      next_cursor: nextCursor,
+    } satisfies SyllabusHistoryResponse
   }
 
   throw new ApiClientError('Syllabus history fetch failed: invalid response payload.')

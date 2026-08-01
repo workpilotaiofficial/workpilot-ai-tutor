@@ -208,7 +208,7 @@ export default function StudySetsPage() {
 
     try {
       const historyResponse = await fetchStudySetHistory(
-        { limit: 20, forceRefresh },
+        { limit: 5, forceRefresh },
         signal,
       )
       const history = Array.isArray(historyResponse.data)

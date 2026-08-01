@@ -7,11 +7,28 @@ import {
   MotionConfig,
   type Variants,
 } from 'framer-motion'
-import { Upload, FileText, ArrowUpRight } from 'lucide-react'
+import {
+  ArrowUpRight,
+  FileText,
+  Loader2,
+  Trash2,
+  Upload,
+} from 'lucide-react'
+import { toast } from 'sonner'
 import GraderUploadModal from '@/components/paper-grader/upload-modal'
 import GradingResult from '@/components/paper-grader/grading-result'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { formatUTCDate } from '@/lib/utils'
 import {
+  deleteGraderResult,
   fetchGraderHistory,
   fetchGraderResult,
   type GraderHistoryItem,
@@ -247,9 +264,16 @@ export default function PaperGraderPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [activeSubmission, setActiveSubmission] =
     useState<Submission | null>(null)
+  const [submissionToDelete, setSubmissionToDelete] =
+    useState<Submission | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [isLoadingSubmissions, setIsLoadingSubmissions] =
     useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [loadMoreError, setLoadMoreError] = useState('')
 
   const applyGraderResult = useCallback(
     (response: GraderResultResponse) => {
@@ -294,13 +318,26 @@ export default function PaperGraderPage() {
     async (signal?: AbortSignal) => {
       setIsLoadingSubmissions(true)
       setErrorMessage('')
+      setLoadMoreError('')
 
       try {
-        const response = await fetchGraderHistory(signal)
+        const response = await fetchGraderHistory(
+          { limit: 5 },
+          signal,
+        )
 
         if (signal?.aborted) return
 
         setSubmissions(response.data)
+        const responseNextCursor =
+          response.pagination?.next_cursor ??
+          response.next_cursor ??
+          null
+        setNextCursor(responseNextCursor)
+        setHasMore(
+          response.pagination?.has_more ??
+          Boolean(responseNextCursor),
+        )
 
         response.data
           .filter((submission) =>
@@ -323,6 +360,8 @@ export default function PaperGraderPage() {
         )
 
         setSubmissions([])
+        setNextCursor(null)
+        setHasMore(false)
 
         setErrorMessage(
           getApiClientErrorMessage(
@@ -338,6 +377,74 @@ export default function PaperGraderPage() {
     },
     [applyGraderResult],
   )
+
+  const loadMoreSubmissions = async () => {
+    if (!nextCursor || isLoadingMore) return
+
+    setIsLoadingMore(true)
+    setLoadMoreError('')
+
+    try {
+      const response = await fetchGraderHistory({
+        cursor: nextCursor,
+        limit: 20,
+      })
+
+      setSubmissions((current) => {
+        const existingIds = new Set(
+          current.map(
+            (submission) => submission.submission_id,
+          ),
+        )
+
+        return [
+          ...current,
+          ...response.data.filter(
+            (submission) =>
+              !existingIds.has(
+                submission.submission_id,
+              ),
+          ),
+        ]
+      })
+
+      const responseNextCursor =
+        response.pagination?.next_cursor ??
+        response.next_cursor ??
+        null
+      setNextCursor(responseNextCursor)
+      setHasMore(
+        response.pagination?.has_more ??
+        Boolean(responseNextCursor),
+      )
+
+      response.data
+        .filter((submission) =>
+          isProcessingStatus(submission.status),
+        )
+        .forEach((submission) => {
+          subscribeToGraderSubmission(
+            {
+              submissionId: submission.submission_id,
+            },
+            applyGraderResult,
+          )
+        })
+    } catch (error) {
+      console.error(
+        'Error loading more submissions:',
+        error,
+      )
+      setLoadMoreError(
+        getApiClientErrorMessage(
+          error,
+          'Failed to load more grading history. Please try again.',
+        ),
+      )
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -441,6 +548,35 @@ export default function PaperGraderPage() {
       applyGraderResult,
     )
   }
+
+  const handleDelete = useCallback(async () => {
+    if (!submissionToDelete || isDeleting) return
+
+    const submission = submissionToDelete
+    setIsDeleting(true)
+
+    try {
+      await deleteGraderResult(submission.submission_id)
+      setSubmissions((previous) =>
+        previous.filter(
+          (item) =>
+            item.submission_id !== submission.submission_id,
+        ),
+      )
+      setSubmissionToDelete(null)
+      toast.success('Paper grading result deleted')
+    } catch (error) {
+      console.error('Error deleting grader result:', error)
+      toast.error(
+        getApiClientErrorMessage(
+          error,
+          'Failed to delete the grading result. Please try again.',
+        ),
+      )
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [isDeleting, submissionToDelete])
 
   return (
     <MotionConfig reducedMotion="user">
@@ -574,9 +710,7 @@ export default function PaperGraderPage() {
                       Recent Submissions
                     </h2>
 
-                    <p className="mt-1 pl-5 text-xs text-muted-foreground">
-                      Synced with your account
-                    </p>
+
                   </motion.div>
 
                   <AnimatePresence
@@ -748,6 +882,7 @@ export default function PaperGraderPage() {
                                 key={
                                   submission.submission_id
                                 }
+                                className="relative"
                                 variants={
                                   submissionCardVariants
                                 }
@@ -799,7 +934,7 @@ export default function PaperGraderPage() {
                                     </motion.div>
 
                                     <motion.div
-                                      className="text-muted-foreground transition-colors group-hover:text-foreground"
+                                      className="mr-9 text-muted-foreground transition-colors group-hover:text-foreground"
                                       whileHover={{
                                         x: 3,
                                         y: -3,
@@ -917,9 +1052,62 @@ export default function PaperGraderPage() {
                                     </div>
                                   </div>
                                 </motion.button>
+
+                                <motion.button
+                                  type="button"
+                                  onClick={() =>
+                                    setSubmissionToDelete(
+                                      submission,
+                                    )
+                                  }
+                                  aria-label={`Delete grading result for ${submission.title}`}
+                                  className="absolute right-5 top-5 z-10 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  whileHover={{ scale: 1.08 }}
+                                  whileTap={{ scale: 0.94 }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </motion.button>
                               </motion.div>
                             )
                           },
+                        )}
+
+                        {hasMore && nextCursor && (
+                          <motion.div
+                            className="text-center md:col-span-2 xl:col-span-3"
+                            variants={
+                              submissionCardVariants
+                            }
+                          >
+                            {loadMoreError && (
+                              <p className="mb-3 text-sm text-destructive">
+                                {loadMoreError}
+                              </p>
+                            )}
+
+                            <motion.button
+                              type="button"
+                              onClick={() =>
+                                void loadMoreSubmissions()
+                              }
+                              disabled={isLoadingMore}
+                              className="rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                              whileHover={
+                                isLoadingMore
+                                  ? undefined
+                                  : { scale: 1.03 }
+                              }
+                              whileTap={
+                                isLoadingMore
+                                  ? undefined
+                                  : { scale: 0.97 }
+                              }
+                            >
+                              {isLoadingMore
+                                ? 'Loading...'
+                                : 'Load more'}
+                            </motion.button>
+                          </motion.div>
                         )}
                       </motion.div>
                     ) : (
@@ -1009,6 +1197,37 @@ export default function PaperGraderPage() {
           )}
         </AnimatePresence>
       </div>
+
+      <AlertDialog
+        open={Boolean(submissionToDelete)}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setSubmissionToDelete(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete grading result?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{submissionToDelete?.title}” and its feedback will be
+              permanently deleted. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={isDeleting}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50"
+            >
+              {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MotionConfig>
   )
 }

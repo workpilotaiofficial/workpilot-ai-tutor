@@ -59,7 +59,11 @@ export default function Nav({
   const pathname = usePathname();
   const { isAuthenticated, displayName, role, isReady } = useRbac();
 
-  const hideNav = pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin");
+  const hideNav =
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/admin") ||
+    pathname === "/login" ||
+    pathname === "/signup";
 
   if (hideNav) {
     return <>{children}</>;

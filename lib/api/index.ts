@@ -66,6 +66,7 @@ export {
   uploadStudySetYoutube,
 } from '@/lib/api/study-sets.service'
 export {
+  deleteSyllabus,
   fetchSyllabusById,
   fetchSyllabusHistory,
   uploadSyllabusImages,
@@ -77,7 +78,12 @@ export {
   fetchPersonalization,
   updatePersonalization,
 } from '@/lib/api/user-settings.service'
-export { fetchGraderHistory, fetchGraderResult, submitGraderAssignment } from '@/lib/api/paper-grader.service'
+export {
+  deleteGraderResult,
+  fetchGraderHistory,
+  fetchGraderResult,
+  submitGraderAssignment,
+} from '@/lib/api/paper-grader.service'
 export { fetchDashboard } from '@/lib/api/dashboard.service'
 export {
   fetchStudySetChatConversation,

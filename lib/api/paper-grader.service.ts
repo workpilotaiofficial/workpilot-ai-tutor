@@ -67,6 +67,17 @@ export type GraderHistoryItem = {
 
 export type GraderHistoryResponse = {
   data: GraderHistoryItem[]
+  pagination: {
+    next_cursor: string | null
+    has_more: boolean
+    limit: number
+  } | null
+  next_cursor: string | null
+}
+
+export type FetchGraderHistoryParams = {
+  cursor?: string | null
+  limit?: number
 }
 
 type SubmitGraderAssignmentPayload = {
@@ -255,25 +266,93 @@ export async function fetchGraderResult(submissionId: string) {
   return normalizeResultResponse(response)
 }
 
-export async function fetchGraderHistory(signal?: AbortSignal) {
-  const response = await apiClient.request<unknown>('/api/v1/grader/history', {
-    method: 'GET',
-    signal,
-  })
+export function deleteGraderResult(submissionId: string) {
+  return apiClient.request<unknown>(
+    `/api/v1/grader/result/${encodeURIComponent(submissionId)}`,
+    {
+      method: 'DELETE',
+    },
+  )
+}
 
+export async function fetchGraderHistory(
+  params: FetchGraderHistoryParams = {},
+  signal?: AbortSignal,
+) {
+  const searchParams = new URLSearchParams()
+
+  if (params.cursor) {
+    searchParams.set('cursor', params.cursor)
+  }
+
+  if (typeof params.limit === 'number') {
+    searchParams.set('limit', String(params.limit))
+  }
+
+  const query = searchParams.toString()
+  const response = await apiClient.request<unknown>(
+    `/api/v1/grader/history${query ? `?${query}` : ''}`,
+    {
+      method: 'GET',
+      signal,
+    },
+  )
+
+  const payload =
+    response && typeof response === 'object' && !Array.isArray(response)
+      ? response as {
+          data?: unknown
+          pagination?: unknown
+          next_cursor?: unknown
+        }
+      : null
+  const payloadData = payload?.data
   const entries = Array.isArray(response)
     ? response
-    : response && typeof response === 'object' && Array.isArray((response as { data?: unknown }).data)
-      ? (response as { data: unknown[] }).data
+    : Array.isArray(payloadData)
+      ? payloadData
       : null
 
   if (!entries) {
     throw new ApiClientError('Grader history fetch failed: invalid response payload.')
   }
 
+  const rawPagination =
+    payload?.pagination && typeof payload.pagination === 'object'
+      ? payload.pagination as Record<string, unknown>
+      : null
+  const paginationNextCursor =
+    typeof rawPagination?.next_cursor === 'string' &&
+    rawPagination.next_cursor.trim()
+      ? rawPagination.next_cursor
+      : null
+  const rawTopLevelNextCursor = payload?.next_cursor
+  const topLevelNextCursor =
+    typeof rawTopLevelNextCursor === 'string' &&
+    rawTopLevelNextCursor.trim()
+      ? rawTopLevelNextCursor
+      : null
+  const nextCursor =
+    paginationNextCursor ?? topLevelNextCursor
+  const data = entries
+    .map(normalizeHistoryItem)
+    .filter((entry): entry is GraderHistoryItem => entry !== null)
+
   return {
-    data: entries
-      .map(normalizeHistoryItem)
-      .filter((entry): entry is GraderHistoryItem => entry !== null),
+    data,
+    pagination: rawPagination
+      ? {
+          next_cursor: nextCursor,
+          has_more:
+            typeof rawPagination.has_more === 'boolean'
+              ? rawPagination.has_more
+              : Boolean(nextCursor),
+          limit:
+            typeof rawPagination.limit === 'number'
+              ? rawPagination.limit
+              : params.limit ?? data.length,
+        }
+      : null,
+    next_cursor: nextCursor,
   } satisfies GraderHistoryResponse
 }

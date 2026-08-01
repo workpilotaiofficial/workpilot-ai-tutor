@@ -3,11 +3,22 @@
 import SyllabusAnalysisResult from '@/components/syllabus-intelligence/analysis-result'
 import SyllabusUploadModal from '@/components/syllabus-intelligence/upload-modal'
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  deleteSyllabusResult,
   mapSyllabusDetailToResult,
   type SyllabusIntelligenceResult,
 } from '@/components/syllabus-intelligence/utils'
 import { getApiClientErrorMessage } from '@/lib/api/client'
 import {
+  deleteSyllabus,
   fetchSyllabusById,
   fetchSyllabusHistory,
 } from '@/lib/api/syllabus.service'
@@ -22,6 +33,8 @@ import {
   ArrowUpRight,
   FileText,
   Link as LinkIcon,
+  Loader2,
+  Trash2,
   Upload,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -31,6 +44,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { toast } from 'sonner'
 
 const smoothEase = [0.22, 1, 0.36, 1] as const
 
@@ -259,8 +273,15 @@ export default function SyllabusIntelligenceContent() {
   >([])
   const [activeResult, setActiveResult] =
     useState<SyllabusIntelligenceResult | null>(null)
+  const [resultToDelete, setResultToDelete] =
+    useState<SyllabusIntelligenceResult | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [loadMoreError, setLoadMoreError] = useState('')
 
   const openUploadModal = useCallback(
     (mode: 'file' | 'text' = 'file') => {
@@ -286,9 +307,13 @@ export default function SyllabusIntelligenceContent() {
   const loadHistory = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true)
     setErrorMessage('')
+    setLoadMoreError('')
 
     try {
-      const response = await fetchSyllabusHistory(signal)
+      const response = await fetchSyllabusHistory(
+        { limit: 5 },
+        signal,
+      )
 
       if (signal?.aborted) return
 
@@ -302,6 +327,15 @@ export default function SyllabusIntelligenceContent() {
               Boolean(entry),
           ),
       )
+      const responseNextCursor =
+        response.pagination?.next_cursor ??
+        response.next_cursor ??
+        null
+      setNextCursor(responseNextCursor)
+      setHasMore(
+        response.pagination?.has_more ??
+        Boolean(responseNextCursor),
+      )
     } catch (error) {
       if (signal?.aborted) return
 
@@ -311,6 +345,8 @@ export default function SyllabusIntelligenceContent() {
       )
 
       setResults([])
+      setNextCursor(null)
+      setHasMore(false)
 
       setErrorMessage(
         getApiClientErrorMessage(
@@ -324,6 +360,64 @@ export default function SyllabusIntelligenceContent() {
       }
     }
   }, [])
+
+  const loadMoreHistory = async () => {
+    if (!nextCursor || isLoadingMore) return
+
+    setIsLoadingMore(true)
+    setLoadMoreError('')
+
+    try {
+      const response = await fetchSyllabusHistory({
+        cursor: nextCursor,
+        limit: 20,
+      })
+      const newResults = response.data
+        .map((entry) => mapSyllabusDetailToResult(entry))
+        .filter(
+          (
+            entry,
+          ): entry is SyllabusIntelligenceResult =>
+            Boolean(entry),
+        )
+
+      setResults((current) => {
+        const existingIds = new Set(
+          current.map((result) => result.id),
+        )
+
+        return [
+          ...current,
+          ...newResults.filter(
+            (result) => !existingIds.has(result.id),
+          ),
+        ]
+      })
+
+      const responseNextCursor =
+        response.pagination?.next_cursor ??
+        response.next_cursor ??
+        null
+      setNextCursor(responseNextCursor)
+      setHasMore(
+        response.pagination?.has_more ??
+        Boolean(responseNextCursor),
+      )
+    } catch (error) {
+      console.error(
+        'Error fetching more syllabus history:',
+        error,
+      )
+      setLoadMoreError(
+        getApiClientErrorMessage(
+          error,
+          'Failed to load more syllabus history. Please try again.',
+        ),
+      )
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
 
   const openResult = useCallback(
     async (resultId: string, updateUrl = true) => {
@@ -376,6 +470,33 @@ export default function SyllabusIntelligenceContent() {
     setActiveResult(null)
     router.push('?')
   }, [router])
+
+  const handleDelete = useCallback(async () => {
+    if (!resultToDelete || isDeleting) return
+
+    const syllabus = resultToDelete
+    setIsDeleting(true)
+
+    try {
+      await deleteSyllabus(syllabus.id)
+      deleteSyllabusResult(syllabus.id)
+      setResults((current) =>
+        current.filter((result) => result.id !== syllabus.id),
+      )
+      setResultToDelete(null)
+      toast.success('Syllabus analysis deleted')
+    } catch (error) {
+      console.error('Error deleting syllabus analysis:', error)
+      toast.error(
+        getApiClientErrorMessage(
+          error,
+          'Failed to delete the syllabus analysis. Please try again.',
+        ),
+      )
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [isDeleting, resultToDelete])
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -593,10 +714,6 @@ export default function SyllabusIntelligenceContent() {
                   <h2 className="relative pl-5 text-xl font-semibold text-foreground before:absolute before:inset-y-0 before:left-0 before:w-1 before:rounded-full before:bg-foreground sm:text-2xl">
                     Recent Analyses
                   </h2>
-
-                  <p className="mt-1 pl-5 text-xs text-muted-foreground">
-                    Saved on this device
-                  </p>
                 </motion.div>
 
                 <AnimatePresence mode="wait" initial={false}>
@@ -811,6 +928,7 @@ export default function SyllabusIntelligenceContent() {
                       {sortedResults.map((result) => (
                         <motion.li
                           key={result.id}
+                          className="relative"
                           variants={resultCardVariants}
                           layout
                           transition={{
@@ -827,7 +945,7 @@ export default function SyllabusIntelligenceContent() {
                               void openResult(result.id)
                             }
                             aria-label={`Open analysis for ${result.title}`}
-                            className="group h-full w-full rounded-[30px] border border-border bg-card p-6 text-left shadow-sm transition-colors hover:border-foreground/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="group h-full w-full rounded-[30px] border border-border bg-card p-6 pr-14 text-left shadow-sm transition-colors hover:border-foreground/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             whileHover={{
                               y: -6,
                               scale: 1.015,
@@ -904,8 +1022,55 @@ export default function SyllabusIntelligenceContent() {
                               </div>
                             </div>
                           </motion.button>
+
+                          <motion.button
+                            type="button"
+                            onClick={() => setResultToDelete(result)}
+                            aria-label={`Delete analysis for ${result.title}`}
+                            className="absolute bottom-5 right-5 z-10 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            whileHover={{ scale: 1.08 }}
+                            whileTap={{ scale: 0.94 }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </motion.button>
                         </motion.li>
                       ))}
+
+                      {hasMore && nextCursor && (
+                        <motion.li
+                          className="text-center md:col-span-2 xl:col-span-3"
+                          variants={resultCardVariants}
+                        >
+                          {loadMoreError && (
+                            <p className="mb-3 text-sm text-destructive">
+                              {loadMoreError}
+                            </p>
+                          )}
+
+                          <motion.button
+                            type="button"
+                            onClick={() =>
+                              void loadMoreHistory()
+                            }
+                            disabled={isLoadingMore}
+                            className="rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                            whileHover={
+                              isLoadingMore
+                                ? undefined
+                                : { scale: 1.03 }
+                            }
+                            whileTap={
+                              isLoadingMore
+                                ? undefined
+                                : { scale: 0.97 }
+                            }
+                          >
+                            {isLoadingMore
+                              ? 'Loading...'
+                              : 'Load more'}
+                          </motion.button>
+                        </motion.li>
+                      )}
                     </motion.ul>
                   )}
                 </AnimatePresence>
@@ -922,6 +1087,37 @@ export default function SyllabusIntelligenceContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AlertDialog
+        open={Boolean(resultToDelete)}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setResultToDelete(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete syllabus analysis?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{resultToDelete?.title}” and its generated analysis will be
+              permanently deleted. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={isDeleting}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50"
+            >
+              {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MotionConfig>
   )
 }
