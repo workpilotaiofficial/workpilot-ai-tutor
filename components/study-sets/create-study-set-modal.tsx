@@ -217,9 +217,9 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-screen w-full max-w-3xl overflow-y-auto rounded-2xl bg-card shadow-2xl">
-        <div className="flex items-start justify-between border-b border-border p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 sm:p-4">
+      <div className="max-h-dvh w-full max-w-3xl overflow-y-auto bg-card shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-border p-4 sm:p-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Step {step} of 2</p>
             <h2 className="text-2xl font-bold text-foreground">Create Study Set</h2>
@@ -229,7 +229,7 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
           </button>
         </div>
 
-        <div className="space-y-6 p-6">
+        <div className="space-y-5 p-4 sm:space-y-6 sm:p-6">
           {step === 1 ? (
             <div className="space-y-5">
               <div className="inline-flex rounded-xl border border-border bg-secondary/30 p-1">
@@ -370,12 +370,12 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
         </div>
 
         {errorMessage ? (
-          <div className="px-6 pb-1">
+          <div className="px-4 pb-1 sm:px-6">
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{errorMessage}</div>
           </div>
         ) : null}
 
-        <div className="flex gap-3 border-t border-border p-6">
+        <div className="flex flex-col-reverse gap-3 border-t border-border p-4 sm:flex-row sm:p-6">
           <button
             type="button"
             onClick={() => {

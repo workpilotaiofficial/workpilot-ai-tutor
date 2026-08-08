@@ -288,9 +288,9 @@ export default function PasteModal({ onClose }: PasteModalProps) {
   )
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-2xl max-w-2xl w-full max-h-screen overflow-y-auto">
-        <div className="flex items-start justify-between p-6 border-b border-border gap-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 sm:p-4">
+      <div className="max-h-dvh w-full max-w-2xl overflow-y-auto bg-card sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-border p-4 sm:p-6">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
               Step {step} of {totalSteps}
@@ -320,19 +320,19 @@ export default function PasteModal({ onClose }: PasteModalProps) {
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {step === 1 ? renderContentStep() : renderSelectionStep()}
         </div>
 
         {errorMessage ? (
-          <div className="px-6 pb-1">
+          <div className="px-4 pb-1 sm:px-6">
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {errorMessage}
             </div>
           </div>
         ) : null}
 
-        <div className="flex gap-3 p-6 border-t border-border">
+        <div className="flex flex-col-reverse gap-3 border-t border-border p-4 sm:flex-row sm:p-6">
           <button
             onClick={handleSecondaryAction}
             className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors font-medium"

@@ -301,12 +301,12 @@ export default function InsufficientCreditsModal({
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="z-[81] max-h-[calc(100vh-2rem)] w-[min(672px,calc(100%-2rem))] max-w-none gap-0  rounded-[20px] border border-slate-200 bg-white p-0 text-slate-900 shadow-[0_32px_90px_rgba(0,0,0,0.32)] [&_[data-slot=dialog-close]]:right-7 [&_[data-slot=dialog-close]]:top-7 [&_[data-slot=dialog-close]]:rounded-full [&_[data-slot=dialog-close]]:p-1 [&_[data-slot=dialog-close]]:text-slate-500 [&_[data-slot=dialog-close]]:hover:bg-slate-100 [&_[data-slot=dialog-close]_svg]:size-5"
+        className="z-[81] max-h-[calc(100dvh-1rem)] w-[min(672px,calc(100%-1rem))] max-w-none gap-0 rounded-[16px] border border-slate-200 bg-white p-0 text-slate-900 shadow-[0_32px_90px_rgba(0,0,0,0.32)] sm:max-h-[calc(100dvh-2rem)] sm:w-[min(672px,calc(100%-2rem))] sm:rounded-[20px] [&_[data-slot=dialog-close]]:right-3 [&_[data-slot=dialog-close]]:top-3 [&_[data-slot=dialog-close]]:rounded-full [&_[data-slot=dialog-close]]:p-2 sm:[&_[data-slot=dialog-close]]:right-7 sm:[&_[data-slot=dialog-close]]:top-7 [&_[data-slot=dialog-close]]:text-slate-500 [&_[data-slot=dialog-close]]:hover:bg-slate-100 [&_[data-slot=dialog-close]_svg]:size-5"
         showCloseButton
       >
-<ScrollArea className="max-h-[calc(100vh-2rem)] w-full overflow-y-auto">
-          <DialogHeader className="border-b border-slate-200 px-8 pb-8 pt-8 text-center sm:px-12 sm:text-center">
-            <DialogTitle className="text-[32px] font-bold leading-tight tracking-[-0.025em] text-primary">
+<ScrollArea className="max-h-[calc(100dvh-1rem)] w-full overflow-y-auto sm:max-h-[calc(100dvh-2rem)]">
+          <DialogHeader className="border-b border-slate-200 px-4 pb-5 pt-6 text-center sm:px-12 sm:pb-8 sm:pt-8 sm:text-center">
+            <DialogTitle className="pr-8 text-2xl font-bold leading-tight tracking-[-0.025em] text-primary sm:pr-0 sm:text-[32px]">
               Upgrade Your Plan
             </DialogTitle>
             <DialogDescription className="mx-auto max-w-lg text-sm leading-6 text-slate-600 sm:text-sm">
@@ -314,7 +314,7 @@ export default function InsufficientCreditsModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="px-7 pb-7 pt-6 sm:px-[20px]">
+          <div className="px-4 pb-5 pt-5 sm:px-[20px] sm:pb-7 sm:pt-6">
             <div className="space-y-[17px] text-sm">
               {[
                 'More credits for uploads and pasted study material',
@@ -353,7 +353,7 @@ export default function InsufficientCreditsModal({
                           setSelectedOffer({ kind: 'plan', id: plan.id })
                         }
                         className={cn(
-                          'relative flex min-h-[98px] w-full items-center gap-4 rounded-[19px] border px-5 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0877ee]/50',
+                          'relative grid min-h-[98px] w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[16px] border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0877ee]/50 sm:flex sm:gap-4 sm:rounded-[19px] sm:px-5',
                           isSelected
                             ? 'border-[#2f80ff] bg-[#edf4ff] shadow-[0_8px_24px_rgba(21,101,247,0.08)]'
                             : 'border-slate-200 bg-white hover:border-[#2f80ff]/50',
@@ -386,7 +386,7 @@ export default function InsufficientCreditsModal({
                               : `${plan.monthlyCreditAllotment.toLocaleString('en-US')} credits every month`}
                           </span>
                         </span>
-                        <span className="shrink-0 text-right">
+                        <span className="col-start-2 shrink-0 text-left sm:text-right">
                           <span className="block text-[18px] font-bold text-slate-800">
                             {formatUsd(plan.priceMonthly)}
                           </span>
@@ -413,7 +413,7 @@ export default function InsufficientCreditsModal({
                           setSelectedOffer({ kind: 'pack', id: pack.id })
                         }
                         className={cn(
-                          'flex min-h-[98px] w-full items-center gap-4 rounded-[19px] border px-5 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0877ee]/50',
+                          'grid min-h-[98px] w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[16px] border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0877ee]/50 sm:flex sm:gap-4 sm:rounded-[19px] sm:px-5',
                           isSelected
                             ? 'border-[#2f80ff] bg-[#edf4ff] shadow-[0_8px_24px_rgba(21,101,247,0.08)]'
                             : 'border-slate-200 bg-white hover:border-[#2f80ff]/50',
@@ -440,7 +440,7 @@ export default function InsufficientCreditsModal({
                             one-time purchase
                           </span>
                         </span>
-                        <span className="shrink-0 text-[18px] font-bold text-slate-800">
+                        <span className="col-start-2 shrink-0 text-[18px] font-bold text-slate-800 sm:ml-auto">
                           {formatPackPrice(pack)}
                         </span>
                       </button>

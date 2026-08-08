@@ -199,7 +199,7 @@ export const NotesEditor = forwardRef<
         editorProps: {
             attributes: {
                 class: [
-                    'mx-left min-h-[700px] h-full w-full max-w-[820px] px-1 py-8 text-[16px] leading-[1.3] text-foreground  caret-primary focus:outline-none sm:px-5 lg:py-12',
+                    'mx-auto min-h-[70dvh] h-full w-full max-w-[820px] px-2 py-6 pb-24 text-[16px] leading-[1.45] text-foreground caret-primary focus:outline-none sm:min-h-[700px] sm:px-5 sm:py-8 sm:pb-24 lg:py-12',
                     '[&_.rich-note-document]:w-full',
                     '[&_h1]:mb-6 [&_h1]:font-sans [&_h1]:text-[2rem] [&_h1]:font-bold [&_h1]:tracking-[0] [&_h1]:text-foreground [&_h1]:leading-[1.3] lg:[&_h1]:text-[2.5rem]',
                     '[&_h2]:mb-4 [&_h2]:mt-12 [&_h2]:border-t [&_h2]:border-border [&_h2]:pt-8 [&_h2]:font-sans [&_h2]:font-bold [&_h2]:tracking-[-0.02em] [&_h2]:text-primary [&_h2]:text-[1.25rem] [&_h2]:leading-[1.25] lg:[&_h2]:text-[1.59rem]',
@@ -328,9 +328,9 @@ export const NotesEditor = forwardRef<
     }
 
     return (
-        <div className={`rich-notes-editor-root  ${className}`}>
+        <div className={`rich-notes-editor-root relative h-full min-w-0 ${className}`}>
             {showToolbar && (
-                    <div className="mx-auto absolute bottom-4 left-1/2 -translate-x-1/3 backdrop-blur-lg bg-gray-100/70 z-20 flex w-fit max-w-[1120px] items-center gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="absolute bottom-3 left-2 right-2 z-20 flex items-center gap-1 overflow-x-auto rounded-xl border border-border bg-gray-100/90 p-1.5 shadow-lg backdrop-blur-lg [scrollbar-width:none] sm:bottom-4 sm:left-1/2 sm:right-auto sm:w-max sm:max-w-[calc(100%-2rem)] sm:-translate-x-1/2 [&::-webkit-scrollbar]:hidden">
                         <ToolbarButton label="Undo" disabled={!editor.can().chain().focus().undo().run()} onClick={() => editor.chain().focus().undo().run()}>
                             <Undo2 className="h-[18px] w-[18px]" />
                         </ToolbarButton>

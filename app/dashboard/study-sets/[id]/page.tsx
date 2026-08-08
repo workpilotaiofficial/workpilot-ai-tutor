@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Headphones, Loader2, Trash2 } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Headphones, Loader2, MessageSquareText, Trash2 } from 'lucide-react'
 import { normalizeStudySetResponse, type StudySet } from '@/components/study-sets/utils'
 import { ItemSidePanel } from '@/components/study-sets/ItemSidePanel'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
@@ -48,6 +48,7 @@ import { toast } from '@/hooks/use-toast'
 import { NotesEditor, type NotesEditorContent } from '@/components/study-sets/NotesEditor'
 import { StudySetOverview } from './overview'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
 function formatUpdatedAt(value?: string) {
   if (!value) return 'Just now'
@@ -322,6 +323,8 @@ export default function StudySetDetailPage({
   const [studySetError, setStudySetError] = useState('')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeletingStudySet, setIsDeletingStudySet] = useState(false)
+  const [isCompactViewport, setIsCompactViewport] = useState(false)
+  const [showMobileTools, setShowMobileTools] = useState(false)
   const [activeSectionType, setActiveSectionType] = useState<string | null>(null)
   const [currentItemIndex, setCurrentItemIndex] = useState(0)
   const [flashcardFlipped, setFlashcardFlipped] = useState(false)
@@ -338,6 +341,19 @@ export default function StudySetDetailPage({
   >({})
   const activeModeFromQuery = searchParams.get('mode')
   const shouldAutoOpenFirst = searchParams.get('autoOpenFirst') === '1'
+
+  useEffect(() => {
+    const compactQuery = window.matchMedia('(max-width: 1023px)')
+    const syncViewport = (event?: MediaQueryListEvent) => {
+      const isCompact = event ? event.matches : compactQuery.matches
+      setIsCompactViewport(isCompact)
+      if (!isCompact) setShowMobileTools(false)
+    }
+
+    syncViewport()
+    compactQuery.addEventListener('change', syncViewport)
+    return () => compactQuery.removeEventListener('change', syncViewport)
+  }, [])
 
   const missingGeneratedSectionSignature = useMemo(() => {
     if (!generationMeta || !studySet) return ''
@@ -1103,7 +1119,7 @@ export default function StudySetDetailPage({
   const renderMultipleChoice = (item: any) => {
     if (isMcqComplete) {
       return (
-        <div className="flex min-h-[500px] items-center justify-center animate-in fade-in-0 zoom-in-95 duration-500">
+        <div className="flex min-h-[360px] items-center justify-center animate-in fade-in-0 zoom-in-95 duration-500 sm:min-h-[500px]">
           <div className="w-full space-y-4 rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/5 via-white to-primary/10 p-6 text-center shadow-sm sm:p-10">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
               Final Result
@@ -1144,7 +1160,7 @@ export default function StudySetDetailPage({
           <p className="mb-2 text-sm uppercase tracking-wide text-muted-foreground">
             Multiple Choice
           </p>
-          <h2 className="text-2xl font-semibold text-foreground">
+          <h2 className="text-xl font-semibold text-foreground sm:text-2xl">
             {item?.question ?? 'Practice question'}
           </h2>
         </div>
@@ -1250,17 +1266,17 @@ export default function StudySetDetailPage({
               className="relative h-full w-full rounded-3xl border-2 border-primary/40 bg-gradient-to-br from-primary/5 to-primary/10 shadow-sm transition-transform duration-500 [transform-style:preserve-3d]"
               style={{ transform: flashcardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
             >
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center [backface-visibility:hidden]">
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-5 text-center [backface-visibility:hidden] sm:p-10">
                 <p className="mb-4 text-xs uppercase tracking-widest text-primary/60">Prompt</p>
-                <p className="text-2xl font-semibold leading-snug text-foreground">
+                <p className="text-xl font-semibold leading-snug text-foreground sm:text-2xl">
                   {item?.prompt ?? 'Prompt unavailable'}
                 </p>
                 {item?.clue && <p className="mt-4 text-xs text-muted-foreground">{item.clue}</p>}
               </div>
 
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-5 text-center [transform:rotateY(180deg)] [backface-visibility:hidden] sm:p-10">
                 <p className="mb-4 text-xs uppercase tracking-widest text-primary/60">Answer</p>
-                <p className="text-2xl font-semibold leading-snug text-foreground">
+                <p className="text-xl font-semibold leading-snug text-foreground sm:text-2xl">
                   {/* {item?.answer ?? 'Answer unavailable'} */}
                   Paraplegia and hemiplegia are both forms of paralysis, but they affect different parts of the body and stem from different areas of the nervous system. Paraplegia affects the lower half of the body (both legs and usually the torso), while hemiplegia affects one vertical side of the body (one arm and one leg on the same
                 </p>
@@ -1306,7 +1322,7 @@ export default function StudySetDetailPage({
   const renderFillInBlank = (item: any) => {
     if (isFillComplete) {
       return (
-        <div className="flex min-h-[500px] items-center justify-center animate-in fade-in-0 zoom-in-95 duration-500">
+        <div className="flex min-h-[360px] items-center justify-center animate-in fade-in-0 zoom-in-95 duration-500 sm:min-h-[500px]">
           <div className="w-full space-y-4 rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/5 via-white to-primary/10 p-6 text-center shadow-sm sm:p-10">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">Final Result</p>
             <p className="animate-in fade-in-0 slide-in-from-bottom-3 text-4xl font-bold text-foreground duration-500 sm:text-5xl">
@@ -1340,7 +1356,7 @@ export default function StudySetDetailPage({
       <div key={`fill-item-${currentItemIndex}`} className="space-y-4 animate-in fade-in-0 slide-in-from-right-2 duration-300">
         <p className="text-sm uppercase tracking-wide text-muted-foreground">Fill in the Blank</p>
 
-        <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
+        <div className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
           <p className="text-lg text-foreground">
             {item?.sentence ?? 'Complete the sentence using the source material.'}
           </p>
@@ -1447,7 +1463,7 @@ export default function StudySetDetailPage({
       <div className="space-y-4">
         <p className="text-sm uppercase tracking-wide text-muted-foreground">Written Test</p>
 
-        <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
+        <div className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
           <div>
             <p className="mb-1 text-xs uppercase text-muted-foreground">Prompt</p>
             <p className="text-lg font-semibold text-foreground">
@@ -1554,9 +1570,9 @@ export default function StudySetDetailPage({
     <div className="space-y-4">
       <p className="text-sm uppercase tracking-wide text-muted-foreground">Podcast Segment</p>
 
-      <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
+          <div className="min-w-0">
             <h3 className="text-xl font-semibold text-foreground">
               {item?.title ?? 'Segment title'}
             </h3>
@@ -1587,7 +1603,7 @@ export default function StudySetDetailPage({
   const renderNotesWorkspace = () => {
     return (
       <div className="flex h-full flex-col overflow-hidden bg-background shadow-sm">
-        <ScrollArea className="flex flex-col gap-4 h-[calc(100vh-70px)]  no-scrollbar">
+        <ScrollArea className="flex h-full flex-col gap-4 no-scrollbar">
           <NotesEditor
             value={studySet?.notesHtml}
             notesMarkdown={studySet?.notesMarkdown}
@@ -1642,7 +1658,7 @@ export default function StudySetDetailPage({
 
     return (
       <div
-        className={`h-full max-w-[700px] mx-auto rounded-[28px] border border-border bg-card shadow-sm ${isShowingAssessmentFinalScreen ? 'p-4 sm:p-8' : 'p-6'
+        className={`mx-auto h-full max-w-[700px] rounded-[20px] border border-border bg-card shadow-sm sm:rounded-[28px] ${isShowingAssessmentFinalScreen ? 'p-3 sm:p-8' : 'p-4 sm:p-6'
           }`}
       >
         {content}
@@ -1685,7 +1701,7 @@ export default function StudySetDetailPage({
   const studyItemSection = (
     <section className={`min-w-0 flex-1 ${isShowingAssessmentFinalScreen ? 'max-w-none' : 'max-w-[1400px] mx-auto'}`}>
       {!activeModeFromQuery ? (
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
           <StudySetOverview
             studySetId={backendStudySetId}
             studySet={studySet}
@@ -1696,7 +1712,7 @@ export default function StudySetDetailPage({
           />
         </div>
       ) : (
-        <>
+        <div className={activeSection?.type === 'notes' ? 'h-full' : 'px-2 pb-6 sm:px-4'}>
           <div className=" flex flex-wrap items-center justify-between gap-3">
             {/* <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/70">
@@ -1757,18 +1773,18 @@ export default function StudySetDetailPage({
               Evaluate your written response to unlock the next question.
             </p>
           )} */}
-        </>
+        </div>
       )}
     </section>
 
   )
 
   return (
-    <div className="flex min-h-screen bg-[#fffaf5]">
+    <div className="flex h-full min-h-0 bg-[#fffaf5]">
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-b border-border bg-white/80 px-5 py-3 h-[70px] sticky top-0 z-50 backdrop-blur-sm lg:px-8">
+        <header className="z-30 min-h-[70px] shrink-0 border-b border-border bg-white/90 px-3 py-3 backdrop-blur-sm sm:px-5 lg:px-8">
 
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => {
                 if (activeModeFromQuery) {
@@ -1777,21 +1793,22 @@ export default function StudySetDetailPage({
                   router.push('/dashboard/study-sets')
                 }
               }}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-background transition-colors hover:bg-secondary"
+              aria-label="Go back"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border bg-background transition-colors hover:bg-secondary"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
 
-            <div className="min-w-0 flex-1 flex gap-10 items-center">
-              <h1 className="truncate text-xl font-bold text-foreground ">
+            <div className="flex min-w-0 flex-1 items-center gap-2 lg:gap-8">
+              <h1 className="min-w-0 flex-1 truncate text-base font-bold text-foreground sm:text-xl">
                 {studySet.title}
               </h1>
               {activeModeFromQuery && readySections.length > 1 && (
                 <nav
                   aria-label="Study modes"
-                  className="z-40"
+                  className="hidden max-w-[52vw] overflow-hidden lg:block"
                 >
-                  <div className="mx-auto flex max-w-[900px] gap-2 overflow-x-auto">
+                  <div className="flex max-w-full gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {readySections.map((section) => {
                       const Icon =
                         section.type === 'podcast'
@@ -1821,13 +1838,24 @@ export default function StudySetDetailPage({
               )}
             </div>
 
-            <div className="ml-auto flex items-center gap-6 text-sm text-muted-foreground">
-              <div className="text-right">
+            <div className="ml-auto flex shrink-0 items-center gap-2 text-sm text-muted-foreground sm:gap-3 xl:gap-6">
+              <div className="hidden text-right xl:block">
                 <p className="text-xs uppercase tracking-[0.2em]">Last updated</p>
                 <p className="mt-1 text-base text-foreground">
                   {formatUpdatedAt(studySet.updatedAt ?? studySet.createdAt)}
                 </p>
               </div>
+
+              {isCompactViewport && showItemSidePanel ? (
+                <button
+                  type="button"
+                  onClick={() => setShowMobileTools(true)}
+                  aria-label="Open study tools"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-background text-primary transition-colors hover:bg-secondary lg:hidden"
+                >
+                  <MessageSquareText className="h-5 w-5" />
+                </button>
+              ) : null}
 
               <button
                 type="button"
@@ -1839,6 +1867,36 @@ export default function StudySetDetailPage({
               </button>
             </div>
           </div>
+
+          {activeModeFromQuery && readySections.length > 1 ? (
+            <nav aria-label="Study modes" className="mt-2 w-full overflow-hidden lg:hidden">
+              <div className="flex max-w-full gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {readySections.map((section) => {
+                  const Icon = section.type === 'podcast'
+                    ? Headphones
+                    : studySetFormatOptionMap[section.type as StudySetUiSectionType]?.icon ?? BookOpen
+                  const isActive = section.type === activeSectionType
+                  const label = uiSectionTypeLabels[section.type as StudySetUiSectionType] ?? section.type
+
+                  return (
+                    <button
+                      key={`mobile-${section.type}`}
+                      type="button"
+                      onClick={() => handleOpenSection(section.type)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${isActive
+                        ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                        : 'border-border bg-white text-muted-foreground hover:border-primary/40 hover:text-primary'
+                        }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </nav>
+          ) : null}
         </header>
 
 
@@ -1867,12 +1925,12 @@ export default function StudySetDetailPage({
           </AlertDialogContent>
         </AlertDialog>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden">
           <div className="flex h-full flex-col lg:flex-row">
-            {showItemSidePanel ? (
+            {showItemSidePanel && !isCompactViewport ? (
               <ResizablePanelGroup direction="horizontal" autoSaveId="study-item-panel" className="h-full">
                 <ResizablePanel defaultSize={65} minSize={40}>
-                  <ScrollArea className="h-[calc(100vh-70px)] pt-4">{studyItemSection}</ScrollArea>
+                  <ScrollArea className="h-full pt-4">{studyItemSection}</ScrollArea>
                 </ResizablePanel>
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize={25} minSize={22} maxSize={35}>
@@ -1888,11 +1946,31 @@ export default function StudySetDetailPage({
                 </ResizablePanel>
               </ResizablePanelGroup>
             ) : (
-              studyItemSection
+              <ScrollArea className="h-full pt-3 sm:pt-4">{studyItemSection}</ScrollArea>
             )}
 
           </div>
         </div>
+
+        {isCompactViewport && showItemSidePanel ? (
+          <Sheet open={showMobileTools} onOpenChange={setShowMobileTools}>
+            <SheetContent side="right" className="w-full max-w-none gap-0 p-0 sm:w-[min(480px,90vw)] sm:max-w-none">
+              <SheetHeader className="shrink-0 border-b border-border pr-14">
+                <SheetTitle>Study tools</SheetTitle>
+                <SheetDescription>Chat about this item, review its source, or open your notes.</SheetDescription>
+              </SheetHeader>
+              <div className="min-h-0 flex-1">
+                <ItemSidePanel
+                  studySet={studySet}
+                  studySetId={backendStudySetId}
+                  activeSectionType={activeSection?.type ?? null}
+                  activeItem={activeItem}
+                  activeItemIndex={currentItemIndex}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : null}
 
       </div>
     </div>

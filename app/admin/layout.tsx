@@ -56,7 +56,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const isManualLogoutRef = useRef(false)
   const pathname = usePathname()
@@ -64,6 +64,17 @@ export default function AdminLayout({
 
   useEffect(() => {
     void apiClient.ensureValidAccessToken()
+  }, [])
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia('(min-width: 1024px)')
+    const syncSidebar = (event?: MediaQueryListEvent) => {
+      setSidebarOpen(event ? event.matches : desktopQuery.matches)
+    }
+
+    syncSidebar()
+    desktopQuery.addEventListener('change', syncSidebar)
+    return () => desktopQuery.removeEventListener('change', syncSidebar)
   }, [])
 
   // Client-side gate only for UX; the backend independently enforces admin permissions.

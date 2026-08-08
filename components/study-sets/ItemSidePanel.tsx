@@ -503,7 +503,7 @@ export function ItemSidePanel({
   activeItemIndex: number
 }) {
   return (
-    <Tabs defaultValue="chat" className="h-[calc(100vh-70px)] gap-0 bg-card ">
+    <Tabs defaultValue="chat" className="h-full min-h-0 gap-0 bg-card">
       <TabsList className="m-3 mb-0 !w-full !m-0 !rounded-0">
         <TabsTrigger value="chat">Chat</TabsTrigger>
         <TabsTrigger value="content">Content</TabsTrigger>

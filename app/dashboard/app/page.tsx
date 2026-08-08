@@ -111,18 +111,18 @@ export default function MobileAppPage() {
         className="absolute bottom-[4%] right-[8%] h-80 w-80 rounded-full bg-accent/10 blur-3xl"
       />
 
-      <div className="relative container mx-auto grid min-h-[calc(100vh-70px)]  items-center  px-6 py-8 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.85fr)] lg:px-10 lg:py-10 ">
+      <div className="relative container mx-auto grid min-h-[calc(100dvh-70px)] items-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.85fr)] lg:gap-8 lg:px-10 lg:py-10">
         <section className="mx-auto w-full  lg:mx-0 lg:pl-5">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/[0.06] px-4 py-2 text-sm font-medium text-primary">
             <Smartphone className="h-4 w-4" />
             Now available on Android &amp; iOS
           </div>
 
-          <h1 className="mt-8 max-w-[500px] text-4xl font-bold leading-[1.05] tracking-[-0.045em] sm:text-5xl">
+          <h1 className="mt-6 max-w-[500px] text-3xl font-bold leading-[1.08] tracking-[-0.045em] sm:mt-8 sm:text-5xl">
             Snap. Solve. Learn.
           </h1>
 
-          <p className="mt-6 max-w-[570px] text-lg leading-8 text-muted-foreground ">
+          <p className="mt-4 max-w-[570px] text-base leading-7 text-muted-foreground sm:mt-6 sm:text-lg sm:leading-8">
             Take your study sets anywhere. Snap a question, get a clear answer,
             and keep learning wherever the day takes you.
           </p>
@@ -155,7 +155,7 @@ export default function MobileAppPage() {
         </section>
 
         <section className="mx-auto w-full max-w-[580px]">
-          <div className="rounded-[28px] border border-border/80 bg-card px-6 py-8 text-center shadow-[0_24px_65px_-30px_rgba(15,23,42,0.35)] sm:px-10 sm:py-10">
+          <div className="rounded-[22px] border border-border/80 bg-card px-4 py-6 text-center shadow-[0_24px_65px_-30px_rgba(15,23,42,0.35)] sm:rounded-[28px] sm:px-10 sm:py-10">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <ScanLine className="h-6 w-6" />
             </div>

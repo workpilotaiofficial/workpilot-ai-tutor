@@ -588,7 +588,7 @@ export default function SyllabusUploadModal({
       <AnimatePresence onExitComplete={onClose}>
         {isVisible && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-contain bg-black/50 p-4 backdrop-blur-[2px]"
+            className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-contain bg-black/50 p-0 backdrop-blur-[2px] sm:p-4"
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
@@ -605,7 +605,7 @@ export default function SyllabusUploadModal({
               role="dialog"
               aria-modal="true"
               aria-labelledby="syllabus-modal-title"
-              className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card text-card-foreground shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="max-h-dvh w-full max-w-2xl overflow-y-auto overscroll-contain bg-card text-card-foreground shadow-2xl [scrollbar-width:none] sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl sm:border sm:border-border [&::-webkit-scrollbar]:hidden"
               variants={modalVariants}
               initial="hidden"
               animate="visible"
@@ -652,7 +652,7 @@ export default function SyllabusUploadModal({
 
               {/* Header */}
               <motion.div
-                className="flex items-center justify-between border-b border-border p-6"
+                className="flex items-start justify-between gap-3 border-b border-border p-4 sm:p-6"
                 variants={contentItemVariants}
               >
                 <div>
@@ -791,7 +791,7 @@ export default function SyllabusUploadModal({
               </motion.div>
 
               {/* Content */}
-              <div className="space-y-5 p-6">
+              <div className="space-y-5 p-4 sm:p-6">
                 <motion.div
                   className="grid grid-cols-1 gap-4 md:grid-cols-2"
                   variants={contentItemVariants}
@@ -1288,7 +1288,7 @@ export default function SyllabusUploadModal({
 
               {/* Footer */}
               <motion.div
-                className="flex gap-3 border-t border-border p-6"
+                className="flex flex-col-reverse gap-3 border-t border-border p-4 sm:flex-row sm:p-6"
                 variants={contentItemVariants}
               >
                 <motion.button

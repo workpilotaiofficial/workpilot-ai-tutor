@@ -160,7 +160,7 @@ function normalizeQuestionsResponse(payload: unknown): PersonalizationQuestionsR
 
   const answersByQuestionId = new Map(
     extractAnswerItems(payload)
-      .map(normalizePersonalizationAnswer)
+      .map((value) => normalizePersonalizationAnswer(value))
       .filter((answer): answer is PersonalizationAnswer => Boolean(answer))
       .map((answer) => [answer.questionId, answer] as const),
   )

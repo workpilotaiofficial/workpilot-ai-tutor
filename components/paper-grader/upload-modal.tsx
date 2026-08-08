@@ -338,7 +338,7 @@ export default function GraderUploadModal({
       <AnimatePresence onExitComplete={onClose}>
         {isVisible && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-contain bg-black/50 p-4 backdrop-blur-[2px]"
+            className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-contain bg-black/50 p-0 backdrop-blur-[2px] sm:p-4"
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
@@ -353,7 +353,7 @@ export default function GraderUploadModal({
               role="dialog"
               aria-modal="true"
               aria-labelledby="grader-upload-title"
-              className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="max-h-dvh w-full max-w-2xl overflow-y-auto overscroll-contain bg-card shadow-2xl [scrollbar-width:none] sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl [&::-webkit-scrollbar]:hidden"
               variants={modalVariants}
               initial="hidden"
               animate="visible"
@@ -362,7 +362,7 @@ export default function GraderUploadModal({
             >
               {/* Header */}
               <motion.div
-                className="flex items-center justify-between border-b border-border p-6"
+                className="flex items-start justify-between gap-3 border-b border-border p-4 sm:p-6"
                 variants={contentItemVariants}
               >
                 <div>
@@ -430,7 +430,7 @@ export default function GraderUploadModal({
               </motion.div>
 
               {/* Content */}
-              <div className="space-y-6 p-6">
+              <div className="space-y-5 p-4 sm:space-y-6 sm:p-6">
                 {/* Title input */}
                 <motion.div variants={contentItemVariants}>
                   <label
@@ -892,7 +892,7 @@ export default function GraderUploadModal({
 
               {/* Footer */}
               <motion.div
-                className="flex gap-3 border-t border-border bg-secondary p-6"
+                className="flex flex-col-reverse gap-3 border-t border-border bg-secondary p-4 sm:flex-row sm:p-6"
                 variants={contentItemVariants}
               >
                 <motion.button

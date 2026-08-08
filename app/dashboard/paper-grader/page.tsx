@@ -607,9 +607,9 @@ export default function PaperGraderPage() {
               animate="visible"
               exit="exit"
             >
-              <div className="mx-auto w-full px-6 pb-12 pt-24 sm:px-8 lg:px-10">
+              <div className="mx-auto w-full px-4 pb-10 pt-12 sm:px-8 sm:pb-12 sm:pt-20 lg:px-10 lg:pt-24">
                 <motion.section
-                  className="mx-auto mb-28 max-w-4xl text-center sm:mb-32"
+                  className="mx-auto mb-16 max-w-4xl text-center sm:mb-24 lg:mb-32"
                   variants={heroVariants}
                 >
                   <motion.h1

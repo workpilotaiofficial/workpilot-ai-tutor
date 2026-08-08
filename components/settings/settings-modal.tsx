@@ -220,27 +220,27 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 p-4 md:p-8" onClick={onClose} role="presentation">
-      <div className="mx-auto flex h-full max-h-[720px] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Settings">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <div>
+    <div className="fixed inset-0 z-50 bg-black/50 p-0 sm:p-4 md:p-8" onClick={onClose} role="presentation">
+      <div className="mx-auto flex h-full max-h-[720px] w-full max-w-5xl flex-col overflow-hidden bg-card shadow-2xl sm:rounded-2xl sm:border sm:border-border" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Settings">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+          <div className="min-w-0">
             <h2 className="text-xl font-bold text-foreground">Settings</h2>
-            <p className="text-sm text-muted-foreground">Manage account and personalization preferences.</p>
+            <p className="truncate text-sm text-muted-foreground">Manage account and personalization preferences.</p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-2 hover:bg-secondary" aria-label="Close settings"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-secondary" aria-label="Close settings"><X className="h-5 w-5" /></button>
         </div>
 
-        <div className="flex min-h-0 flex-1">
-          <aside className="w-full max-w-[220px] border-r border-border bg-secondary/20 p-3">
-            <nav className="space-y-1">
+        <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+          <aside className="w-full shrink-0 border-b border-border bg-secondary/20 p-2 sm:max-w-[220px] sm:border-b-0 sm:border-r sm:p-3">
+            <nav className="flex gap-1 overflow-x-auto [scrollbar-width:none] sm:block sm:space-y-1 [&::-webkit-scrollbar]:hidden">
               {menuItems.map((item) => {
                 const active = activeTab === item.id
-                return <button key={item.id} onClick={() => { setActiveTab(item.id); setStatus(null); setThemeStatus(null) }} className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium ${active ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-secondary'}`}>{item.label}</button>
+                return <button key={item.id} onClick={() => { setActiveTab(item.id); setStatus(null); setThemeStatus(null) }} className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium sm:w-full ${active ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-secondary'}`}>{item.label}</button>
               })}
             </nav>
           </aside>
 
-          <section className="min-h-0 flex-1 overflow-auto px-6 py-5">
+          <section className="min-h-0 min-w-0 flex-1 overflow-auto px-4 py-4 sm:px-6 sm:py-5">
             {activeTab === 'personalizedAi' ? (
               <PersonalizedAiSettings
                 questions={personalizationQuestions}

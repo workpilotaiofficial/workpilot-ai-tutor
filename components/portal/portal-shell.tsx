@@ -46,17 +46,42 @@ export function PortalShell({
   footerProfileInitial = 'M',
   footerProfileSubtitle,
 }: PortalShellProps) {
+  const closeMobileSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024 && sidebarOpen) {
+      onSidebarToggle()
+    }
+  }
+
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-dvh min-w-0 overflow-hidden bg-background">
+      {sidebarOpen ? (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={onSidebarToggle}
+          className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px] lg:hidden"
+        />
+      ) : null}
       <aside
         className={`${
-          sidebarOpen ? 'w-[300px]' : 'w-0'
-        } bg-sidebar transition-all duration-300 overflow-hidden flex flex-col border-r border-sidebar-border`}
+          sidebarOpen
+            ? 'translate-x-0 lg:w-[300px]'
+            : '-translate-x-full lg:w-0 lg:translate-x-0 lg:border-r-0'
+        } fixed inset-y-0 left-0 z-50 flex w-[min(300px,calc(100vw-3rem))] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar shadow-2xl transition-[transform,width] duration-300 lg:relative lg:z-auto lg:shadow-none`}
+        aria-label="Portal navigation"
       >
-        <div className="h-[70px] items-center px-6 flex items-center border-b border-sidebar-border">
-          <Link href={brandHref} className="flex items-center gap-2">
-            <Image src="/logo.png" width={200} height={40} alt={brandLabel} />
+        <div className="flex h-[70px] shrink-0 items-center justify-between border-b border-sidebar-border px-4 sm:px-6">
+          <Link href={brandHref} onClick={closeMobileSidebar} className="flex min-w-0 items-center gap-2">
+            <Image src="/logo.png" width={200} height={40} alt={brandLabel} className="h-auto w-full max-w-[200px]" />
           </Link>
+          <button
+            type="button"
+            onClick={onSidebarToggle}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-sidebar-accent lg:hidden"
+            aria-label="Close navigation"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-auto">
@@ -67,6 +92,7 @@ export function PortalShell({
               <Link
                 key={`${item.href}-${item.label}`}
                 href={item.href}
+                onClick={closeMobileSidebar}
                 className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors ${
                   item.isActive
                     ? 'bg-sidebar-accent text-sidebar-primary font-semibold'
@@ -124,34 +150,35 @@ export function PortalShell({
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {showHeader ? (
-          <header className="bg-background border-b border-border px-6 py-4 flex items-center justify-between h-[70px]">
+          <header className="flex h-[70px] shrink-0 items-center justify-between border-b border-border bg-background px-3 py-3 sm:px-6 sm:py-4">
             <div className="flex items-center gap-4">
               <button
                 type="button"
                 onClick={onSidebarToggle}
-                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                className="flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-secondary"
+                aria-label={sidebarOpen ? 'Close navigation' : 'Open navigation'}
               >
                 {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
-            <div className="flex items-center gap-4">
-              <button type="button" className="p-2 hover:bg-secondary rounded-lg transition-colors">
+            <div className="flex items-center gap-1 sm:gap-4">
+              <button type="button" className="flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-secondary" aria-label="Search">
                 <Search className="w-5 h-5" />
               </button>
               <button
                 type="button"
-                className="flex items-center gap-2 px-3 py-2 hover:bg-secondary rounded-lg transition-colors text-sm font-medium"
+                className="flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-secondary"
               >
                 <Folder className="w-4 h-4" />
-                Folders
+                <span className="hidden sm:inline">Folders</span>
               </button>
             </div>
           </header>
         ) : null}
 
-        <main className="flex-1 overflow-auto bg-background">{children}</main>
+        <main className="min-w-0 flex-1 overflow-auto overscroll-contain bg-background">{children}</main>
       </div>
     </div>
   )

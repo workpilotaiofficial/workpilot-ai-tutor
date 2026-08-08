@@ -306,7 +306,7 @@ export function StudySetOverview({
           {progress && progress.summary.total_items > 0 ? (
             <div className="space-y-8">
             {/* Summary stat tiles */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:gap-4 lg:grid-cols-4">
               <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
                 <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">Overall accuracy</p>
                 <p className="mt-2 text-2xl font-black text-slate-900">{toPercent(progress.summary.overall_accuracy)}%</p>

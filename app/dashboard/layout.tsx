@@ -47,8 +47,8 @@ function DashboardLayoutShell({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex h-screen bg-background">
-      <main className="flex-1 overflow-auto bg-background">{children}</main>
+    <div className="flex h-dvh min-w-0 bg-background">
+      <main className="min-w-0 flex-1 overflow-auto bg-background">{children}</main>
     </div>
   )
 }
@@ -58,7 +58,7 @@ function DashboardLayoutContent({
 }: {
   children: React.ReactNode
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showPersonalizationOnboarding, setShowPersonalizationOnboarding] = useState(false)
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('personalizedAi')
@@ -132,6 +132,17 @@ function DashboardLayoutContent({
 
   useEffect(() => {
     void apiClient.ensureValidAccessToken()
+  }, [])
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia('(min-width: 1024px)')
+    const syncSidebar = (event?: MediaQueryListEvent) => {
+      setSidebarOpen(event ? event.matches : desktopQuery.matches)
+    }
+
+    syncSidebar()
+    desktopQuery.addEventListener('change', syncSidebar)
+    return () => desktopQuery.removeEventListener('change', syncSidebar)
   }, [])
 
   useEffect(() => {
@@ -239,12 +250,6 @@ function DashboardLayoutContent({
     const fallback = getStoredStudySets().find((set) => set.id === studySetId) ?? null
     setActiveStudySet(fallback)
   }, [isStudySetDetail, studySetId])
-
-  useEffect(() => {
-    if (isStudySetDetail) {
-      setSidebarOpen(true)
-    }
-  }, [isStudySetDetail])
 
   useEffect(() => {
     if (!billingState) {

@@ -196,12 +196,12 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative h-svh overflow-hidden bg-[#f7f8fc] p-3 text-foreground sm:p-5 lg:p-6">
+    <main className="relative min-h-svh overflow-x-hidden bg-[#f7f8fc] p-3 text-foreground sm:p-5 lg:h-svh lg:overflow-hidden lg:p-6">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-35 [background-image:radial-gradient(#5B65E0_0.7px,transparent_0.7px)] [background-size:22px_22px] [mask-image:linear-gradient(to_bottom,black,transparent_78%)]" />
       <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[-22rem] h-[44rem] w-[72rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(91,101,224,0.16),rgba(81,0,167,0.06)_48%,transparent_72%)]" />
 
-      <div className="relative mx-auto h-full w-full max-w-[1200px]">
-        <section className="grid h-full w-full overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_32px_90px_rgba(42,48,92,0.12)] lg:grid-cols-[1.08fr_0.92fr]">
+      <div className="relative mx-auto min-h-[calc(100svh-1.5rem)] w-full max-w-[1200px] sm:min-h-[calc(100svh-2.5rem)] lg:h-full lg:min-h-0">
+        <section className="grid min-h-[inherit] w-full overflow-hidden rounded-[22px] border border-slate-200/80 bg-white shadow-[0_32px_90px_rgba(42,48,92,0.12)] sm:rounded-[28px] lg:h-full lg:min-h-0 lg:grid-cols-[1.08fr_0.92fr]">
           <div className="relative hidden min-h-0 overflow-hidden bg-gradient-to-br from-button via-thirdary to-primary p-7 lg:flex lg:items-center lg:justify-center xl:p-10">
             <div aria-hidden="true" className="absolute inset-0 opacity-[0.12] [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:22px_22px]" />
             <div aria-hidden="true" className="absolute -left-24 top-20 h-72 w-72 rounded-full bg-white/15 blur-3xl" />
@@ -275,7 +275,7 @@ export default function LoginPage() {
             </motion.div>
           </div>
 
-          <div className="relative flex min-h-0 items-center overflow-hidden px-6 py-[clamp(1.25rem,4vh,2.5rem)] sm:px-10 lg:px-12 xl:px-16">
+          <div className="relative flex min-h-0 items-center overflow-hidden px-4 py-8 sm:px-10 lg:px-12 lg:py-[clamp(1.25rem,4vh,2.5rem)] xl:px-16">
             <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/[0.07] blur-3xl" />
 
             <motion.div

@@ -330,7 +330,7 @@ export default function StudySetsPage() {
         initial="hidden"
         animate="visible"
       >
-        <div className="mx-auto w-full px-6 pb-12 pt-14 sm:px-8 lg:px-10">
+        <div className="mx-auto w-full px-4 pb-10 pt-10 sm:px-8 sm:pb-12 sm:pt-14 lg:px-10">
           <motion.section
             className="mx-auto mb-10 max-w-4xl text-center sm:mb-20"
             variants={heroContentVariants}
@@ -351,7 +351,7 @@ export default function StudySetsPage() {
             </motion.p>
 
             <motion.div
-              className="mx-auto mt-10 grid max-w-[820px] grid-cols-1 gap-8 text-left sm:grid-cols-3"
+              className="mx-auto mt-8 grid max-w-[820px] grid-cols-1 gap-4 text-left sm:mt-10 sm:grid-cols-3 sm:gap-6 lg:gap-8"
               variants={uploadOptionsVariants}
             >
               <motion.button
