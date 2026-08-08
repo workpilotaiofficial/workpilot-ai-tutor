@@ -18,18 +18,7 @@ export function SitePageShell({ eyebrow, title, description, children }: SitePag
       <div className="relative overflow-hidden border-b border-slate-200/70 bg-white">
         <div className="pointer-events-none absolute -left-24 -top-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
         <div className="pointer-events-none absolute -right-24 top-0 h-80 w-80 rounded-full bg-thirdary/10 blur-3xl" />
-        <header className="relative mx-auto flex max-w-6xl items-center justify-between px-5 py-6 sm:px-8">
-          <Link href="/" className="inline-flex items-center gap-3" aria-label="Neurova home">
-            <Image src="/icon.png" alt="" width={34} height={34} />
-            <span className="text-lg font-semibold tracking-tight">Neurova</span>
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-950"
-          >
-            <ArrowLeft className="h-4 w-4" /> Home
-          </Link>
-        </header>
+
 
         <section className="relative mx-auto max-w-4xl px-5 pb-16 pt-12 text-center sm:px-8 sm:pb-20 sm:pt-16">
           <p className="mb-5 text-xs font-semibold uppercase tracking-[0.24em] text-primary">{eyebrow}</p>
