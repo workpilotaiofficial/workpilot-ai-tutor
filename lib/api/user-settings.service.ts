@@ -138,13 +138,43 @@ function extractQuestionItems(payload: unknown): unknown[] {
   return Array.isArray(data?.questions) ? data.questions : []
 }
 
+function extractAnswerItems(payload: unknown): unknown[] {
+  const record = asRecord(payload)
+
+  if (!record) {
+    return []
+  }
+
+  if (Array.isArray(record.answers)) {
+    return record.answers
+  }
+
+  const data = asRecord(record.data)
+  return Array.isArray(data?.answers) ? data.answers : []
+}
+
 function normalizeQuestionsResponse(payload: unknown): PersonalizationQuestionsResponse {
   const questions = extractQuestionItems(payload)
     .map(normalizePersonalizationQuestion)
     .filter((question): question is PersonalizationQuestionWithAnswer => Boolean(question))
+
+  const answersByQuestionId = new Map(
+    extractAnswerItems(payload)
+      .map(normalizePersonalizationAnswer)
+      .filter((answer): answer is PersonalizationAnswer => Boolean(answer))
+      .map((answer) => [answer.questionId, answer] as const),
+  )
+
+  const mergedQuestions = questions
+    .map((question) => ({
+      ...question,
+      answer: question.answer ?? answersByQuestionId.get(question.id) ?? null,
+    }))
     .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))
 
-  return { questions }
+  console.log(mergedQuestions)
+
+  return { questions: mergedQuestions }
 }
 
 function validateAnswers(payload: UpdatePersonalizationAnswersPayload) {
@@ -171,6 +201,8 @@ function validateAnswers(payload: UpdatePersonalizationAnswersPayload) {
 
 export async function fetchPersonalizationQuestions(signal?: AbortSignal) {
   const response = await apiClient.request<unknown>('/api/v1/personalization/questions', { signal })
+  console.log(response);
+  
   return normalizeQuestionsResponse(response)
 }
 

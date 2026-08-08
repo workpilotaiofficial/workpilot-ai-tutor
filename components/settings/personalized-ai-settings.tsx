@@ -127,7 +127,7 @@ export default function PersonalizedAiSettings({
                   className="resize-y bg-background"
                 />
 
-                <div className="flex items-start justify-between gap-4 text-xs">
+                {/* <div className="flex items-start justify-between gap-4 text-xs">
                   <div>
                     {moderationRejected ? (
                       <p className="text-destructive">
@@ -138,7 +138,7 @@ export default function PersonalizedAiSettings({
                     ) : null}
                   </div>
                   <p className="shrink-0 text-muted-foreground">{value.length}/{PERSONALIZATION_ANSWER_MAX_LENGTH}</p>
-                </div>
+                </div> */}
               </div>
             )
           })}

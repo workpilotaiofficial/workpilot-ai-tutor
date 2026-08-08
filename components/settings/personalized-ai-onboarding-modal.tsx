@@ -225,9 +225,9 @@ export default function PersonalizedAiOnboardingModal({
                 <h2 id="personalization-question" className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-[2rem] sm:leading-tight">
                   {step.question}
                 </h2>
-                <p id="personalization-description" className="mt-2 text-sm leading-6 text-muted-foreground sm:text-[15px]">
+                {/* <p id="personalization-description" className="mt-2 text-sm leading-6 text-muted-foreground sm:text-[15px]">
                   {step.description || 'Write an answer that will help your AI tutor understand how to support you.'}
-                </p>
+                </p> */}
               </div>
 
               <div className="mt-6 space-y-2">

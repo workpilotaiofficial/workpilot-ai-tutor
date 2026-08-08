@@ -1239,11 +1239,11 @@ export default function StudySetDetailPage({
       <div className="space-y-4">
         <p className="text-sm uppercase tracking-wide text-muted-foreground">Flashcard</p>
 
-        <div className="min-h-[280px]" style={{ perspective: '1200px' }}>
+        <div className="" style={{ perspective: '1200px' }}>
           <button
             type="button"
             onClick={() => setFlashcardFlipped((prev) => !prev)}
-            className="group relative h-[320px] w-full rounded-3xl text-left transition-transform duration-300 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="group relative  h-[320px] w-full rounded-3xl text-left transition-transform duration-300 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label={flashcardFlipped ? 'Show prompt side of flashcard' : 'Show answer side of flashcard'}
           >
             <div
@@ -1261,7 +1261,8 @@ export default function StudySetDetailPage({
               <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
                 <p className="mb-4 text-xs uppercase tracking-widest text-primary/60">Answer</p>
                 <p className="text-2xl font-semibold leading-snug text-foreground">
-                  {item?.answer ?? 'Answer unavailable'}
+                  {/* {item?.answer ?? 'Answer unavailable'} */}
+                  Paraplegia and hemiplegia are both forms of paralysis, but they affect different parts of the body and stem from different areas of the nervous system. Paraplegia affects the lower half of the body (both legs and usually the torso), while hemiplegia affects one vertical side of the body (one arm and one leg on the same
                 </p>
               </div>
             </div>
@@ -1840,7 +1841,7 @@ export default function StudySetDetailPage({
           </div>
         </header>
 
-   
+
 
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
@@ -1889,7 +1890,7 @@ export default function StudySetDetailPage({
             ) : (
               studyItemSection
             )}
-  
+
           </div>
         </div>
 

@@ -136,24 +136,53 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
     void loadCreditBalance()
   }, [activeTab, hasLoadedUsage, loadCreditBalance])
 
-  const savePersonalizationAnswers = async (answers: PersonalizationAnswerInput[]) => {
-    setIsSaving(true)
-    setStatus(null)
+  const mergeSavedPersonalizationAnswers = (
+    currentQuestions: PersonalizationQuestionWithAnswer[],
+    answers: PersonalizationAnswerInput[],
+  ) =>
+    currentQuestions.map((question) => {
+      const answerInput = answers.find((item) => item.questionId === question.id)
 
-    try {
-      const result = await updatePersonalizationAnswers({ answers })
-      setPersonalizationQuestions(result.questions)
-      setStatus('Personalized AI answers saved successfully.')
-    } catch (error) {
-      toast({
-        title: 'Unable to save personalization profile',
-        description: getApiClientErrorMessage(error, 'Your personalization profile could not be saved.'),
-        variant: 'destructive',
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
+      if (!answerInput) {
+        return question
+      }
+
+      const trimmedAnswer = answerInput.answer.trim()
+
+      return {
+        ...question,
+        answer: {
+          id: question.answer?.id ?? null,
+          questionId: question.id,
+          answer: trimmedAnswer,
+          moderationStatus: question.answer?.moderationStatus ?? null,
+          moderationReason: question.answer?.moderationReason ?? null,
+          createdAt: question.answer?.createdAt ?? null,
+          updatedAt: question.answer?.updatedAt ?? question.answer?.createdAt ?? null,
+        },
+      }
+    })
+
+  // const savePersonalizationAnswers = async (answers: PersonalizationAnswerInput[]) => {
+  //   setIsSaving(true)
+  //   setStatus(null)
+
+  //   try {
+  //     const result = await updatePersonalizationAnswers({ answers })
+  //     setPersonalizationQuestions((currentQuestions) =>
+  //       result.questions.length > 0 ? result.questions : mergeSavedPersonalizationAnswers(currentQuestions, answers),
+  //     )
+  //     setStatus('Personalized AI answers saved successfully.')
+  //   } catch (error) {
+  //     toast({
+  //       title: 'Unable to save personalization profile',
+  //       description: getApiClientErrorMessage(error, 'Your personalization profile could not be saved.'),
+  //       variant: 'destructive',
+  //     })
+  //   } finally {
+  //     setIsSaving(false)
+  //   }
+  // }
 
   const saveThemeSettings = () => {
     persistThemeCustomization(themeSettings)
@@ -166,6 +195,28 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
     applyThemeCustomization(DEFAULT_THEME_CUSTOMIZATION)
     setThemeSettings(DEFAULT_THEME_CUSTOMIZATION)
     setThemeStatus('Theme reset to defaults.')
+  }
+  
+
+  const savePersonalizationAnswers = async (answers: PersonalizationAnswerInput[]) => {
+    setIsSaving(true)
+    setStatus(null)
+
+    try {
+      const result = await updatePersonalizationAnswers({ answers })
+      setPersonalizationQuestions((currentQuestions) =>
+        result.questions.length > 0 ? result.questions : mergeSavedPersonalizationAnswers(currentQuestions, answers),
+      )
+      setStatus('Personalized AI answers saved successfully.')
+    } catch (error) {
+      toast({
+        title: 'Unable to save personalization profile',
+        description: getApiClientErrorMessage(error, 'Your personalization profile could not be saved.'),
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
