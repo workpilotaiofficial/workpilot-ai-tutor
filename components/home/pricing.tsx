@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, type Variants } from "framer-motion";
-import { Check, Sparkles } from "lucide-react";
+import { Check } from "lucide-react";
+import { fetchSubscriptionPlans, type SubscriptionPlan } from "@/lib/api/billing.service";
 
 const plans = [
     {
@@ -53,6 +54,43 @@ const plans = [
         ],
     },
 ];
+
+const planApiMatchers: Record<string, string[]> = {
+    Starter: ["starter", "trial", "free", "basic"],
+    Premium: ["premium", "pro", "professional"],
+    Business: ["business", "enterprise", "team"],
+};
+
+function normalizePlanKey(value: string) {
+    return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function findApiPlan(cardName: string, apiPlans: SubscriptionPlan[]) {
+    const matchers = (planApiMatchers[cardName] ?? [cardName]).map(normalizePlanKey);
+
+    return apiPlans.find((apiPlan) => {
+        const apiKeys = [apiPlan.code, apiPlan.name].map(normalizePlanKey);
+        return matchers.some((matcher) =>
+            apiKeys.some(
+                (apiKey) =>
+                    apiKey === matcher ||
+                    apiKey.startsWith(matcher) ||
+                    apiKey.endsWith(matcher),
+            ),
+        );
+    });
+}
+
+function formatMonthlyPrice(value: number | null) {
+    if (value === null) return "Custom";
+
+    return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: value % 1 === 0 ? 0 : 2,
+        maximumFractionDigits: 2,
+    }).format(value);
+}
 
 const enterpriseFeatures = [
     "Unlimited projects",
@@ -219,6 +257,32 @@ function PlanCard({ plan }: { plan: Plan }) {
 }
 
 export default function PricingSection() {
+    const [apiPlans, setApiPlans] = useState<SubscriptionPlan[]>([]);
+
+    useEffect(() => {
+        const abortController = new AbortController();
+
+        fetchSubscriptionPlans(abortController.signal)
+            .then(setApiPlans)
+            .catch((error: unknown) => {
+                if (error instanceof DOMException && error.name === "AbortError") return;
+                // Keep the existing prices as a resilient public-page fallback.
+            });
+
+        return () => abortController.abort();
+    }, []);
+
+    const displayPlans = useMemo(
+        () =>
+            plans.map((plan) => {
+                const apiPlan = findApiPlan(plan.name, apiPlans);
+                return apiPlan
+                    ? { ...plan, price: formatMonthlyPrice(apiPlan.priceMonthly) }
+                    : plan;
+            }),
+        [apiPlans],
+    );
+
     return (
         <section id="pricing" className="relative scroll-mt-20 overflow-hidden bg-background px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
             <div className="absolute left-[-5rem] top-32 h-72 w-72 rounded-full bg-thirdary/10 blur-3xl" />
@@ -272,7 +336,7 @@ export default function PricingSection() {
                     whileInView="visible"
                     viewport={{ once: true, amount: 0.1 }}
                 >
-                    {plans.map((plan) => (
+                    {displayPlans.map((plan) => (
                         <PlanCard key={plan.name} plan={plan} />
                     ))}
                 </motion.div>

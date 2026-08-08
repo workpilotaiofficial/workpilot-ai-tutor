@@ -339,8 +339,12 @@ function normalizeCurrentSubscription(payload: SubscriptionResponse): CurrentSub
   return normalized
 }
 
-export async function fetchSubscriptionPlans() {
-  const response = await apiClient.request<SubscriptionPlanResponse>(PAYMENTS_PLANS_ENDPOINT)
+export async function fetchSubscriptionPlans(signal?: AbortSignal) {
+  const response = await apiClient.request<SubscriptionPlanResponse>(PAYMENTS_PLANS_ENDPOINT, {
+    signal,
+    omitAuthHeader: true,
+    retryOnUnauthorized: false,
+  })
   return asArray(response?.data)
     .map(normalizePlan)
     .filter((plan): plan is SubscriptionPlan => Boolean(plan))
