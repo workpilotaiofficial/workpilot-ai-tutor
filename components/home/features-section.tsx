@@ -226,10 +226,7 @@ export default function FeaturesSection() {
           transition={{ duration: 0.7, ease }}
           className="mx-auto max-w-3xl text-center"
         >
-          <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/15 bg-white px-3.5 py-1.5 text-center text-xs font-semibold text-primary shadow-sm">
-            <Sparkles className="h-3.5 w-3.5" />
-            One intelligent learning space
-          </span>
+   
           <h2 className="mt-6 text-[2rem] font-semibold leading-[1.08] tracking-[-0.04em] text-slate-950 min-[380px]:text-4xl sm:text-5xl lg:text-[3.5rem]">
             From course material to{" "}
             <span className="text-primary">real understanding.</span>

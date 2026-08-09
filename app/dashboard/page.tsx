@@ -328,7 +328,7 @@ export default function DashboardIndexPage() {
                 ))}
               </div>
             </article>
-            <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
+            {/* <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
               <div className="mb-6 flex items-center justify-between">
                 <div>
                   <h2 className="text-base font-semibold">Subject performance</h2>
@@ -353,7 +353,7 @@ export default function DashboardIndexPage() {
                   </div>
                 ))}
               </div>
-            </article>
+            </article> */}
 
         
           </div>
@@ -438,7 +438,7 @@ export default function DashboardIndexPage() {
               </div>
             </article>
 
-            <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm">
+            {/* <article className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div><h2 className="text-base font-semibold">Weekly goal</h2><p className="mt-1 text-xs text-muted-foreground">5 of 7 active days</p></div>
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-50 text-orange-600 dark:bg-orange-500/10"><Flame className="h-5 w-5 fill-current" /></div>
@@ -456,7 +456,7 @@ export default function DashboardIndexPage() {
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-semibold">74%</span><span className="text-[10px] text-muted-foreground">mastered</span></div>
               </div>
               <div className="grid grid-cols-3 gap-2">{masteryData.map((item) => <div key={item.name} className="text-center"><div className="mx-auto mb-1.5 h-2 w-2 rounded-full" style={{ background: item.color }} /><p className="text-sm font-semibold">{item.value}%</p><p className="text-[10px] text-muted-foreground">{item.name}</p></div>)}</div>
-            </article>
+            </article> */}
 
             {/* <article className="rounded-3xl border border-amber-200 bg-amber-50/70 p-5 dark:border-amber-500/20 dark:bg-amber-500/5">
               <div className="flex gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"><Lightbulb className="h-4 w-4" /></div><div><h3 className="text-sm font-semibold">AI study insight</h3><p className="mt-1.5 text-xs leading-5 text-muted-foreground">You retain <strong className="text-foreground">18% more</strong> when studying before 8 PM. Try scheduling Chemistry at 7:00 PM today.</p></div></div>

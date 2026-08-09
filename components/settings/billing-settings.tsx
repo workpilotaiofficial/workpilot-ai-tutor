@@ -2,7 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { AlertTriangle, CheckCircle2, CreditCard, LoaderCircle, Receipt, ShieldCheck } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  Coins,
+  CreditCard,
+  LoaderCircle,
+  Package,
+  Receipt,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,6 +39,7 @@ type BillingSettingsProps = {
 }
 
 const BILLING_QUERY_KEY = 'billing'
+const CHECKOUT_PLAN_QUERY_KEY = 'checkout_plan'
 
 const formatDate = (value: string | null) => {
   if (!value) {
@@ -52,10 +64,39 @@ const formatPlanPrice = (value: number | null) => {
     return 'Custom pricing'
   }
 
-  return `${value.toLocaleString('en-US', {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     minimumFractionDigits: value % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
-  })} / month`
+  }).format(value)
+}
+
+const formatPackPrice = (pack: CreditPack) => {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: pack.currency.toUpperCase(),
+      minimumFractionDigits: pack.price % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(pack.price)
+  } catch {
+    return `${pack.price.toLocaleString('en-US', {
+      minimumFractionDigits: pack.price % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    })} ${pack.currency.toUpperCase()}`
+  }
+}
+
+const getPlanDescription = (code: string) => {
+  const descriptions: Record<string, string> = {
+    free: 'Explore the essentials at your own pace.',
+    starter: 'A simple start for everyday learning.',
+    premium: 'More room for consistent, focused study.',
+    power: 'High-capacity access for ambitious learners.',
+  }
+
+  return descriptions[code.toLowerCase()] ?? 'Flexible monthly access for your learning needs.'
 }
 
 const formatInvoiceAmount = (invoice: RecentInvoice) => {
@@ -126,6 +167,7 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
   const [checkoutPackId, setCheckoutPackId] = useState<string | null>(null)
   const [isCanceling, setIsCanceling] = useState(false)
   const handledBillingStateRef = useRef<string | null>(null)
+  const handledCheckoutPlanRef = useRef<string | null>(null)
 
   const clearBillingQueryMarker = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString())
@@ -192,7 +234,11 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
 
     const billingState = searchParams.get(BILLING_QUERY_KEY)
 
-    if (!billingState || handledBillingStateRef.current === billingState) {
+    if (
+      !billingState ||
+      !['success', 'cancel'].includes(billingState) ||
+      handledBillingStateRef.current === billingState
+    ) {
       return
     }
 
@@ -223,7 +269,24 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
     void handleBillingReturn()
   }, [clearBillingQueryMarker, hasLoaded, isActive, loadBillingData, searchParams, toast])
 
-  const handleUpgrade = async (plan: SubscriptionPlan) => {
+  const clearCheckoutPlanQueryMarker = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (!params.has(CHECKOUT_PLAN_QUERY_KEY)) {
+      return
+    }
+
+    params.delete(CHECKOUT_PLAN_QUERY_KEY)
+
+    if (params.get(BILLING_QUERY_KEY) === 'checkout') {
+      params.delete(BILLING_QUERY_KEY)
+    }
+
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
+    router.replace(nextUrl, { scroll: false })
+  }, [pathname, router, searchParams])
+
+  const handleUpgrade = useCallback(async (plan: SubscriptionPlan) => {
     setCheckoutPlanId(plan.id)
 
     try {
@@ -240,8 +303,61 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
         variant: 'destructive',
       })
       setCheckoutPlanId(null)
+      clearCheckoutPlanQueryMarker()
     }
-  }
+  }, [clearCheckoutPlanQueryMarker, toast])
+
+  useEffect(() => {
+    const requestedPlanId = searchParams.get(CHECKOUT_PLAN_QUERY_KEY)
+
+    if (
+      !isActive ||
+      !hasLoaded ||
+      !requestedPlanId ||
+      searchParams.get(BILLING_QUERY_KEY) !== 'checkout' ||
+      handledCheckoutPlanRef.current === requestedPlanId
+    ) {
+      return
+    }
+
+    handledCheckoutPlanRef.current = requestedPlanId
+
+    const requestedPlan = plans.find((plan) => plan.id === requestedPlanId)
+
+    if (!requestedPlan || !requestedPlan.billingIntervals.includes('monthly')) {
+      toast({
+        title: 'Plan unavailable',
+        description: 'The selected monthly plan is no longer available.',
+        variant: 'destructive',
+      })
+      clearCheckoutPlanQueryMarker()
+      return
+    }
+
+    const isCurrentPlan =
+      requestedPlan.id === currentSubscription?.planId ||
+      requestedPlan.code.toLowerCase() === currentSubscription?.planCode.toLowerCase()
+
+    if (isCurrentPlan) {
+      toast({
+        title: 'Current plan',
+        description: `You are already subscribed to the ${requestedPlan.name} plan.`,
+      })
+      clearCheckoutPlanQueryMarker()
+      return
+    }
+
+    void handleUpgrade(requestedPlan)
+  }, [
+    clearCheckoutPlanQueryMarker,
+    currentSubscription,
+    handleUpgrade,
+    hasLoaded,
+    isActive,
+    plans,
+    searchParams,
+    toast,
+  ])
 
   const handleBuyPack = async (pack: CreditPack) => {
     setCheckoutPackId(pack.id)
@@ -363,7 +479,7 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
       {isLoading && !hasLoaded ? (
         <CurrentPlanSkeleton />
       ) : (
-          <Card className="border-border" id="credit-packs" >
+        <Card className="overflow-hidden border-border/80 shadow-sm">
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -431,16 +547,19 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
         </Card>
       )}
 
-      <Card  id="subscription-plans"  className="border-border">
-        <CardHeader>
-          <CardTitle>Upgrade Plans</CardTitle>
-          <CardDescription>Available paid plans.</CardDescription>
+      <Card id="subscription-plans" className="scroll-mt-4 overflow-hidden border-border/80 shadow-sm">
+        <CardHeader className="border-b bg-muted/20">
+ 
+            
+              <CardTitle className="text-base sm:text-lg">Choose your plan</CardTitle>
+              
+       
         </CardHeader>
         <CardContent>
           {isLoading && !hasLoaded ? (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
               {Array.from({ length: 2 }).map((_, index) => (
-                <div key={index} className="rounded-xl border border-border bg-secondary/20 p-5">
+                <div key={index} className="rounded-2xl border border-border bg-secondary/20 p-5">
                   <div className="h-5 w-24 animate-pulse rounded bg-secondary" />
                   <div className="mt-3 h-8 w-32 animate-pulse rounded bg-secondary" />
                   <div className="mt-4 h-9 w-full animate-pulse rounded bg-secondary" />
@@ -448,7 +567,7 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
               ))}
             </div>
           ) : plans.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid items-stretch gap-4 grid-cols-1 sm:grid-cols-2 ">
               {plans.map((plan) => {
                 const currentPlanId = normalizePlanMatcher(currentSubscription?.planId)
                 const currentPlanCode = normalizePlanMatcher(currentSubscription?.planCode)
@@ -462,30 +581,72 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
                   (currentPlanName.length > 0 && currentPlanName === planName)
                 const supportsMonthly = plan.billingIntervals.includes('monthly')
                 const isCheckingOut = checkoutPlanId === plan.id
+                const isPopular = plan.code.toLowerCase() === 'premium'
 
                 return (
-                  <div key={plan.id} className="rounded-xl border border-border bg-secondary/10 p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-lg font-semibold text-foreground">{plan.name}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Code: {plan.code}</p>
+                  <div
+                    key={plan.id}
+                    className={`relative flex min-h-[300px] flex-col overflow-hidden rounded-2xl border bg-card p-5 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                      isPopular
+                        ? 'border-primary/50 shadow-[0_12px_30px_-18px_color-mix(in_srgb,var(--primary)_55%,transparent)]'
+                        : 'border-border/80'
+                    }`}
+                  >
+                    {isPopular ? (
+                      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-thirdary to-primary" />
+                    ) : null}
+
+                    <div className="flex min-h-12 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-lg font-semibold tracking-tight text-foreground">{plan.name}</p>
+                        <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                          {getPlanDescription(plan.code)}
+                        </p>
                       </div>
                       {isCurrentPlan ? (
-                        <div className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                        <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/15 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
                           <CheckCircle2 className="h-3.5 w-3.5" />
-                          Current Plan
+                          Current
+                        </div>
+                      ) : isPopular ? (
+                        <div className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
+                          Popular
                         </div>
                       ) : null}
                     </div>
 
-                    <div className="mt-4 space-y-2">
-                      <p className="text-2xl font-semibold text-foreground">{formatPlanPrice(plan.priceMonthly)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Monthly credits: {plan.monthlyCreditAllotment ?? 'Not specified'}
+                    <div className="mt-6 flex items-end gap-1.5 border-b border-border/70 pb-5">
+                      <p className="text-3xl font-bold tracking-tight text-foreground">
+                        {formatPlanPrice(plan.priceMonthly)}
                       </p>
+                      {plan.priceMonthly !== null ? (
+                        <span className="pb-1 text-sm text-muted-foreground">/ month</span>
+                      ) : null}
                     </div>
 
-                    <div className="mt-5">
+                    <div className="mt-5 space-y-3 text-sm">
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <Check className="size-3.5 stroke-[2.5]" />
+                        </span>
+                        <span className="text-foreground/80">
+                          <strong className="font-semibold text-foreground">
+                            {plan.monthlyCreditAllotment?.toLocaleString('en-US') ?? 'Flexible'}
+                          </strong>{' '}
+                          credits included each month
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <Check className="size-3.5 stroke-[2.5]" />
+                        </span>
+                        <span className="text-foreground/80">
+                          {supportsMonthly ? 'Simple monthly billing' : 'Contact us for billing options'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto pt-6">
                       <Button
                         onClick={() => void handleUpgrade(plan)}
                         disabled={
@@ -495,10 +656,11 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
                           Boolean(checkoutPlanId) ||
                           Boolean(checkoutPackId)
                         }
-                        className=' btn-primary'
+                        variant={isCurrentPlan ? 'outline' : 'default'}
+                        className={`h-10 w-full rounded-lg font-semibold ${isCurrentPlan ? '' : 'btn-primary'}`}
                       >
                         {isCheckingOut ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                        {isCurrentPlan ? 'Current Plan' : supportsMonthly ? 'Upgrade via Stripe' : 'Monthly unavailable'}
+                        {isCurrentPlan ? 'Your current plan' : supportsMonthly ? 'Choose plan' : 'Monthly unavailable'}
                       </Button>
                     </div>
                   </div>
@@ -513,16 +675,18 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
         </CardContent>
       </Card>
 
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle>Credit Packs</CardTitle>
-          <CardDescription>Buy one-time credit packs through Stripe.</CardDescription>
+      <Card id="credit-packs" className="scroll-mt-4 overflow-hidden border-border/80 shadow-sm">
+        <CardHeader className="border-b bg-muted/20 pb-2">
+   
+              <CardTitle className="text-base sm:text-lg">Top up your credits</CardTitle>
+        
+    
         </CardHeader>
         <CardContent>
           {isLoading && !hasLoaded ? (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 grid-cols-1">
               {Array.from({ length: 2 }).map((_, index) => (
-                <div key={index} className="rounded-xl border border-border bg-secondary/20 p-5">
+                <div key={index} className="rounded-2xl border border-border bg-secondary/20 p-5">
                   <div className="h-5 w-24 animate-pulse rounded bg-secondary" />
                   <div className="mt-3 h-8 w-32 animate-pulse rounded bg-secondary" />
                   <div className="mt-4 h-9 w-full animate-pulse rounded bg-secondary" />
@@ -530,40 +694,53 @@ export default function BillingSettings({ isActive, creditLimitDetails = null }:
               ))}
             </div>
           ) : creditPacks.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid items-stretch gap-4 sm:grid-cols-2 grid-cols-1">
               {creditPacks.map((pack) => {
                 const isCheckingOut = checkoutPackId === pack.id
 
                 return (
-                  <div key={pack.id} className="rounded-xl border border-border bg-secondary/10 p-5">
+                  <div
+                    key={pack.id}
+                    className="group flex min-h-[270px] flex-col rounded-2xl border border-border/80 bg-card p-5 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                  >
                     <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-lg font-semibold text-foreground">{pack.name}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Code: {pack.code}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/60 text-primary transition-colors group-hover:border-primary/15 group-hover:bg-primary/10">
+                          <Package className="size-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">{pack.name}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">One-time purchase</p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 space-y-2">
-                      <p className="text-2xl font-semibold text-foreground">
-                        {pack.price.toLocaleString('en-US', {
-                          minimumFractionDigits: pack.price % 1 === 0 ? 0 : 2,
-                          maximumFractionDigits: 2,
-                        })}{' '}
-                        {pack.currency.toUpperCase()}
+                    <div className="mt-6 rounded-xl border border-border/70 bg-muted/25 p-4">
+                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        Credit amount
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        Credits: {pack.credits.toLocaleString('en-US')}
-                      </p>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <p className="text-3xl font-bold tracking-tight text-foreground">
+                          {pack.credits.toLocaleString('en-US')}
+                        </p>
+                        <span className="text-sm font-medium text-muted-foreground">credits</span>
+                      </div>
                     </div>
 
-                    <div className="mt-5">
+                    <div className="mt-auto flex items-center justify-between gap-4 pt-5">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total price</p>
+                        <p className="mt-0.5 text-xl font-bold tracking-tight text-foreground">
+                          {formatPackPrice(pack)}
+                        </p>
+                      </div>
                       <Button
                         onClick={() => void handleBuyPack(pack)}
                         disabled={isCheckingOut || Boolean(checkoutPlanId) || Boolean(checkoutPackId)}
-                        className="btn-primary"
+                        className="btn-primary h-10 rounded-lg px-4 font-semibold"
                       >
                         {isCheckingOut ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                        Buy via Stripe
+                        Buy credits
                       </Button>
                     </div>
                   </div>

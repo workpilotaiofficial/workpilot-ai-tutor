@@ -576,9 +576,13 @@ export default function StudySetDetailPage({
   const isFillComplete = Boolean(fillTotalCount) && fillAnsweredCount === fillTotalCount
   const isShowingFillFinalScreen = activeSection?.type === 'fillInTheBlanks' && isFillComplete
   const isShowingAssessmentFinalScreen = isShowingMcqFinalScreen || isShowingFillFinalScreen
-  const showItemSidePanel = ['flashcards', 'multipleChoice', 'fillInTheBlanks', 'writtenTests'].includes(
-    activeSection?.type ?? '',
-  )
+  // The overview does not have an active study item, even though we keep the
+  // first section selected internally. Only mount the split item workspace
+  // after a study mode has actually been opened from the URL.
+  const showItemSidePanel = Boolean(activeModeFromQuery) &&
+    ['flashcards', 'multipleChoice', 'fillInTheBlanks', 'writtenTests'].includes(
+      activeSection?.type ?? '',
+    )
   const fillImprovementTip = getAssessmentImprovementTip(fillScorePercent, fillAnsweredCount - fillCorrectCount)
 
   const writtenTestItems = useMemo(
@@ -1928,12 +1932,12 @@ export default function StudySetDetailPage({
         <div className="min-h-0 flex-1 overflow-hidden">
           <div className="flex h-full flex-col lg:flex-row">
             {showItemSidePanel && !isCompactViewport ? (
-              <ResizablePanelGroup direction="horizontal" autoSaveId="study-item-panel" className="h-full">
-                <ResizablePanel defaultSize={65} minSize={40}>
-                  <ScrollArea className="h-full pt-4">{studyItemSection}</ScrollArea>
+              <ResizablePanelGroup direction="horizontal" className="h-full w-full ">
+                <ResizablePanel className='w-full' id="study-content" order={1} defaultSize={68} minSize={50}>
+                  <ScrollArea className="h-full pt-4 !w-full">{studyItemSection}</ScrollArea>
                 </ResizablePanel>
                 <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={25} minSize={22} maxSize={35}>
+                <ResizablePanel id="study-tools" order={2} defaultSize={32} minSize={22} maxSize={35}>
                   <div className="h-full">
                     <ItemSidePanel
                       studySet={studySet}
@@ -1941,12 +1945,13 @@ export default function StudySetDetailPage({
                       activeSectionType={activeSection?.type ?? null}
                       activeItem={activeItem}
                       activeItemIndex={currentItemIndex}
+                      documentId={documentId ?? generationMeta?.documentId ?? studySet.documentId}
                     />
                   </div>
                 </ResizablePanel>
               </ResizablePanelGroup>
             ) : (
-              <ScrollArea className="h-full pt-3 sm:pt-4">{studyItemSection}</ScrollArea>
+              <ScrollArea className="h-full pt-3 sm:pt-4 w-full">{studyItemSection}</ScrollArea>
             )}
 
           </div>
@@ -1966,6 +1971,7 @@ export default function StudySetDetailPage({
                   activeSectionType={activeSection?.type ?? null}
                   activeItem={activeItem}
                   activeItemIndex={currentItemIndex}
+                  documentId={documentId ?? generationMeta?.documentId ?? studySet.documentId}
                 />
               </div>
             </SheetContent>

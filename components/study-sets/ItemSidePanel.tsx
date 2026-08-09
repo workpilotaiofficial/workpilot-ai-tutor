@@ -1,7 +1,17 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { LoaderCircle, Plus, Send, Sparkles } from 'lucide-react'
+import {
+  Download,
+  ExternalLink,
+  File,
+  FileImage,
+  FileText,
+  LoaderCircle,
+  Plus,
+  Send,
+  Sparkles,
+} from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -20,7 +30,15 @@ import {
   isChatConversationNotFound,
   sendStudySetChatMessage,
 } from '@/lib/api/study-set-chat.service'
+import {
+  fetchStudySetSourceDocument,
+  type StudySetSourceDocument,
+} from '@/lib/api/study-sets.service'
 import { getApiClientErrorMessage } from '@/lib/api/client'
+import {
+  getCachedStudySetSource,
+  type CachedStudySetSource,
+} from '@/lib/study-set-source-cache'
 
 const uiToChatSectionType: Record<string, StudySetChatSectionType> = {
   multipleChoice: 'multiple_choice',
@@ -452,18 +470,254 @@ function ChatTab({
   )
 }
 
-function ContentTab({ sourceText }: { sourceText?: string }) {
-  if (!sourceText) {
+type SourceKind = 'pdf' | 'image' | 'youtube' | 'text' | 'file'
+
+function getSourceKind(sourceType?: string | null, mimeType?: string | null, filename?: string | null): SourceKind {
+  const normalizedType = sourceType?.toLowerCase() ?? ''
+  const normalizedMime = mimeType?.toLowerCase() ?? ''
+  const normalizedFilename = filename?.toLowerCase() ?? ''
+
+  if (normalizedType.includes('pdf') || normalizedMime.includes('pdf') || normalizedFilename.endsWith('.pdf')) {
+    return 'pdf'
+  }
+  if (normalizedType.includes('image') || normalizedMime.startsWith('image/')) return 'image'
+  if (normalizedType.includes('youtube') || normalizedType.includes('video')) return 'youtube'
+  if (normalizedType.includes('text') || normalizedMime.startsWith('text/')) return 'text'
+  return 'file'
+}
+
+function getSafeSourceUrl(...values: Array<string | null | undefined>) {
+  const value = values.find((candidate) => typeof candidate === 'string' && Boolean(candidate.trim()))?.trim()
+  if (!value) return null
+
+  if (
+    value.startsWith('/') ||
+    value.startsWith('blob:') ||
+    value.startsWith('https://') ||
+    value.startsWith('http://')
+  ) {
+    return value
+  }
+
+  return null
+}
+
+function getYoutubeEmbedUrl(value: string | null) {
+  if (!value) return null
+
+  try {
+    const url = new URL(value, window.location.origin)
+    const hostname = url.hostname.toLowerCase().replace(/^www\./, '')
+    let videoId = ''
+
+    if (hostname === 'youtu.be') videoId = url.pathname.split('/').filter(Boolean)[0] ?? ''
+    if (hostname === 'youtube.com' || hostname.endsWith('.youtube.com')) {
+      videoId = url.searchParams.get('v') ?? ''
+      if (!videoId && url.pathname.startsWith('/shorts/')) {
+        videoId = url.pathname.split('/').filter(Boolean)[1] ?? ''
+      }
+      if (!videoId && url.pathname.startsWith('/embed/')) {
+        videoId = url.pathname.split('/').filter(Boolean)[1] ?? ''
+      }
+    }
+
+    return /^[a-zA-Z0-9_-]{6,}$/.test(videoId)
+      ? `https://www.youtube.com/embed/${videoId}`
+      : null
+  } catch {
+    return null
+  }
+}
+
+function SourceToolbar({ filename, sourceUrl }: { filename: string; sourceUrl: string }) {
+  return (
+    <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-border bg-muted/30 px-3 py-2">
+      <FileText className="h-4 w-4 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground" title={filename}>
+        {filename}
+      </span>
+      <a
+        href={sourceUrl}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`Open ${filename} in a new tab`}
+        title="Open in a new tab"
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <ExternalLink className="h-4 w-4" />
+      </a>
+      <a
+        href={sourceUrl}
+        download={filename}
+        aria-label={`Download ${filename}`}
+        title="Download file"
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <Download className="h-4 w-4" />
+      </a>
+    </div>
+  )
+}
+
+function ContentTab({ studySet, documentId }: { studySet: StudySet; documentId?: string | null }) {
+  const effectiveDocumentId = documentId || studySet.documentId
+  const [sourceDocument, setSourceDocument] = useState<StudySetSourceDocument | null>(null)
+  const [cachedSource, setCachedSource] = useState<CachedStudySetSource | null>(null)
+  const [cachedSourceUrl, setCachedSourceUrl] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(Boolean(effectiveDocumentId))
+  const [loadError, setLoadError] = useState('')
+
+  useEffect(() => {
+    if (!effectiveDocumentId) {
+      setIsLoading(false)
+      return
+    }
+
+    const abortController = new AbortController()
+    let documentError = ''
+
+    setIsLoading(true)
+    setLoadError('')
+
+    Promise.all([
+      fetchStudySetSourceDocument(effectiveDocumentId, abortController.signal).catch((error) => {
+        documentError = getApiClientErrorMessage(error, 'The source document could not be loaded.')
+        return null
+      }),
+      getCachedStudySetSource(effectiveDocumentId).catch(() => null),
+    ]).then(([documentResult, cachedResult]) => {
+      if (abortController.signal.aborted) return
+      setSourceDocument(documentResult)
+      setCachedSource(cachedResult)
+      setLoadError(documentResult || cachedResult ? '' : documentError)
+      setIsLoading(false)
+    })
+
+    return () => abortController.abort()
+  }, [effectiveDocumentId])
+
+  useEffect(() => {
+    if (!cachedSource?.file) {
+      setCachedSourceUrl(null)
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(cachedSource.file)
+    setCachedSourceUrl(objectUrl)
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [cachedSource])
+
+  const filename =
+    cachedSource?.filename || sourceDocument?.filename || studySet.sourceFilename || sourceDocument?.title || studySet.title
+  const mimeType = cachedSource?.mimeType || sourceDocument?.mimeType || studySet.sourceMimeType
+  const sourceType = sourceDocument?.sourceType || studySet.sourceType
+  const remoteR2Url = sourceDocument?.r2Path?.startsWith('http') ? sourceDocument.r2Path : null
+  const sourceUrl = getSafeSourceUrl(
+    cachedSourceUrl,
+    sourceDocument?.sourceUrl,
+    studySet.sourceUrl,
+    remoteR2Url,
+  )
+  const sourceText = studySet.sourceText || sourceDocument?.rawExtractedText
+  const sourceKind = getSourceKind(sourceType, mimeType, filename)
+  const youtubeEmbedUrl = sourceKind === 'youtube' ? getYoutubeEmbedUrl(sourceUrl) : null
+
+  if (isLoading && !sourceText && !sourceUrl) {
+    return (
+      <div className="flex h-full items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
+        <LoaderCircle className="h-4 w-4 animate-spin" />
+        Loading source content...
+      </div>
+    )
+  }
+
+  if (sourceKind === 'pdf' && sourceUrl) {
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-muted/20">
+        <SourceToolbar filename={filename} sourceUrl={sourceUrl} />
+        <iframe
+          src={`${sourceUrl}#toolbar=1&navpanes=0&view=FitH`}
+          title={filename}
+          className="min-h-0 w-full flex-1 border-0 bg-white"
+        />
+      </div>
+    )
+  }
+
+  if (sourceKind === 'image' && sourceUrl) {
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-muted/20">
+        <SourceToolbar filename={filename} sourceUrl={sourceUrl} />
+        <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
+          {/* The source may be an authenticated blob URL or any supported image host. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={sourceUrl} alt={filename} className="mx-auto h-auto max-h-full max-w-full rounded-lg object-contain" />
+        </div>
+      </div>
+    )
+  }
+
+  if (sourceKind === 'youtube' && youtubeEmbedUrl) {
+    return (
+      <div className="h-full overflow-y-auto p-3 sm:p-4">
+        <div className="aspect-video overflow-hidden rounded-xl border border-border bg-black">
+          <iframe
+            src={youtubeEmbedUrl}
+            title={filename}
+            className="h-full w-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (sourceKind === 'file' && sourceUrl) {
+    return (
+      <div className="flex h-full items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-sm rounded-xl border border-border bg-muted/20 p-5 text-center">
+          <File className="mx-auto h-9 w-9 text-primary" />
+          <p className="mt-3 truncate text-sm font-semibold" title={filename}>{filename}</p>
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open file
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  if (sourceText) {
+    return (
+      <div className="h-full overflow-y-auto p-4">
+        {(sourceKind === 'pdf' || sourceKind === 'image') && !sourceUrl ? (
+          <div className="mb-4 flex gap-3 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+            {sourceKind === 'image' ? <FileImage className="h-5 w-5 shrink-0" /> : <FileText className="h-5 w-5 shrink-0" />}
+            <p>The original {sourceKind} preview is unavailable, so the extracted content is shown below.</p>
+          </div>
+        ) : null}
+        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/80">{sourceText}</p>
+      </div>
+    )
+  }
+
+  if (loadError) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
-        No source content available for this study set.
+        {loadError}
       </div>
     )
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4">
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">{sourceText}</p>
+    <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+      No source content available for this study set.
     </div>
   )
 }
@@ -495,12 +749,14 @@ export function ItemSidePanel({
   activeSectionType,
   activeItem,
   activeItemIndex,
+  documentId,
 }: {
   studySet: StudySet
   studySetId: string
   activeSectionType: string | null
   activeItem: unknown
   activeItemIndex: number
+  documentId?: string | null
 }) {
   return (
     <Tabs defaultValue="chat" className="h-full min-h-0 gap-0 bg-card">
@@ -519,7 +775,7 @@ export function ItemSidePanel({
         />
       </TabsContent>
       <TabsContent value="content" className="min-h-0">
-        <ContentTab sourceText={studySet.sourceText} />
+        <ContentTab studySet={studySet} documentId={documentId} />
       </TabsContent>
       <TabsContent value="notes" className="min-h-0">
         <NotesTab notesMarkdown={studySet.notesMarkdown} />

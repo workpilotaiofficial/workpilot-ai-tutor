@@ -2,84 +2,59 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, type Variants } from "framer-motion";
-import { Check } from "lucide-react";
-import { fetchSubscriptionPlans, type SubscriptionPlan } from "@/lib/api/billing.service";
+import { Check, LoaderCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useRbac } from "@/hooks/use-rbac";
+import {
+    createSubscriptionCheckout,
+    fetchCurrentSubscription,
+    fetchSubscriptionPlans,
+    type CurrentSubscription,
+    type SubscriptionPlan,
+} from "@/lib/api/billing.service";
+import { getApiClientErrorMessage } from "@/lib/api/client";
 
-const plans = [
+const fallbackApiPlans: SubscriptionPlan[] = [
     {
+        id: "b5ccb5dd-5be8-4f5c-b708-93ccc087d3c3",
+        code: "free",
+        name: "Trial",
+        monthlyCreditAllotment: 0,
+        priceMonthly: 0,
+        billingIntervals: [],
+    },
+    {
+        id: "d891150d-7472-4a13-9b23-bdd7d7379f0e",
+        code: "starter",
         name: "Starter",
-        description: "Perfect for getting started",
-        price: "$19",
-        period: "Per month",
-        featured: false,
-        gradient: "from-blue-500 to-cyan-500",
-        features: [
-            "3M AI Credits",
-            "20 Hours of platform credits",
-            "10 Projects",
-            "Community support",
-            "Basic dashboard",
-        ],
+        monthlyCreditAllotment: 1000,
+        priceMonthly: 9.99,
+        billingIntervals: ["monthly"],
     },
     {
+        id: "55a43632-eaf1-4c79-a48c-79e17c5c177e",
+        code: "premium",
         name: "Premium",
-        description: "Most popular choice",
-        price: "$49",
-        period: "Per month",
-        featured: true,
-        gradient: "from-purple-500 to-pink-500",
-        features: [
-            "8M AI Credits",
-            "50 Hours of Platform Credits",
-            "20 Projects",
-            "Priority support",
-            "Advanced analytics",
-            "Custom integrations",
-        ],
+        monthlyCreditAllotment: 3000,
+        priceMonthly: 24.99,
+        billingIntervals: ["monthly"],
     },
     {
-        name: "Business",
-        description: "For power users",
-        price: "$99",
-        period: "Per month",
-        featured: false,
-        gradient: "from-orange-500 to-red-500",
-        features: [
-            "20M AI Credits",
-            "75 Hours of Platform Credits",
-            "Unlimited Projects",
-            "Dedicated support",
-            "Custom features",
-            "API access",
-        ],
+        id: "c03de521-9cdb-4b40-9f95-626009d46be3",
+        code: "power",
+        name: "Power",
+        monthlyCreditAllotment: 7000,
+        priceMonthly: 49.99,
+        billingIntervals: ["monthly"],
     },
 ];
 
-const planApiMatchers: Record<string, string[]> = {
-    Starter: ["starter", "trial", "free", "basic"],
-    Premium: ["premium", "pro", "professional"],
-    Business: ["business", "enterprise", "team"],
+const planDescriptions: Record<string, string> = {
+    free: "Explore Neurova before upgrading",
+    starter: "Perfect for getting started",
+    premium: "The most popular choice",
+    power: "Built for power users",
 };
-
-function normalizePlanKey(value: string) {
-    return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
-
-function findApiPlan(cardName: string, apiPlans: SubscriptionPlan[]) {
-    const matchers = (planApiMatchers[cardName] ?? [cardName]).map(normalizePlanKey);
-
-    return apiPlans.find((apiPlan) => {
-        const apiKeys = [apiPlan.code, apiPlan.name].map(normalizePlanKey);
-        return matchers.some((matcher) =>
-            apiKeys.some(
-                (apiKey) =>
-                    apiKey === matcher ||
-                    apiKey.startsWith(matcher) ||
-                    apiKey.endsWith(matcher),
-            ),
-        );
-    });
-}
 
 function formatMonthlyPrice(value: number | null) {
     if (value === null) return "Custom";
@@ -127,14 +102,39 @@ const itemVariants: Variants = {
 };
 
 type Plan = {
+    id: string;
+    code: string;
     name: string;
     description: string;
     price: string;
-    period: string;
+    period: string | null;
+    supportsMonthly: boolean;
     featured: boolean;
-    gradient: string;
     features: string[];
 };
+
+function toPlanCard(apiPlan: SubscriptionPlan): Plan {
+    const supportsMonthly = apiPlan.billingIntervals.includes("monthly");
+    const monthlyCredits = apiPlan.monthlyCreditAllotment;
+    const creditDescription = monthlyCredits === null
+        ? "Monthly credits not specified"
+        : `${monthlyCredits.toLocaleString("en-US")} AI credits / month`;
+
+    return {
+        id: apiPlan.id,
+        code: apiPlan.code,
+        name: apiPlan.name,
+        description: planDescriptions[apiPlan.code.toLowerCase()] ?? "A plan that fits your learning journey",
+        price: formatMonthlyPrice(apiPlan.priceMonthly),
+        period: supportsMonthly ? "/mo" : null,
+        supportsMonthly,
+        featured: apiPlan.code.toLowerCase() === "premium",
+        features: [
+            creditDescription,
+            supportsMonthly ? "Flexible monthly billing" : "No recurring billing",
+        ],
+    };
+}
 
 function FeatureItem({
     children,
@@ -163,7 +163,19 @@ function FeatureItem({
     );
 }
 
-function PlanCard({ plan }: { plan: Plan }) {
+function PlanCard({
+    plan,
+    isCheckingOut,
+    isDisabled,
+    ctaLabel,
+    onGetStarted,
+}: {
+    plan: Plan;
+    isCheckingOut: boolean;
+    isDisabled: boolean;
+    ctaLabel: string;
+    onGetStarted: (plan: Plan) => void;
+}) {
     const isHighlighted = plan.featured;
 
     return (
@@ -221,26 +233,39 @@ function PlanCard({ plan }: { plan: Plan }) {
                             >
                                 {plan.price}
                             </span>
-                            <span
-                                className={`text-sm ${
-                                    isHighlighted ? "text-white/70" : "text-slate-500"
-                                }`}
-                            >
-                                /mo
-                            </span>
+                            {plan.period && (
+                                <span
+                                    className={`text-sm ${
+                                        isHighlighted ? "text-white/70" : "text-slate-500"
+                                    }`}
+                                >
+                                    {plan.period}
+                                </span>
+                            )}
                         </div>
                     </div>
 
                     <motion.button
+                        type="button"
+                        onClick={() => onGetStarted(plan)}
+                        disabled={isDisabled}
+                        aria-busy={isCheckingOut}
                         className={`w-full mb-8 px-6 py-3 rounded-full font-semibold transition-all duration-300 ${
                             isHighlighted
                                 ? "bg-white text-thirdary hover:bg-white/90 shadow-lg"
                                 : "bg-slate-900 text-white hover:bg-slate-800"
-                        }`}
+                        } disabled:cursor-not-allowed disabled:opacity-60`}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                     >
-                        Get Started
+                        {isCheckingOut ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <LoaderCircle className="h-4 w-4 animate-spin" />
+                                Redirecting...
+                            </span>
+                        ) : (
+                            ctaLabel
+                        )}
                     </motion.button>
 
                     <div className="space-y-0 flex-grow">
@@ -258,6 +283,11 @@ function PlanCard({ plan }: { plan: Plan }) {
 
 export default function PricingSection() {
     const [apiPlans, setApiPlans] = useState<SubscriptionPlan[]>([]);
+    const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null);
+    const [hasResolvedSubscription, setHasResolvedSubscription] = useState(false);
+    const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
+    const { isAuthenticated, isReady } = useRbac();
+    const { toast } = useToast();
 
     useEffect(() => {
         const abortController = new AbortController();
@@ -266,22 +296,115 @@ export default function PricingSection() {
             .then(setApiPlans)
             .catch((error: unknown) => {
                 if (error instanceof DOMException && error.name === "AbortError") return;
-                // Keep the existing prices as a resilient public-page fallback.
+                // Keep the supplied API values as a resilient public-page fallback.
             });
 
         return () => abortController.abort();
     }, []);
 
+    useEffect(() => {
+        if (!isReady) return;
+
+        if (!isAuthenticated) {
+            setCurrentSubscription(null);
+            setHasResolvedSubscription(false);
+            return;
+        }
+
+        let isCancelled = false;
+        setHasResolvedSubscription(false);
+
+        fetchCurrentSubscription()
+            .then((subscription) => {
+                if (!isCancelled) setCurrentSubscription(subscription);
+            })
+            .catch((error: unknown) => {
+                if (isCancelled) return;
+
+                setCurrentSubscription(null);
+                toast({
+                    title: "Unable to load your subscription",
+                    description: getApiClientErrorMessage(
+                        error,
+                        "Your available upgrades could not be determined.",
+                    ),
+                    variant: "destructive",
+                });
+            })
+            .finally(() => {
+                if (!isCancelled) setHasResolvedSubscription(true);
+            });
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [isAuthenticated, isReady, toast]);
+
     const displayPlans = useMemo(
         () =>
-            plans.map((plan) => {
-                const apiPlan = findApiPlan(plan.name, apiPlans);
-                return apiPlan
-                    ? { ...plan, price: formatMonthlyPrice(apiPlan.priceMonthly) }
-                    : plan;
-            }),
+            [...(apiPlans.length > 0 ? apiPlans : fallbackApiPlans)]
+                .sort(
+                    (firstPlan, secondPlan) =>
+                        (firstPlan.priceMonthly ?? Number.POSITIVE_INFINITY) -
+                        (secondPlan.priceMonthly ?? Number.POSITIVE_INFINITY),
+                )
+                .map(toPlanCard),
         [apiPlans],
     );
+
+    const currentPlanIndex = useMemo(() => {
+        if (!currentSubscription) return -1;
+
+        const currentId = currentSubscription.planId?.trim().toLowerCase();
+        const currentCode = currentSubscription.planCode.trim().toLowerCase();
+        const currentName = currentSubscription.planName.trim().toLowerCase();
+
+        return displayPlans.findIndex(
+            (plan) =>
+                (Boolean(currentId) && plan.id.trim().toLowerCase() === currentId) ||
+                plan.code.trim().toLowerCase() === currentCode ||
+                plan.name.trim().toLowerCase() === currentName,
+        );
+    }, [currentSubscription, displayPlans]);
+
+    const handleGetStarted = async (plan: Plan, isPlanLocked: boolean) => {
+        if (!isReady || checkoutPlanId) return;
+        if (isPlanLocked) return;
+
+        if (!plan.supportsMonthly || plan.code.toLowerCase() === "free") {
+            const dashboardDestination = "/dashboard";
+            window.location.assign(
+                isAuthenticated
+                    ? dashboardDestination
+                    : `/login?next=${encodeURIComponent(dashboardDestination)}`,
+            );
+            return;
+        }
+
+        if (!isAuthenticated) {
+            const checkoutDestination = `/dashboard?billing=checkout&checkout_plan=${encodeURIComponent(plan.id)}`;
+            window.location.assign(`/login?next=${encodeURIComponent(checkoutDestination)}`);
+            return;
+        }
+
+        setCheckoutPlanId(plan.id);
+
+        try {
+            const checkoutSession = await createSubscriptionCheckout({
+                planId: plan.id,
+                billingInterval: "monthly",
+            });
+
+            window.location.assign(checkoutSession.checkoutUrl);
+        } catch (error) {
+            toast({
+                title: "Checkout failed",
+                description: getApiClientErrorMessage(error, "Unable to start Stripe checkout."),
+                variant: "destructive",
+            });
+            setCheckoutPlanId(null);
+        }
+    };
 
     return (
         <section id="pricing" className="relative scroll-mt-20 overflow-hidden bg-background px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
@@ -330,15 +453,46 @@ export default function PricingSection() {
                 </motion.div>
 
                 <motion.div
-                    className="mb-12 grid grid-cols-1 items-stretch gap-6 sm:mb-16 sm:gap-8 md:grid-cols-2 lg:grid-cols-3"
+                    className="mb-12 grid grid-cols-1 items-stretch gap-6 sm:mb-16 sm:gap-8 md:grid-cols-2 lg:grid-cols-4"
                     variants={containerVariants}
                     initial="hidden"
                     whileInView="visible"
                     viewport={{ once: true, amount: 0.1 }}
                 >
-                    {displayPlans.map((plan) => (
-                        <PlanCard key={plan.name} plan={plan} />
-                    ))}
+                    {displayPlans.map((plan, planIndex) => {
+                        const isCurrentPlan =
+                            isAuthenticated && currentPlanIndex === planIndex;
+                        const isPlanLocked =
+                            isAuthenticated &&
+                            currentPlanIndex >= 0 &&
+                            planIndex <= currentPlanIndex;
+                        const isSubscriptionPending =
+                            isAuthenticated && !hasResolvedSubscription;
+
+                        return (
+                            <PlanCard
+                                key={plan.id}
+                                plan={plan}
+                                isCheckingOut={checkoutPlanId === plan.id}
+                                isDisabled={
+                                    !isReady ||
+                                    isSubscriptionPending ||
+                                    checkoutPlanId !== null ||
+                                    isPlanLocked
+                                }
+                                ctaLabel={
+                                    !isAuthenticated
+                                        ? "Get Started"
+                                        : isCurrentPlan
+                                          ? "Current Plan"
+                                          : "Upgrade"
+                                }
+                                onGetStarted={(selectedPlan) =>
+                                    void handleGetStarted(selectedPlan, isPlanLocked)
+                                }
+                            />
+                        );
+                    })}
                 </motion.div>
 
                 <motion.div

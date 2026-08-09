@@ -35,7 +35,12 @@ export type StudySet = {
   summary: string
   selections: string[]
   sections: StudySetSection[]
+  documentId?: string
+  sourceType?: string
   sourceText?: string
+  sourceFilename?: string
+  sourceMimeType?: string
+  sourceUrl?: string
   notesMarkdown?: string
   notesHtml?: string
   updatedAt?: string
@@ -682,6 +687,13 @@ export function normalizeStudySetPayload(payload: any, fallbackTitle?: string): 
     shouldUseNoteDocumentMarkdown
   )
 
+  const sourceDocument =
+    payload.document && typeof payload.document === 'object' ? payload.document : {}
+  const sourceFile =
+    sourceDocument.file && typeof sourceDocument.file === 'object' ? sourceDocument.file : {}
+  const firstSourceString = (...values: unknown[]) =>
+    values.find((value): value is string => typeof value === 'string' && Boolean(value.trim()))?.trim()
+
   return {
     id: String(idSource ?? generateFallbackId()),
     title,
@@ -689,10 +701,68 @@ export function normalizeStudySetPayload(payload: any, fallbackTitle?: string): 
     summary,
     selections,
     sections: normalizedSections,
+    documentId: firstSourceString(
+      payload.documentId,
+      payload.document_id,
+      sourceDocument.id,
+      sourceDocument.documentId,
+      sourceDocument.document_id,
+    ),
+    sourceType: firstSourceString(
+      payload.sourceType,
+      payload.source_type,
+      sourceDocument.sourceType,
+      sourceDocument.source_type,
+    ),
     sourceText:
-      typeof payload.sourceText === 'string' && payload.sourceText.trim()
-        ? payload.sourceText.trim()
-        : undefined,
+      firstSourceString(
+        payload.sourceText,
+        payload.source_text,
+        payload.rawExtractedText,
+        payload.raw_extracted_text,
+        sourceDocument.rawExtractedText,
+        sourceDocument.raw_extracted_text,
+      ),
+    sourceFilename: firstSourceString(
+      payload.sourceFilename,
+      payload.source_filename,
+      payload.filename,
+      sourceDocument.filename,
+      sourceDocument.originalFilename,
+      sourceDocument.original_filename,
+      sourceFile.filename,
+      sourceFile.name,
+    ),
+    sourceMimeType: firstSourceString(
+      payload.sourceMimeType,
+      payload.source_mime_type,
+      payload.mimeType,
+      payload.mime_type,
+      sourceDocument.mimeType,
+      sourceDocument.mime_type,
+      sourceFile.mimeType,
+      sourceFile.mime_type,
+      sourceFile.type,
+    ),
+    sourceUrl: firstSourceString(
+      payload.sourceUrl,
+      payload.source_url,
+      payload.fileUrl,
+      payload.file_url,
+      payload.downloadUrl,
+      payload.download_url,
+      payload.signedUrl,
+      payload.signed_url,
+      sourceDocument.sourceUrl,
+      sourceDocument.source_url,
+      sourceDocument.fileUrl,
+      sourceDocument.file_url,
+      sourceDocument.downloadUrl,
+      sourceDocument.download_url,
+      sourceDocument.signedUrl,
+      sourceDocument.signed_url,
+      sourceFile.url,
+    ),
     notesMarkdown: notesMarkdown || undefined,
     notesHtml: explicitNotesHtml || undefined,
     updatedAt:

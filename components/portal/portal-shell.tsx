@@ -9,6 +9,7 @@ export type PortalNavItem = {
   href: string
   icon: LucideIcon
   isActive?: boolean
+  badge?: string
 }
 
 type PortalShellProps = {
@@ -99,8 +100,13 @@ export function PortalShell({
                     : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{item.label}</span>
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 truncate text-sm font-medium">{item.label}</span>
+                {item.badge ? (
+                  <span className="ml-auto shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                    {item.badge}
+                  </span>
+                ) : null}
               </Link>
             )
           })}

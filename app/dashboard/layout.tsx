@@ -24,7 +24,7 @@ import {
   ListChecks,
   NotebookPen,
   PenSquare,
-  Smartphone,
+  Puzzle,
   Sparkles,
 } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -117,9 +117,10 @@ function DashboardLayoutContent({
       icon: ClipboardCheck,
     },
     {
-      label: 'App',
+      label: 'Apps & Extensions',
       href: '/dashboard/app',
-      icon: Smartphone,
+      icon: Puzzle,
+      badge: 'New',
     },
   ]
 

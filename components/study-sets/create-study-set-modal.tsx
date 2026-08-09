@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Upload, X, Youtube } from 'lucide-react'
 import { getApiClientErrorMessage } from '@/lib/api/client'
 import { saveStudySetUploadMeta, type StoredStudySetGenerationMeta } from '@/lib/api/study-sets.storage'
+import { cacheStudySetSource } from '@/lib/study-set-source-cache'
 import {
   generateStudySet,
   type StudySetUploadResponse,
@@ -122,6 +123,17 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
                 youtubeUrl: youtubeUrl.trim(),
                 title: title || null,
               })
+
+      if (selectedFile) {
+        try {
+          await cacheStudySetSource(response.document.id, selectedFile)
+        } catch (cacheError) {
+          // The backend upload has already succeeded. A browser-storage failure
+          // should not make the user repeat a potentially expensive upload.
+          console.warn('Could not cache the uploaded source for local preview:', cacheError)
+        }
+      }
+
       saveStudySetUploadMeta({
         documentId: response.document.id,
         embeddingJobId: response.embedding_job_id,
@@ -191,6 +203,13 @@ export default function CreateStudySetModal({ onClose, initialSource = 'pdf' }: 
           selections: selectedOutputs,
           sourceType: resolvedSourceType,
           sourceText: sourceType === 'text' ? content : undefined,
+          sourceFilename: selectedFile?.name || uploadedResponse.document.filename || undefined,
+          sourceMimeType: selectedFile?.type || undefined,
+          sourceUrl:
+            uploadedResponse.document.r2Path?.startsWith('http://') ||
+            uploadedResponse.document.r2Path?.startsWith('https://')
+              ? uploadedResponse.document.r2Path
+              : undefined,
           createdAt: uploadedResponse.document.createdAt,
           updatedAt: uploadedResponse.document.updatedAt,
         }),

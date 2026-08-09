@@ -15,6 +15,9 @@ type CreateUploadPlaceholderStudySetParams = {
   selections: string[]
   sourceType: 'text' | 'pdf' | 'image' | 'youtube'
   sourceText?: string
+  sourceFilename?: string
+  sourceMimeType?: string
+  sourceUrl?: string
   createdAt?: string
   updatedAt?: string
 }
@@ -227,7 +230,12 @@ export function createUploadPlaceholderStudySet(params: CreateUploadPlaceholderS
     items: countItems(sections),
     selections,
     sections,
+    documentId: params.documentId,
+    sourceType: params.sourceType,
     sourceText: params.sourceText,
+    sourceFilename: params.sourceFilename,
+    sourceMimeType: params.sourceMimeType,
+    sourceUrl: params.sourceUrl,
     notesMarkdown: createNotesMarkdown(params.title, params.sourceType, params.sourceText),
     createdAt: params.createdAt ?? new Date().toISOString(),
     updatedAt: params.updatedAt ?? new Date().toISOString(),

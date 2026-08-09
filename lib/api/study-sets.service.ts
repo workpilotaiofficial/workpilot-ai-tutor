@@ -296,6 +296,17 @@ export type UnifiedStudySetResponse = {
   warning: string | null
 }
 
+export type StudySetSourceDocument = {
+  id: string
+  title: string
+  filename: string | null
+  sourceType: string | null
+  mimeType: string | null
+  sourceUrl: string | null
+  r2Path: string | null
+  rawExtractedText: string | null
+}
+
 export type StudySetAnswerMastery = {
   previous_state: string
   new_state: string
@@ -725,6 +736,78 @@ export function fetchUnifiedStudySet(studySetId: string, signal?: AbortSignal) {
     method: 'GET',
     signal,
   })
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function firstString(records: Array<Record<string, unknown> | null>, keys: string[]) {
+  for (const record of records) {
+    if (!record) continue
+    for (const key of keys) {
+      const value = record[key]
+      if (typeof value === 'string' && value.trim()) return value.trim()
+    }
+  }
+  return null
+}
+
+function normalizeSourceDocument(payload: unknown, documentId: string): StudySetSourceDocument {
+  const root = toRecord(payload)
+  const data = toRecord(root?.data)
+  const document = toRecord(root?.document) ?? toRecord(data?.document) ?? data ?? root
+  const source = toRecord(document?.source)
+  const file = toRecord(document?.file)
+  const records = [document, source, file]
+
+  return {
+    id: firstString(records, ['id', 'documentId', 'document_id']) ?? documentId,
+    title: firstString(records, ['title', 'name']) ?? 'Source document',
+    filename: firstString(records, ['filename', 'originalFilename', 'original_filename', 'fileName', 'file_name']),
+    sourceType: firstString(records, ['sourceType', 'source_type', 'type']),
+    mimeType: firstString(records, ['mimeType', 'mime_type', 'contentType', 'content_type']),
+    sourceUrl: firstString(records, [
+      'sourceUrl',
+      'source_url',
+      'fileUrl',
+      'file_url',
+      'downloadUrl',
+      'download_url',
+      'signedUrl',
+      'signed_url',
+      'presignedUrl',
+      'presigned_url',
+      'publicUrl',
+      'public_url',
+      'youtubeUrl',
+      'youtube_url',
+      'url',
+    ]),
+    r2Path: firstString(records, ['r2Path', 'r2_path']),
+    rawExtractedText: firstString(records, [
+      'rawExtractedText',
+      'raw_extracted_text',
+      'extractedText',
+      'extracted_text',
+      'text',
+      'content',
+    ]),
+  }
+}
+
+export async function fetchStudySetSourceDocument(documentId: string, signal?: AbortSignal) {
+  const response = await apiClient.request<unknown>(
+    `/api/v1/documents/${encodeURIComponent(documentId)}`,
+    {
+      method: 'GET',
+      signal,
+    },
+  )
+
+  return normalizeSourceDocument(response, documentId)
 }
 
 export async function deleteStudySet(studySetId: string) {

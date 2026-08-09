@@ -14,8 +14,9 @@ import { Input } from '@/components/ui/input'
 import { createFirebaseSession } from '@/lib/api/auth.service'
 import { getApiClientErrorMessage } from '@/lib/api/client'
 import { getStoredAuthObject, saveAuthObject } from '@/lib/api/session-storage'
+import { getPostLoginDestination } from '@/lib/auth-redirect'
 import { auth, isFirebaseConfigured } from '@/lib/firebase'
-import { flattenPermissionKeys, getPortalRouteByPermissions } from '@/lib/rbac/permissions'
+import { flattenPermissionKeys } from '@/lib/rbac/permissions'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -28,6 +29,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [postSignupDestination, setPostSignupDestination] = useState<string | null>(null)
 
   const firebaseUnavailableMessage =
     isFirebaseConfigured && auth
@@ -36,11 +38,21 @@ export default function SignupPage() {
 
   useEffect(() => {
     const storedAuth = getStoredAuthObject()
+    const destination = new URLSearchParams(window.location.search).get('next')
+
     if (!storedAuth?.access_token) {
+      setPostSignupDestination(destination)
       setAuthCheckComplete(true)
       return
     }
-    router.replace(getPortalRouteByPermissions(storedAuth.user_role, storedAuth.flattened_permission_keys ?? []))
+
+    router.replace(
+      getPostLoginDestination(
+        destination,
+        storedAuth.user_role,
+        storedAuth.flattened_permission_keys ?? [],
+      ),
+    )
   }, [router])
 
   const handleSignup = async (event: FormEvent<HTMLFormElement>) => {
@@ -82,7 +94,9 @@ export default function SignupPage() {
         user_permissions: session.permissions,
         flattened_permission_keys: permissionKeys,
       })
-      router.replace(getPortalRouteByPermissions(session.user.role, permissionKeys))
+      router.replace(
+        getPostLoginDestination(postSignupDestination, session.user.role, permissionKeys),
+      )
     } catch (error) {
       setErrorMessage(getSignupErrorMessage(error))
     } finally {
@@ -128,7 +142,7 @@ export default function SignupPage() {
                 </Button>
               </form>
 
-              <p className="mt-4 text-center text-sm text-slate-500">Already have an account? <Link href="/login" className="font-semibold text-primary hover:text-thirdary">Sign In</Link></p>
+              <p className="mt-4 text-center text-sm text-slate-500">Already have an account? <Link href={postSignupDestination ? `/login?next=${encodeURIComponent(postSignupDestination)}` : '/login'} className="font-semibold text-primary hover:text-thirdary">Sign In</Link></p>
             </motion.div>
           </div>
 
