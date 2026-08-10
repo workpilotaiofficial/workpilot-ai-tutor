@@ -6,7 +6,7 @@ import InsufficientCreditsModal from '@/components/settings/insufficient-credits
 import SettingsModal, { type SettingsTab } from '@/components/settings/settings-modal'
 import { getStoredStudySetById, getStoredStudySets, type StudySet } from '@/components/study-sets/utils'
 import { deleteCurrentSession, getPortalRouteByRole } from '@/lib/api/auth.service'
-import { fetchCurrentSubscription } from '@/lib/api/billing.service'
+import { fetchCreditBalance, fetchCurrentSubscription, type CreditBalance } from '@/lib/api/billing.service'
 import { apiClient, CREDIT_LIMIT_REACHED_EVENT, CreditLimitReachedEventDetail } from '@/lib/api/client'
 import { clearAuthBrowserState, getStoredAuthObject, replaceStoredAuthObject } from '@/lib/api/session-storage'
 import { getLoginUrl } from '@/lib/auth-redirect'
@@ -67,6 +67,7 @@ function DashboardLayoutContent({
   const hasCheckedOnboardingRef = useRef(false)
   const [footerProfileName, setFooterProfileName] = useState('Account')
   const [footerPlanName, setFooterPlanName] = useState<string | null>(null)
+  const [footerCreditBalance, setFooterCreditBalance] = useState<CreditBalance | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -237,6 +238,30 @@ function DashboardLayoutContent({
   }, [])
 
   useEffect(() => {
+    let isCancelled = false
+
+    const loadCreditBalance = async () => {
+      try {
+        const balance = await fetchCreditBalance()
+
+        if (!isCancelled) {
+          setFooterCreditBalance(balance)
+        }
+      } catch {
+        // Keep the last known balance when a background refresh fails.
+      }
+    }
+
+    void loadCreditBalance()
+    window.addEventListener('focus', loadCreditBalance)
+
+    return () => {
+      isCancelled = true
+      window.removeEventListener('focus', loadCreditBalance)
+    }
+  }, [pathname])
+
+  useEffect(() => {
     if (!isStudySetDetail || !studySetId) {
       setActiveStudySet(null)
       return
@@ -327,12 +352,17 @@ function DashboardLayoutContent({
           setSettingsInitialTab('billing')
           setShowSettingsModal(true)
         }}
+        onOpenUsage={() => {
+          setSettingsInitialTab('usage')
+          setShowSettingsModal(true)
+        }}
         onLogout={handleLogout}
         isLoggingOut={isLoggingOut}
         showHeader={!isStudySetDetail}
         footerProfileName={footerProfileName}
         footerProfileInitial={footerProfileName.charAt(0).toUpperCase() || 'S'}
         footerProfileSubtitle={footerPlanName ? `${footerPlanName} plan` : undefined}
+        footerCreditBalance={footerCreditBalance}
       >
         {children}
       </PortalShell>

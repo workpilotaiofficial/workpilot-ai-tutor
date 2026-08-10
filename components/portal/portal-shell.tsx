@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Folder, LogOut, Menu, Search, Settings as SettingsIcon, type LucideIcon, X } from 'lucide-react'
+import { Coins, Folder, LogOut, Menu, Search, Settings as SettingsIcon, type LucideIcon, X } from 'lucide-react'
 import Image from 'next/image'
 
 export type PortalNavItem = {
@@ -24,10 +24,15 @@ type PortalShellProps = {
   showHeader?: boolean
   onOpenSettings?: () => void
   onOpenBilling?: () => void
+  onOpenUsage?: () => void
   footerPrimaryActionLabel?: string
   footerProfileName?: string
   footerProfileInitial?: string
   footerProfileSubtitle?: string
+  footerCreditBalance?: {
+    current: number
+    periodUsed: number | null
+  } | null
 }
 
 export function PortalShell({
@@ -42,16 +47,25 @@ export function PortalShell({
   showHeader = true,
   onOpenSettings,
   onOpenBilling,
+  onOpenUsage,
   footerPrimaryActionLabel = 'Upgrade to Unlimited',
   footerProfileName = 'Muntasir',
   footerProfileInitial = 'M',
   footerProfileSubtitle,
+  footerCreditBalance,
 }: PortalShellProps) {
   const closeMobileSidebar = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024 && sidebarOpen) {
       onSidebarToggle()
     }
   }
+
+  const trackedCreditTotal = footerCreditBalance
+    ? Math.max(0, footerCreditBalance.current) + Math.max(0, footerCreditBalance.periodUsed ?? 0)
+    : 0
+  const creditRemainingPercentage = trackedCreditTotal > 0 && footerCreditBalance
+    ? Math.min(100, Math.max(0, (footerCreditBalance.current / trackedCreditTotal) * 100))
+    : 0
 
   return (
     <div className="flex h-dvh min-w-0 overflow-hidden bg-background">
@@ -144,6 +158,40 @@ export function PortalShell({
               ) : null}
             </div>
           </div>
+          {footerCreditBalance ? (
+            <button
+              type="button"
+              onClick={onOpenUsage}
+              className="w-full rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-3 text-left transition-colors hover:bg-sidebar-accent"
+              aria-label={`${footerCreditBalance.current.toLocaleString('en-US')} of ${trackedCreditTotal.toLocaleString('en-US')} credits remaining`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex min-w-0 items-center gap-2 text-xs font-semibold text-sidebar-foreground">
+                  <Coins className="h-4 w-4 shrink-0 text-primary" />
+                  Credits left
+                </span>
+                <span className="shrink-0 text-xs font-bold tabular-nums text-sidebar-foreground">
+                  {footerCreditBalance.current.toLocaleString('en-US')}
+                  <span className="font-medium text-sidebar-foreground/60"> / {trackedCreditTotal.toLocaleString('en-US')}</span>
+                </span>
+              </div>
+              <div
+                className="mt-2 h-2 overflow-hidden rounded-full bg-sidebar-border"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={trackedCreditTotal}
+                aria-valuenow={Math.max(0, footerCreditBalance.current)}
+              >
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-500"
+                  style={{ width: `${creditRemainingPercentage}%` }}
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] text-sidebar-foreground/65">
+                {Math.round(creditRemainingPercentage)}% remaining
+              </p>
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onLogout}
