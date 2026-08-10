@@ -1281,8 +1281,8 @@ export default function StudySetDetailPage({
               <div className="absolute inset-0 flex flex-col items-center justify-center p-5 text-center [transform:rotateY(180deg)] [backface-visibility:hidden] sm:p-10">
                 <p className="mb-4 text-xs uppercase tracking-widest text-primary/60">Answer</p>
                 <p className="text-xl font-semibold leading-snug text-foreground sm:text-2xl">
-                  {/* {item?.answer ?? 'Answer unavailable'} */}
-                  Paraplegia and hemiplegia are both forms of paralysis, but they affect different parts of the body and stem from different areas of the nervous system. Paraplegia affects the lower half of the body (both legs and usually the torso), while hemiplegia affects one vertical side of the body (one arm and one leg on the same
+                  {item?.answer ?? 'Answer unavailable'}
+                  {/* Paraplegia and hemiplegia are both forms of paralysis, but they affect different parts of the body and stem from different areas of the nervous system. Paraplegia affects the lower half of the body (both legs and usually the torso), while hemiplegia affects one vertical side of the body (one arm and one leg on the same */}
                 </p>
               </div>
             </div>
