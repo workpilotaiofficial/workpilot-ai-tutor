@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CalendarDays, CheckCircle2, Clock3, Coins, LoaderCircle, RefreshCcw, RotateCcw, X } from 'lucide-react'
 import BillingSettings from '@/components/settings/billing-settings'
+import CreditHistory from '@/components/settings/credit-history'
 import PersonalizedAiSettings from '@/components/settings/personalized-ai-settings'
 import ProfileSettings from '@/components/settings/profile-settings'
 import { Button } from '@/components/ui/button'
@@ -107,6 +108,7 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
   const [hasLoadedUsage, setHasLoadedUsage] = useState(false)
   const [isUsageLoading, setIsUsageLoading] = useState(false)
   const [usageCalculatedAt, setUsageCalculatedAt] = useState(0)
+  const [usageHistoryRefreshKey, setUsageHistoryRefreshKey] = useState(0)
   const textContrastOnLight = getContrastRatio(themeSettings.textColor, LIGHT_BACKGROUND_REFERENCE)
   const textContrastOnDark = getContrastRatio(themeSettings.textColor, DARK_BACKGROUND_REFERENCE)
 
@@ -312,7 +314,15 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
                     <p className="mt-1 text-sm text-muted-foreground">Track your credits and current plan period.</p>
                   </div>
 
-                  <Button size="sm" variant="outline" onClick={() => void loadCreditBalance()} disabled={isUsageLoading}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      void loadCreditBalance()
+                      setUsageHistoryRefreshKey((value) => value + 1)
+                    }}
+                    disabled={isUsageLoading}
+                  >
                     {isUsageLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
                     Refresh
                   </Button>
@@ -476,6 +486,8 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
                     ) : null}
                   </div>
                 ) : null}
+
+                <CreditHistory refreshKey={usageHistoryRefreshKey} />
               </div>
             ) : activeTab === 'customizeTheme' ? (
               <div className="space-y-6">

@@ -40,6 +40,7 @@ export {
   createSubscriptionCheckout,
   fetchCreditPacks,
   fetchCreditBalance,
+  fetchCreditHistory,
   fetchCurrentSubscription,
   fetchSubscriptionPlans,
 } from '@/lib/api/billing.service'
@@ -143,7 +144,10 @@ export type {
 export type {
   CreditPack,
   CreditBalance,
+  CreditHistoryEntry,
   CurrentSubscription,
+  FetchCreditHistoryParams,
+  FetchCreditHistoryResult,
   RecentInvoice,
   SubscriptionCheckoutSession,
   SubscriptionPlan,

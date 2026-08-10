@@ -32,6 +32,19 @@ type CreditBalanceResponse = {
   balance?: unknown
 }
 
+type CreditHistoryResponse = {
+  data?: unknown
+  history?: unknown
+  entries?: unknown
+  items?: unknown
+  next_cursor?: unknown
+  nextCursor?: unknown
+  has_more?: unknown
+  hasMore?: unknown
+  pagination?: unknown
+  meta?: unknown
+}
+
 type CreditPackResponse = {
   data?: unknown
 }
@@ -93,6 +106,34 @@ export type CreditBalance = {
   periodEnd: string | null
 }
 
+export type CreditHistoryEntry = {
+  id: string
+  eventType: string | null
+  amount: number | null
+  balanceAfter: number | null
+  taskType: string | null
+  modelName: string | null
+  provider: string | null
+  rawProviderTokens: number | null
+  multiplier: number | null
+  note: string | null
+  createdAt: string | null
+}
+
+export type FetchCreditHistoryParams = {
+  limit?: number
+  cursor?: string | null
+  eventType?: string
+  from?: string
+  to?: string
+}
+
+export type FetchCreditHistoryResult = {
+  entries: CreditHistoryEntry[]
+  nextCursor: string | null
+  hasMore: boolean
+}
+
 const PAYMENTS_SUBSCRIPTION_ENDPOINT = '/api/v1/payments/subscription'
 const PAYMENTS_PLANS_ENDPOINT = '/api/v1/payments/plans'
 const PAYMENTS_PACKS_ENDPOINT = '/api/v1/payments/packs'
@@ -100,6 +141,7 @@ const PAYMENTS_CHECKOUT_ENDPOINT = '/api/v1/payments/create-checkout'
 const PAYMENTS_TOPUP_ENDPOINT = '/api/v1/payments/topup'
 const PAYMENTS_CANCEL_SUBSCRIPTION_ENDPOINT = '/api/v1/payments/cancel-subscription'
 const CREDITS_BALANCE_ENDPOINT = '/api/v1/credits/balance'
+const CREDITS_HISTORY_ENDPOINT = '/api/v1/credits/history'
 
 const FREE_SUBSCRIPTION: CurrentSubscription = {
   planId: null,
@@ -126,7 +168,16 @@ function readString(value: unknown): string | null {
 }
 
 function readNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? numericValue : null
+  }
+
+  return null
 }
 
 function readBoolean(value: unknown): boolean {
@@ -350,6 +401,93 @@ export async function fetchSubscriptionPlans(signal?: AbortSignal) {
     .filter((plan): plan is SubscriptionPlan => Boolean(plan))
 }
 
+function normalizeCreditHistoryEntry(entry: unknown, index: number): CreditHistoryEntry | null {
+  const record = asRecord(entry)
+
+  if (!record) {
+    return null
+  }
+
+  const createdAt = readString(record.created_at) ?? readString(record.createdAt)
+  const eventType = readString(record.event_type) ?? readString(record.eventType)
+  const id = readString(record.id) ?? `credit-history-${createdAt ?? eventType ?? index}`
+
+  return {
+    id,
+    eventType,
+    amount: readNumber(record.amount),
+    balanceAfter: readNumber(record.balance_after) ?? readNumber(record.balanceAfter),
+    taskType: readString(record.task_type) ?? readString(record.taskType),
+    modelName: readString(record.model_name) ?? readString(record.modelName),
+    provider: readString(record.provider),
+    rawProviderTokens:
+      readNumber(record.raw_provider_tokens) ?? readNumber(record.rawProviderTokens),
+    multiplier: readNumber(record.multiplier),
+    note: readString(record.note) ?? readString(record.description),
+    createdAt,
+  }
+}
+
+function extractCreditHistoryRecords(response: CreditHistoryResponse) {
+  if (Array.isArray(response)) {
+    return response
+  }
+
+  const root = asRecord(response)
+  const data = root?.data
+
+  if (Array.isArray(data)) {
+    return data
+  }
+
+  const dataRecord = asRecord(data)
+  const containers = [dataRecord, root]
+
+  for (const container of containers) {
+    if (!container) continue
+
+    for (const key of ['history', 'entries', 'items', 'records']) {
+      if (Array.isArray(container[key])) {
+        return container[key] as unknown[]
+      }
+    }
+  }
+
+  return []
+}
+
+function extractCreditHistoryPagination(response: CreditHistoryResponse) {
+  const root = asRecord(response)
+  const data = asRecord(root?.data)
+  const candidates = [
+    asRecord(data?.pagination),
+    asRecord(data?.meta),
+    data,
+    asRecord(root?.pagination),
+    asRecord(root?.meta),
+    root,
+  ]
+
+  let nextCursor: string | null = null
+  let hasMore: boolean | null = null
+
+  for (const candidate of candidates) {
+    if (!candidate) continue
+
+    nextCursor ??= readString(candidate.next_cursor) ?? readString(candidate.nextCursor)
+
+    if (hasMore === null) {
+      const rawHasMore = candidate.has_more ?? candidate.hasMore
+      hasMore = typeof rawHasMore === 'boolean' ? rawHasMore : null
+    }
+  }
+
+  return {
+    nextCursor,
+    hasMore: hasMore ?? Boolean(nextCursor),
+  }
+}
+
 export async function fetchCreditPacks() {
   const response = await apiClient.request<CreditPackResponse>(PAYMENTS_PACKS_ENDPOINT)
   return asArray(response?.data)
@@ -432,4 +570,43 @@ export async function fetchCreditBalance() {
     periodStart: readString(balanceRecord?.period_start),
     periodEnd: readString(balanceRecord?.period_end),
   } satisfies CreditBalance
+}
+
+export async function fetchCreditHistory(
+  params: FetchCreditHistoryParams = {},
+  signal?: AbortSignal,
+): Promise<FetchCreditHistoryResult> {
+  const searchParams = new URLSearchParams()
+  const limit = Math.min(100, Math.max(1, Math.trunc(params.limit ?? 10)))
+
+  searchParams.set('limit', String(limit))
+
+  if (params.cursor) {
+    searchParams.set('cursor', params.cursor)
+  }
+
+  if (params.eventType?.trim()) {
+    searchParams.set('event_type', params.eventType.trim())
+  }
+
+  if (params.from) {
+    searchParams.set('from', params.from)
+  }
+
+  if (params.to) {
+    searchParams.set('to', params.to)
+  }
+
+  const response = await apiClient.request<CreditHistoryResponse>(
+    `${CREDITS_HISTORY_ENDPOINT}?${searchParams.toString()}`,
+    { signal },
+  )
+  const pagination = extractCreditHistoryPagination(response)
+
+  return {
+    entries: extractCreditHistoryRecords(response)
+      .map(normalizeCreditHistoryEntry)
+      .filter((entry): entry is CreditHistoryEntry => Boolean(entry)),
+    ...pagination,
+  }
 }
