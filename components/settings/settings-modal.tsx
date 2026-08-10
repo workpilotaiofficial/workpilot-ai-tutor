@@ -1,16 +1,18 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { BarChart3, LoaderCircle, RefreshCcw, RotateCcw, X } from 'lucide-react'
+import { CalendarDays, CheckCircle2, Clock3, Coins, LoaderCircle, RefreshCcw, RotateCcw, X } from 'lucide-react'
 import BillingSettings from '@/components/settings/billing-settings'
 import PersonalizedAiSettings from '@/components/settings/personalized-ai-settings'
 import ProfileSettings from '@/components/settings/profile-settings'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import {
   fetchCreditBalance,
   fetchPersonalizationQuestions,
   getApiClientErrorMessage,
   updatePersonalizationAnswers,
+  type CreditBalance,
   type PersonalizationAnswerInput,
   type PersonalizationQuestionWithAnswer,
 } from '@/lib/api'
@@ -46,6 +48,41 @@ interface SettingsModalProps {
 
 const LIGHT_BACKGROUND_REFERENCE = '#FFFFFF'
 const DARK_BACKGROUND_REFERENCE = '#1A1A1A'
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000
+
+const formatUsageDate = (value: string | null) => {
+  if (!value) return 'Not available'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Not available'
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(date)
+}
+
+const formatPlanName = (value: string | null) => {
+  const plan = value?.trim()
+  return plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'Not available'
+}
+
+const getPeriodMetrics = (periodStart: string | null, periodEnd: string | null, now: number) => {
+  if (!periodStart || !periodEnd) return null
+
+  const start = new Date(periodStart).getTime()
+  const end = new Date(periodEnd).getTime()
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null
+
+  const totalDays = Math.max(1, Math.ceil((end - start) / MILLISECONDS_PER_DAY))
+  const elapsedDays = Math.min(totalDays, Math.max(0, Math.floor((now - start) / MILLISECONDS_PER_DAY)))
+  const remainingDays = Math.min(totalDays, Math.max(0, Math.ceil((end - now) / MILLISECONDS_PER_DAY)))
+  const progress = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100))
+
+  return { elapsedDays, remainingDays, totalDays, progress }
+}
 
 const getContrastRating = (ratio: number) => {
   if (ratio >= 7) return 'AAA'
@@ -65,9 +102,11 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
   const [themeSettings, setThemeSettings] = useState<ThemeCustomization>(DEFAULT_THEME_CUSTOMIZATION)
   const [status, setStatus] = useState<string | null>(null)
   const [themeStatus, setThemeStatus] = useState<string | null>(null)
-  const [creditBalance, setCreditBalance] = useState<number | null>(null)
+  const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
+  const [usageLoadError, setUsageLoadError] = useState<string | null>(null)
   const [hasLoadedUsage, setHasLoadedUsage] = useState(false)
   const [isUsageLoading, setIsUsageLoading] = useState(false)
+  const [usageCalculatedAt, setUsageCalculatedAt] = useState(0)
   const textContrastOnLight = getContrastRatio(themeSettings.textColor, LIGHT_BACKGROUND_REFERENCE)
   const textContrastOnDark = getContrastRatio(themeSettings.textColor, DARK_BACKGROUND_REFERENCE)
 
@@ -112,15 +151,19 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
 
   const loadCreditBalance = useCallback(async () => {
     setIsUsageLoading(true)
+    setUsageLoadError(null)
 
     try {
       const result = await fetchCreditBalance()
-      setCreditBalance(result.current)
+      setCreditBalance(result)
+      setUsageCalculatedAt(Date.now())
       setHasLoadedUsage(true)
     } catch (error) {
+      const description = getApiClientErrorMessage(error, 'Your credit usage could not be loaded.')
+      setUsageLoadError(description)
       toast({
         title: 'Unable to load usage',
-        description: getApiClientErrorMessage(error, 'Current balance could not be loaded.'),
+        description,
         variant: 'destructive',
       })
     } finally {
@@ -135,6 +178,13 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
 
     void loadCreditBalance()
   }, [activeTab, hasLoadedUsage, loadCreditBalance])
+
+  const periodMetrics = creditBalance
+    ? getPeriodMetrics(creditBalance.periodStart, creditBalance.periodEnd, usageCalculatedAt)
+    : null
+  const monthlyCreditUsage = creditBalance?.monthlyAllotment && creditBalance.monthlyAllotment > 0
+    ? Math.min(100, Math.max(0, ((creditBalance.periodUsed ?? 0) / creditBalance.monthlyAllotment) * 100))
+    : null
 
   const mergeSavedPersonalizationAnswers = (
     currentQuestions: PersonalizationQuestionWithAnswer[],
@@ -259,30 +309,173 @@ export default function SettingsModal({ onClose, initialTab = 'personalizedAi', 
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">Usage</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Your current credit balance.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Track your credits and current plan period.</p>
                   </div>
 
-                  <Button variant="outline" onClick={() => void loadCreditBalance()} disabled={isUsageLoading}>
+                  <Button size="sm" variant="outline" onClick={() => void loadCreditBalance()} disabled={isUsageLoading}>
                     {isUsageLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
                     Refresh
                   </Button>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-secondary/10 p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="rounded-2xl bg-primary/10 p-3 text-primary">
-                      <BarChart3 className="h-6 w-6" />
+                {isUsageLoading && !hasLoadedUsage ? (
+                  <div className="space-y-4" aria-label="Loading credit usage">
+                    <div className="h-40 animate-pulse rounded-2xl bg-secondary" />
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                      {Array.from({ length: 3 }).map((_, index) => (
+                        <div key={index} className="h-24 animate-pulse rounded-xl bg-secondary" />
+                      ))}
+                    </div>
+                    <div className="h-44 animate-pulse rounded-2xl bg-secondary" />
+                  </div>
+                ) : usageLoadError && !creditBalance ? (
+                  <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+                    <p className="font-medium text-foreground">Usage details are unavailable</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{usageLoadError}</p>
+                    <Button className="mt-4" variant="outline" onClick={() => void loadCreditBalance()} disabled={isUsageLoading}>
+                      {isUsageLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                      Try again
+                    </Button>
+                  </div>
+                ) : creditBalance ? (
+                  <div className="space-y-4">
+                    <div className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-background p-5 sm:p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="rounded-xl bg-primary p-2.5 text-primary-foreground shadow-sm">
+                            <Coins className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Credits left</p>
+                            <p className="mt-0.5 text-4xl font-bold tracking-tight text-foreground">
+                              {creditBalance.current.toLocaleString('en-US')}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="shrink-0 rounded-full border border-primary/20 bg-background/80 px-3 py-1 text-xs font-semibold text-foreground shadow-sm">
+                          {formatPlanName(creditBalance.plan)} plan
+                        </span>
+                      </div>
+
+                      <div className="mt-5 flex items-center gap-2 border-t border-primary/10 pt-4 text-sm text-muted-foreground">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <span>This is your available balance right now.</span>
+                      </div>
                     </div>
 
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-muted-foreground">Current Balance</p>
-                      <p className="mt-2 text-3xl font-semibold text-foreground">
-                        {isUsageLoading && !hasLoadedUsage ? 'Loading...' : (creditBalance ?? 0).toLocaleString('en-US')}
-                      </p>
-                     
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                      <div className="rounded-xl border border-border bg-card p-4">
+                        <p className="text-xs font-medium text-muted-foreground">Monthly limit</p>
+                        <p className="mt-2 text-xl font-semibold text-foreground">
+                          {creditBalance.monthlyAllotment === null
+                            ? 'Not available'
+                            : creditBalance.monthlyAllotment.toLocaleString('en-US')}
+                          {creditBalance.monthlyAllotment !== null ? (
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">credits</span>
+                          ) : null}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {creditBalance.monthlyAllotment === null
+                            ? 'Limit not provided'
+                            : creditBalance.monthlyAllotment > 0
+                              ? 'Included each period'
+                              : 'No recurring allowance'}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-card p-4">
+                        <p className="text-xs font-medium text-muted-foreground">Used this period</p>
+                        <p className="mt-2 text-xl font-semibold text-foreground">
+                          {creditBalance.periodUsed === null
+                            ? 'Not available'
+                            : creditBalance.periodUsed.toLocaleString('en-US')}
+                          {creditBalance.periodUsed !== null ? (
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">credits</span>
+                          ) : null}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">Since {formatUsageDate(creditBalance.periodStart)}</p>
+                      </div>
+
+                      <div className="col-span-2 rounded-xl border border-border bg-card p-4 lg:col-span-1">
+                        <p className="text-xs font-medium text-muted-foreground">Current plan</p>
+                        <p className="mt-2 text-xl font-semibold text-foreground">{formatPlanName(creditBalance.plan)}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Active for this period</p>
+                      </div>
                     </div>
+
+                    {monthlyCreditUsage !== null ? (
+                      <div className="rounded-xl border border-border bg-card p-4">
+                        <div className="mb-2 flex items-center justify-between gap-4 text-sm">
+                          <span className="font-medium text-foreground">Monthly credit usage</span>
+                          <span className="text-muted-foreground">{Math.round(monthlyCreditUsage)}%</span>
+                        </div>
+                        <Progress value={monthlyCreditUsage} aria-label={`${Math.round(monthlyCreditUsage)}% of monthly credits used`} />
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {(creditBalance.periodUsed ?? 0).toLocaleString('en-US')} of {creditBalance.monthlyAllotment?.toLocaleString('en-US')} included credits used
+                        </p>
+                      </div>
+                    ) : null}
+
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-xl bg-secondary p-2.5 text-foreground">
+                          <CalendarDays className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">Current period</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatUsageDate(creditBalance.periodStart)} – {formatUsageDate(creditBalance.periodEnd)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {periodMetrics ? (
+                        <>
+                          <div className="mt-5">
+                            <Progress value={periodMetrics.progress} aria-label={`${Math.round(periodMetrics.progress)}% of the current period elapsed`} />
+                            <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                              <span>Started {formatUsageDate(creditBalance.periodStart)}</span>
+                              <span>Ends {formatUsageDate(creditBalance.periodEnd)}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-5 grid grid-cols-2 divide-x divide-border rounded-xl bg-secondary/40 py-3">
+                            <div className="px-4">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Clock3 className="h-4 w-4" />
+                                <span className="text-xs font-medium">Time used</span>
+                              </div>
+                              <p className="mt-1 text-lg font-semibold text-foreground">
+                                {periodMetrics.elapsedDays} {periodMetrics.elapsedDays === 1 ? 'day' : 'days'}
+                              </p>
+                            </div>
+                            <div className="px-4">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <CalendarDays className="h-4 w-4" />
+                                <span className="text-xs font-medium">Time remaining</span>
+                              </div>
+                              <p className="mt-1 text-lg font-semibold text-foreground">
+                                {periodMetrics.remainingDays} {periodMetrics.remainingDays === 1 ? 'day' : 'days'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <p className="mt-3 text-center text-xs text-muted-foreground">
+                            {periodMetrics.totalDays}-day plan period
+                          </p>
+                        </>
+                      ) : (
+                        <p className="mt-4 rounded-lg bg-secondary/40 px-3 py-2 text-sm text-muted-foreground">
+                          Period timeline is not available for this plan.
+                        </p>
+                      )}
+                    </div>
+
+                    {usageLoadError ? (
+                      <p className="text-center text-xs text-destructive">Refresh failed. Showing the last loaded balance.</p>
+                    ) : null}
                   </div>
-                </div>
+                ) : null}
               </div>
             ) : activeTab === 'customizeTheme' ? (
               <div className="space-y-6">
