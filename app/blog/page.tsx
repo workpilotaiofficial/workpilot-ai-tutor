@@ -59,10 +59,7 @@ export default async function BlogIndexPage({ searchParams }: BlogIndexPageProps
           {preview ? (
             <div className='mx-auto mb-6 w-fit rounded-full bg-amber-100 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-amber-900'>Draft preview enabled</div>
           ) : null}
-          <p className='inline-flex items-center gap-2 rounded-full border border-slate-900/10 bg-white/70 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-[#c84f1b] shadow-sm backdrop-blur'>
-            <Sparkles className='h-4 w-4' aria-hidden='true' />
-            The Neurova Learning Lab
-          </p>
+     
           <h1 className='mx-auto mt-7 max-w-5xl text-5xl font-semibold leading-[0.96] tracking-[-0.065em] sm:text-7xl lg:text-[6.5rem]'>
             Study less randomly.
             <span className='block text-[#e45e25]'>Learn with a system.</span>
@@ -77,19 +74,7 @@ export default async function BlogIndexPage({ searchParams }: BlogIndexPageProps
             <a href='#latest' className='inline-flex min-h-12 items-center justify-center rounded-full border border-slate-900/15 bg-white/70 px-6 py-3 text-sm font-bold text-slate-800 transition hover:bg-white'>Browse the latest guides</a>
           </div>
 
-          <div className='mx-auto mt-12 grid max-w-2xl grid-cols-3 gap-3 text-left sm:gap-5'>
-            {[
-              { icon: BrainCircuit, value: 'AI-first', label: 'study workflows' },
-              { icon: BookOpen, value: 'Practical', label: 'learning guides' },
-              { icon: Sparkles, value: 'Student-led', label: 'exam tactics' },
-            ].map(({ icon: Icon, value, label }) => (
-              <div key={value} className='rounded-2xl border border-slate-900/10 bg-white/65 p-3 shadow-sm backdrop-blur sm:p-5'>
-                <Icon className='h-5 w-5 text-[#e45e25]' aria-hidden='true' />
-                <p className='mt-3 text-sm font-bold sm:text-base'>{value}</p>
-                <p className='mt-1 text-xs leading-5 text-slate-500 sm:text-sm'>{label}</p>
-              </div>
-            ))}
-          </div>
+      
         </div>
       </section>
 
