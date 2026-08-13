@@ -70,10 +70,12 @@ function FeatureHeading({
   icon: Icon,
   title,
   description,
+  href,
 }: {
   icon: typeof BrainCircuit;
   title: string;
   description: string;
+  href?: string;
 }) {
   return (
     <div className="relative z-10 p-6 sm:p-8">
@@ -86,6 +88,11 @@ function FeatureHeading({
       <p className="mt-2 max-w-lg text-sm leading-6 text-slate-600">
         {description}
       </p>
+      {href && (
+        <Link href={href} className="group mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+          Explore feature <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+        </Link>
+      )}
     </div>
   );
 }
@@ -249,6 +256,7 @@ export default function FeaturesSection() {
               icon={BrainCircuit}
               title="One upload. A complete study set."
               description="Turn your notes or documents into structured summaries, quizzes, flashcards, and guided lessons—without switching tools."
+              href="/features/study-sets"
             />
             <StudySetPreview />
           </FeatureCard>

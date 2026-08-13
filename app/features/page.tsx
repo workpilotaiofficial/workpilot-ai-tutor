@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -42,7 +41,7 @@ const studyModes = [
 const featureGroups = [
   {
     eyebrow: "Study sets",
-    title: "One source. Seven ways to learn.",
+    title: "One source. Six ways to learn.",
     description:
       "Upload a document or paste text once, then choose exactly the formats you need. Every output stays together in one study set instead of becoming another pile of disconnected AI responses.",
     icon: BrainCircuit,
@@ -54,6 +53,7 @@ const featureGroups = [
       "Move from understanding to active recall in the same workspace",
     ],
     visual: "modes" as const,
+    href: "/features/study-sets",
   },
   {
     eyebrow: "Syllabus intelligence",
@@ -69,6 +69,7 @@ const featureGroups = [
       "Return to previous analyses from your history",
     ],
     visual: "timeline" as const,
+    href: "/features/syllabus-intelligence",
   },
   {
     eyebrow: "AI paper grader",
@@ -84,6 +85,7 @@ const featureGroups = [
       "Keep results available for later review",
     ],
     visual: "grade" as const,
+    href: "/features/paper-grader",
   },
 ];
 
@@ -173,6 +175,9 @@ export default function FeaturesPage() {
                     <li key={point} className="flex items-start gap-3 text-sm leading-6 text-slate-700"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Check className="h-3 w-3 stroke-[3]" /></span>{point}</li>
                   ))}
                 </ul>
+                <Link href={feature.href} className="group mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                  Explore {feature.eyebrow.toLowerCase()} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
               </div>
               <FeatureVisual type={feature.visual} className={index % 2 ? "lg:order-1" : ""} />
             </div>

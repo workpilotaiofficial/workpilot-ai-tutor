@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@/lib/utils";
-import { IconMenu2, IconX } from "@tabler/icons-react";
+import { IconChevronDown, IconMenu2, IconX } from "@tabler/icons-react";
 import {
   motion,
   AnimatePresence,
@@ -27,6 +27,11 @@ interface NavItemsProps {
   items: {
     name: string;
     link: string;
+    children?: {
+      name: string;
+      link: string;
+      description?: string;
+    }[];
   }[];
   className?: string;
   onItemClick?: () => void;
@@ -116,32 +121,107 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
 
 export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
   const [hovered, setHovered] = useState<number | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
 
   return (
     <motion.div
-      onMouseLeave={() => setHovered(null)}
+      onMouseLeave={() => {
+        setHovered(null);
+        setOpenDropdown(null);
+      }}
       className={cn(
         "  inset-0 hidden flex-1 flex-row max-w-[33%] items-center space-x-2 text-sm font-medium text-zinc-600 transition duration-200 hover:text-zinc-800 lg:flex lg:space-x-2",
         className,
       )}
     >
-      {items.map((item, idx) => (
-        <a
-          onMouseEnter={() => setHovered(idx)}
-          onClick={onItemClick}
-          className="relative px-4 py-2 text-neutral-600 dark:text-neutral-300"
-          key={`link-${idx}`}
-          href={item.link}
-        >
-          {hovered === idx && (
-            <motion.div
-              layoutId="hovered"
-              className="absolute inset-0 h-full  rounded-md bg-gray-100 dark:bg-neutral-800"
-            />
-          )}
-          <span className="relative z-20">{item.name}</span>
-        </a>
-      ))}
+      {items.map((item, idx) => {
+        const hasChildren = Boolean(item.children?.length);
+
+        return (
+          <div
+            className="relative"
+            key={`link-${idx}`}
+            onMouseEnter={() => {
+              setHovered(idx);
+              if (hasChildren) setOpenDropdown(idx);
+            }}
+            onFocus={() => {
+              setHovered(idx);
+              if (hasChildren) setOpenDropdown(idx);
+            }}
+          >
+            {hasChildren ? (
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={openDropdown === idx}
+                onClick={() => setOpenDropdown((current) => current === idx ? null : idx)}
+                className="relative flex items-center gap-1.5 px-4 py-2 text-neutral-600 dark:text-neutral-300"
+              >
+                {hovered === idx && (
+                  <motion.div
+                    layoutId="hovered"
+                    className="absolute inset-0 h-full rounded-md bg-gray-100 dark:bg-neutral-800"
+                  />
+                )}
+                <span className="relative z-20">{item.name}</span>
+                <IconChevronDown className={`relative z-20 h-3.5 w-3.5 transition-transform ${openDropdown === idx ? "rotate-180" : ""}`} />
+              </button>
+            ) : (
+              <a
+                onClick={onItemClick}
+                className="relative block px-4 py-2 text-neutral-600 dark:text-neutral-300"
+                href={item.link}
+              >
+                {hovered === idx && (
+                  <motion.div
+                    layoutId="hovered"
+                    className="absolute inset-0 h-full rounded-md bg-gray-100 dark:bg-neutral-800"
+                  />
+                )}
+                <span className="relative z-20">{item.name}</span>
+              </a>
+            )}
+
+            <AnimatePresence>
+              {hasChildren && openDropdown === idx && (
+                <motion.div
+                  role="menu"
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                  transition={{ duration: 0.16 }}
+                  className="absolute left-0 top-[calc(100%+.6rem)] z-[80] w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_24px_70px_rgba(15,23,42,.16)] dark:border-neutral-800 dark:bg-neutral-950"
+                >
+                  <div className="px-3 pb-2 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                    Explore features
+                  </div>
+                  {item.children?.map((child) => (
+                    <a
+                      role="menuitem"
+                      key={child.link}
+                      href={child.link}
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        onItemClick?.();
+                      }}
+                      className="group block rounded-xl px-3 py-3 transition hover:bg-primary/[.06] focus:bg-primary/[.06] focus:outline-none"
+                    >
+                      <span className="block text-sm font-semibold text-slate-800 transition group-hover:text-primary dark:text-slate-100">{child.name}</span>
+                      {child.description && <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-neutral-400">{child.description}</span>}
+                    </a>
+                  ))}
+                  <div className="mt-1 border-t border-slate-100 p-1 pt-2 dark:border-neutral-800">
+                    <a href={item.link} onClick={onItemClick} className="block rounded-lg px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/[.06]">
+                      View all features →
+                    </a>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
     </motion.div>
   );
 };

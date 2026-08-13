@@ -17,11 +17,39 @@ import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useRbac } from "@/hooks/use-rbac";
 import { getPortalRouteByRole } from "@/lib/api/auth.service";
+import { ChevronDown } from "lucide-react";
 
-const navItems = [
+type NavItem = {
+  name: string;
+  link: string;
+  children?: {
+    name: string;
+    link: string;
+    description: string;
+  }[];
+};
+
+const navItems: NavItem[] = [
   {
     name: "Features",
     link: "/features",
+    children: [
+      {
+        name: "Study Sets",
+        link: "/features/study-sets",
+        description: "Notes, flashcards, quizzes, and tutor lessons",
+      },
+      {
+        name: "Syllabus Intelligence",
+        link: "/features/syllabus-intelligence",
+        description: "Modules, priorities, and semester planning",
+      },
+      {
+        name: "Paper Grader",
+        link: "/features/paper-grader",
+        description: "Rubric-based scores and actionable feedback",
+      },
+    ],
   },
   {
     name: "App",
@@ -55,6 +83,7 @@ export default function Nav({
   className?: string;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileFeaturesOpen, setIsMobileFeaturesOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, displayName, role, isReady } = useRbac();
@@ -69,7 +98,10 @@ export default function Nav({
     return <>{children}</>;
   }
 
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+    setIsMobileFeaturesOpen(false);
+  };
 
   const handleAvatarClick = () => {
     const dashboardRoute = getPortalRouteByRole(role);
@@ -123,7 +155,45 @@ export default function Nav({
           </MobileNavHeader>
 
           <MobileNavMenu isOpen={isMobileMenuOpen} onClose={closeMobileMenu}>
-            {navItems.map((item, idx) => (
+            {navItems.map((item, idx) => item.children?.length ? (
+              <motion.div
+                key={`mobile-link-${idx}`}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.06, duration: 0.2 }}
+                className="w-full"
+              >
+                <button
+                  type="button"
+                  aria-expanded={isMobileFeaturesOpen}
+                  onClick={() => setIsMobileFeaturesOpen((open) => !open)}
+                  className="flex min-h-11 w-full items-center justify-between rounded-md px-3 py-2 text-base font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white"
+                >
+                  {item.name}
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isMobileFeaturesOpen ? "rotate-180" : ""}`} />
+                </button>
+                <motion.div
+                  initial={false}
+                  animate={{ height: isMobileFeaturesOpen ? "auto" : 0, opacity: isMobileFeaturesOpen ? 1 : 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="ml-3 space-y-1 border-l border-slate-200 py-1 pl-3 dark:border-neutral-800">
+                    {item.children.map((child) => (
+                      <a
+                        key={child.link}
+                        href={child.link}
+                        onClick={closeMobileMenu}
+                        className="block rounded-lg px-3 py-2.5 transition hover:bg-primary/[.06]"
+                      >
+                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-200">{child.name}</span>
+                        <span className="mt-0.5 block text-xs leading-5 text-slate-500 dark:text-neutral-400">{child.description}</span>
+                      </a>
+                    ))}
+                    <a href={item.link} onClick={closeMobileMenu} className="block rounded-lg px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/[.06]">View all features →</a>
+                  </div>
+                </motion.div>
+              </motion.div>
+            ) : (
               <motion.a
                 key={`mobile-link-${idx}`}
                 href={item.link}

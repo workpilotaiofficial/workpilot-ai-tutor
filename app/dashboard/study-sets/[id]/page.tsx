@@ -1606,14 +1606,14 @@ export default function StudySetDetailPage({
 
   const renderNotesWorkspace = () => {
     return (
-      <div className="flex h-full flex-col overflow-hidden bg-background shadow-sm">
-        <ScrollArea className="flex h-full flex-col gap-4 no-scrollbar">
+      <div className="relative">
+        {/* <ScrollArea className="flex  bg-red-700 flex-col gap-4 no-scrollbar"> */}
           <NotesEditor
             value={studySet?.notesHtml}
             notesMarkdown={studySet?.notesMarkdown}
             onContentChange={handleNotesChange}
           />
-        </ScrollArea>
+        {/* </ScrollArea> */}
       </div>
     )
   }

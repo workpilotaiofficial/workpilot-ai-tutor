@@ -199,7 +199,7 @@ export const NotesEditor = forwardRef<
         editorProps: {
             attributes: {
                 class: [
-                    'mx-auto min-h-[70dvh] h-full w-full max-w-[820px] px-2 py-6 pb-24 text-[16px] leading-[1.45] text-foreground caret-primary focus:outline-none sm:min-h-[700px] sm:px-5 sm:py-8 sm:pb-24 lg:py-12',
+                    'mx-auto  h-full w-full max-w-full px-2 py-6 pb-24 text-[16px] leading-[1.45] text-foreground caret-primary focus:outline-none  sm:px-5 sm:py-8 sm:pb-24 lg:py-12',
                     '[&_.rich-note-document]:w-full',
                     '[&_h1]:mb-6 [&_h1]:font-sans [&_h1]:text-[2rem] [&_h1]:font-bold [&_h1]:tracking-[0] [&_h1]:text-foreground [&_h1]:leading-[1.3] lg:[&_h1]:text-[2.5rem]',
                     '[&_h2]:mb-4 [&_h2]:mt-12 [&_h2]:border-t [&_h2]:border-border [&_h2]:pt-8 [&_h2]:font-sans [&_h2]:font-bold [&_h2]:tracking-[-0.02em] [&_h2]:text-primary [&_h2]:text-[1.25rem] [&_h2]:leading-[1.25] lg:[&_h2]:text-[1.59rem]',
@@ -328,51 +328,53 @@ export const NotesEditor = forwardRef<
     }
 
     return (
-        <div className={`rich-notes-editor-root relative h-full min-w-0 ${className}`}>
+        <>
             {showToolbar && (
-                    <div className="absolute bottom-3 left-2 right-2 z-20 flex items-center gap-1 overflow-x-auto rounded-xl border border-border bg-gray-100/90 p-1.5 shadow-lg backdrop-blur-lg [scrollbar-width:none] sm:bottom-4 sm:left-1/2 sm:right-auto sm:w-max sm:max-w-[calc(100%-2rem)] sm:-translate-x-1/2 [&::-webkit-scrollbar]:hidden">
-                        <ToolbarButton label="Undo" disabled={!editor.can().chain().focus().undo().run()} onClick={() => editor.chain().focus().undo().run()}>
-                            <Undo2 className="h-[18px] w-[18px]" />
-                        </ToolbarButton>
-                        <ToolbarButton label="Redo" disabled={!editor.can().chain().focus().redo().run()} onClick={() => editor.chain().focus().redo().run()}>
-                            <Redo2 className="h-[18px] w-[18px]" />
-                        </ToolbarButton>
-                        <span className="mx-1 h-6 w-px shrink-0 bg-border" />
-                        <select
-                            aria-label="Text style"
-                            value={activeHeading ? `h${activeHeading}` : 'paragraph'}
-                            onChange={(event) => {
-                                const block = event.target.value
-                                if (block === 'paragraph') editor.chain().focus().setParagraph().run()
-                                else editor.chain().focus().setHeading({ level: Number(block.slice(1)) as 1 | 2 | 3 | 4 | 5 }).run()
-                            }}
-                            className="h-9 min-w-[118px] cursor-pointer rounded-lg bg-transparent px-2 text-sm font-medium text-foreground outline-none hover:bg-secondary"
-                        >
-                            <option value="paragraph">Normal text</option>
-                            <option value="h1">Title</option>
-                            <option value="h2">Heading 1</option>
-                            <option value="h3">Heading 2</option>
-                            <option value="h4">Heading 3</option>
-                            <option value="h5">Small heading</option>
-                        </select>
-                        <span className="mx-1 h-6 w-px shrink-0 bg-border" />
-                        <ToolbarButton label="Bold" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}><Bold className="h-[18px] w-[18px]" /></ToolbarButton>
-                        <ToolbarButton label="Italic" active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}><Italic className="h-[18px] w-[18px]" /></ToolbarButton>
-                        <ToolbarButton label="Underline" active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}><Underline className="h-[18px] w-[18px]" /></ToolbarButton>
-                        <ToolbarButton label="Strikethrough" active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough className="h-[18px] w-[18px]" /></ToolbarButton>
-                        <span className="mx-1 h-6 w-px shrink-0 bg-border" />
-                        <ToolbarButton label="Bullet list" active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}><List className="h-[18px] w-[18px]" /></ToolbarButton>
-                        <ToolbarButton label="Numbered list" active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}><ListOrdered className="h-[18px] w-[18px]" /></ToolbarButton>
-                        <ToolbarButton label="Quote" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}><Quote className="h-[18px] w-[18px]" /></ToolbarButton>
-                        <span className="mx-1 h-6 w-px shrink-0 bg-border" />
-                        <ToolbarButton label="Highlight" active={editor.isActive('highlight')} onClick={() => editor.chain().focus().toggleHighlight().run()}><Highlighter className="h-[18px] w-[18px]" /></ToolbarButton>
-                        <ToolbarButton label="Inline code" active={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()}><Code2 className="h-[18px] w-[18px]" /></ToolbarButton>
-                        <ToolbarButton label={editor.isActive('link') ? 'Edit link' : 'Add link'} active={editor.isActive('link')} onClick={updateLink}><Link2 className="h-[18px] w-[18px]" /></ToolbarButton>
-                        <ToolbarButton label="Divider" onClick={() => editor.chain().focus().setHorizontalRule().run()}><Minus className="h-[18px] w-[18px]" /></ToolbarButton>
-                    </div>
-          
+                <div className=" sticky top-0 left-2 right-2 z-20 flex items-center gap-1 overflow-x-auto rounded-xl border border-border bg-gray-100/90 p-1.5 shadow-lg backdrop-blur-lg [scrollbar-width:none] sm:bottom-4 sm:left-1/2 sm:right-auto sm:w-max sm:max-w-[calc(100%-2rem)] sm:-translate-x-1/2 [&::-webkit-scrollbar]:hidden">
+                    <ToolbarButton label="Undo" disabled={!editor.can().chain().focus().undo().run()} onClick={() => editor.chain().focus().undo().run()}>
+                        <Undo2 className="h-[18px] w-[18px]" />
+                    </ToolbarButton>
+                    <ToolbarButton label="Redo" disabled={!editor.can().chain().focus().redo().run()} onClick={() => editor.chain().focus().redo().run()}>
+                        <Redo2 className="h-[18px] w-[18px]" />
+                    </ToolbarButton>
+                    <span className="mx-1 h-6 w-px shrink-0 bg-border" />
+                    <select
+                        aria-label="Text style"
+                        value={activeHeading ? `h${activeHeading}` : 'paragraph'}
+                        onChange={(event) => {
+                            const block = event.target.value
+                            if (block === 'paragraph') editor.chain().focus().setParagraph().run()
+                            else editor.chain().focus().setHeading({ level: Number(block.slice(1)) as 1 | 2 | 3 | 4 | 5 }).run()
+                        }}
+                        className="h-9 min-w-[118px] cursor-pointer rounded-lg bg-transparent px-2 text-sm font-medium text-foreground outline-none hover:bg-secondary"
+                    >
+                        <option value="paragraph">Normal text</option>
+                        <option value="h1">Title</option>
+                        <option value="h2">Heading 1</option>
+                        <option value="h3">Heading 2</option>
+                        <option value="h4">Heading 3</option>
+                        <option value="h5">Small heading</option>
+                    </select>
+                    <span className="mx-1 h-6 w-px shrink-0 bg-border" />
+                    <ToolbarButton label="Bold" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}><Bold className="h-[18px] w-[18px]" /></ToolbarButton>
+                    <ToolbarButton label="Italic" active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}><Italic className="h-[18px] w-[18px]" /></ToolbarButton>
+                    <ToolbarButton label="Underline" active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}><Underline className="h-[18px] w-[18px]" /></ToolbarButton>
+                    <ToolbarButton label="Strikethrough" active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough className="h-[18px] w-[18px]" /></ToolbarButton>
+                    <span className="mx-1 h-6 w-px shrink-0 bg-border" />
+                    <ToolbarButton label="Bullet list" active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}><List className="h-[18px] w-[18px]" /></ToolbarButton>
+                    <ToolbarButton label="Numbered list" active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}><ListOrdered className="h-[18px] w-[18px]" /></ToolbarButton>
+                    <ToolbarButton label="Quote" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}><Quote className="h-[18px] w-[18px]" /></ToolbarButton>
+                    <span className="mx-1 h-6 w-px shrink-0 bg-border" />
+                    <ToolbarButton label="Highlight" active={editor.isActive('highlight')} onClick={() => editor.chain().focus().toggleHighlight().run()}><Highlighter className="h-[18px] w-[18px]" /></ToolbarButton>
+                    <ToolbarButton label="Inline code" active={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()}><Code2 className="h-[18px] w-[18px]" /></ToolbarButton>
+                    <ToolbarButton label={editor.isActive('link') ? 'Edit link' : 'Add link'} active={editor.isActive('link')} onClick={updateLink}><Link2 className="h-[18px] w-[18px]" /></ToolbarButton>
+                    <ToolbarButton label="Divider" onClick={() => editor.chain().focus().setHorizontalRule().run()}><Minus className="h-[18px] w-[18px]" /></ToolbarButton>
+                </div>
+
             )}
 
+        <div className={`rich-notes-editor-root relative h-full min-w-0 ${className}`}>
+  
             {showBubbleMenu && editable && (
                 <BubbleMenu editor={editor}>
                     <div className="flex items-center gap-0.5 rounded-xl border border-border bg-card p-1 shadow-xl">
@@ -388,6 +390,7 @@ export const NotesEditor = forwardRef<
                 <EditorContent editor={editor} />
             </div>
         </div>
+        </>
     )
 })
 
