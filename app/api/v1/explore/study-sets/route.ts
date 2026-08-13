@@ -1,21 +1,3 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-import { listExploreStudySets } from '@/lib/explore-study-sets'
-
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const subject = searchParams.get('subject')
-  const search = searchParams.get('search')
-  const cursor = searchParams.get('cursor')
-  const limitValue = searchParams.get('limit')
-  const limit = limitValue ? Number.parseInt(limitValue, 10) : undefined
-
-  const response = listExploreStudySets({
-    subject,
-    search,
-    cursor,
-    limit,
-  })
-
-  return NextResponse.json(response)
-}
+import { listPublicExplore } from '@/lib/explore/service'
+export async function GET(request: NextRequest) { const p = request.nextUrl.searchParams; const response = await listPublicExplore({ subject: p.get('subject') ?? undefined, search: p.get('search') ?? undefined, cursor: p.get('cursor') ?? undefined, limit: p.get('limit') ? Number(p.get('limit')) : undefined }); return NextResponse.json(response) }

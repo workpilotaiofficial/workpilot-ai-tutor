@@ -4,7 +4,7 @@ import { sanityPreviewSecret } from '@/lib/sanity/env'
 import { absoluteUrl } from '@/lib/site-config'
 
 function getSafeRedirect(value: string | null) {
-  if (!value || !value.startsWith('/blog') || value.startsWith('//')) return '/blog'
+  if (!value || (!value.startsWith('/blog') && !value.startsWith('/explore')) || value.startsWith('//')) return '/blog'
   return value
 }
 

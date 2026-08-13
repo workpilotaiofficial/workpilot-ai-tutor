@@ -9,6 +9,7 @@ import {
 type FooterLink = { name: string; href: string };
 
 const pages: FooterLink[] = [
+  { name: "Explore", href: "/explore" },
   { name: "Blog", href: "/blog" },
   { name: "Features", href: "/features" },
   { name: "Pricing", href: "/pricing" },

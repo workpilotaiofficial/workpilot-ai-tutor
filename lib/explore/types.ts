@@ -1,0 +1,4 @@
+export type ExploreSection = { type: string; label: string; content?: unknown[] | string; items?: Array<Record<string, unknown>>; url?: string; transcript?: unknown[] }
+export type ExploreCard = { id: string; slug: string; title: string; subject: string; summary: string; coverImage: { url: string; alt: string }; itemCounts: Record<string, number>; difficulty: string; estimatedMinutes: number; tags: string[]; publishedAt: string }
+export type ExploreGuide = ExploreCard & { learningObjectives: string[]; sections: ExploreSection[]; seo: { title?: string; description?: string; canonicalUrl?: string; ogImage?: string; noIndex?: boolean } }
+export type ExploreList = { data: ExploreCard[]; count: number; subjects: string[]; nextCursor: string | null; hasMore: boolean; source: 'sanity' | 'fallback' }

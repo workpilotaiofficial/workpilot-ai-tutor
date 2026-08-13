@@ -55,6 +55,10 @@ const navItems: NavItem[] = [
     name: "Blog",
     link: "/blog",
   },
+  {
+    name: "Explore",
+    link: "/explore",
+  },
 
   {
     name: "Contact",
