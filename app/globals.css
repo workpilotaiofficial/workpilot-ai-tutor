@@ -220,6 +220,93 @@ html.lenis body {
   }
 }
 
+.blog-prose {
+  color: #475569;
+  font-size: 1.0625rem;
+  line-height: 1.9;
+}
+
+.blog-prose > * + * {
+  margin-top: 1.5rem;
+}
+
+.blog-prose h2,
+.blog-prose h3 {
+  scroll-margin-top: 7rem;
+  color: #0f172a;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.blog-prose h2 {
+  margin-top: 3.5rem;
+  font-size: clamp(1.75rem, 4vw, 2.35rem);
+}
+
+.blog-prose h3 {
+  margin-top: 2.5rem;
+  font-size: clamp(1.35rem, 3vw, 1.7rem);
+}
+
+.blog-prose a {
+  color: #c84f1b;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.blog-prose strong {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.blog-prose blockquote {
+  border-left: 4px solid #ff7438;
+  border-radius: 0 1rem 1rem 0;
+  background: #fff3e8;
+  padding: 1.25rem 1.5rem;
+  color: #334155;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.blog-prose ul,
+.blog-prose ol {
+  margin-left: 1.5rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.blog-prose ul {
+  list-style: disc;
+}
+
+.blog-prose ol {
+  list-style: decimal;
+}
+
+.blog-prose code {
+  border-radius: 0.35rem;
+  background: #e2e8f0;
+  padding: 0.15rem 0.35rem;
+  color: #0f172a;
+  font-size: 0.9em;
+}
+
+.blog-prose figure {
+  margin-bottom: 2.5rem;
+  margin-top: 2.5rem;
+}
+
+.blog-prose figcaption {
+  margin-top: 0.75rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
 /*
  * The study-set overview can live inside a draggable split panel. Viewport
  * breakpoints do not react when that panel is resized, so its layout is driven

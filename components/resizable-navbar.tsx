@@ -52,13 +52,10 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "App",
-    link: "/app",
+    name: "Blog",
+    link: "/blog",
   },
-  {
-    name: "Pricing",
-    link: "/pricing",
-  },
+
   {
     name: "Contact",
     link: "/contact",
@@ -91,6 +88,7 @@ export default function Nav({
   const hideNav =
     pathname?.startsWith("/dashboard") ||
     pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/studio") ||
     pathname === "/login" ||
     pathname === "/signup";
 

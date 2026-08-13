@@ -9,6 +9,7 @@ import {
 } from '@/components/settings/theme-customization'
 import './globals.css'
 import Nav from '@/components/resizable-navbar'
+import { getMetadataBase, getSiteUrl } from '@/lib/site-config'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -150,8 +151,29 @@ const themeInitScript = `
 `
 
 export const metadata: Metadata = {
-  title: 'Neurova - AI-Powered Study Platform',
-  description: 'Create interactive study materials, flashcards, quizzes, and grade your papers with AI-powered feedback',
+  metadataBase: getMetadataBase(),
+  title: {
+    default: 'Neurova | AI Study Platform',
+    template: '%s | Neurova',
+  },
+  description: 'Create interactive study materials, flashcards, quizzes, and grade papers with AI-powered feedback from Neurova.',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    url: getSiteUrl(),
+    title: 'Neurova | AI Study Platform',
+    description:
+      'Create interactive study materials, flashcards, quizzes, and grade papers with AI-powered feedback from Neurova.',
+    siteName: 'Neurova',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Neurova | AI Study Platform',
+    description:
+      'Create interactive study materials, flashcards, quizzes, and grade papers with AI-powered feedback from Neurova.',
+  },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
