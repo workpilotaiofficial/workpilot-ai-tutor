@@ -37,17 +37,17 @@ const navItems: NavItem[] = [
       {
         name: "Study Sets",
         link: "/features/study-sets",
-        description: "Notes, flashcards, quizzes, and tutor lessons",
+        description: "Notes, flashcards, quizzes more.",
       },
       {
         name: "Syllabus Intelligence",
         link: "/features/syllabus-intelligence",
-        description: "Modules, priorities, and semester planning",
+        description: "Modules,semester planning...",
       },
       {
         name: "Paper Grader",
         link: "/features/paper-grader",
-        description: "Rubric-based scores and actionable feedback",
+        description: "Rubric-based scores & feedback",
       },
     ],
   },
