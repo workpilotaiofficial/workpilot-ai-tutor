@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "Take your AI study companion with you. Snap a difficult question, review a study set, or squeeze in a quick quiz between classes.",
 };
-
+// / cmt
 export default function AppPage() {
   return (
     <main className="min-w-0 overflow-x-clip bg-background text-foreground">
