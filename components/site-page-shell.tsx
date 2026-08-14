@@ -10,7 +10,7 @@ type SitePageShellProps = {
   children: ReactNode;
 };
 
-export const SUPPORT_EMAIL = "support@neurova.ai";
+export const SUPPORT_EMAIL = "support@goneurova.com";
 
 export function SitePageShell({ eyebrow, title, description, children }: SitePageShellProps) {
   return (
